@@ -3,9 +3,9 @@ CC=g++
 #CC=clang++
 CFLAGS=-Wl,--no-as-needed -Wall -std=c++11 -O4 -ggdb -lpthread
 LDFLAGS=-ggdb -lpthread
-SOURCES=nn_1.cpp
+SOURCES=nn_main.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
-EXECUTABLE=nn_1Exe
+EXECUTABLE=nn_mainExe
 LIBS = -lstdc++ -lm
 
 all: $(EXECUTABLE) #clangtest
@@ -25,4 +25,5 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
 clean:
-	rm nn_1 *.o clangtest *~ $(EXECUTABLE) threadtest
+	rm nn_1 nn_mainExe *.o clangtest *~ $(EXECUTABLE) threadtest
+
