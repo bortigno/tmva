@@ -616,9 +616,14 @@ public:
 	, m_fileNameResult ()
 	, m_fileNameNetConfig ()
     {
+        m_application = new TApplication ("my app", &argc, argv);
+        m_application->SetReturnFromRun (true);
     }
 
-    virtual ~ClassificationSettings () {}
+    virtual ~ClassificationSettings () 
+    {
+        delete m_application;
+    }
 
 
 
@@ -649,6 +654,8 @@ public:
     std::vector<Pattern>* m_pResultPatternContainer;
     std::string m_fileNameResult;
     std::string m_fileNameNetConfig;
+
+    TApplication* m_application;
 };
 
 

@@ -883,14 +883,14 @@ void ClassificationSettings::startTestCycle ()
         m_output.clear ();
         m_targets.clear ();
         m_weights.clear ();
-        resetPlot ("roc");
-        clearData ("datRoc");
-        resetPlot ("output");
-        clearData ("datOutputSig");
-        clearData ("datOutputBkg");
-        resetPlot ("amsSig");
-        clearData ("datAms");
-        clearData ("datSignificance");
+        /* resetPlot ("roc"); */
+        /* clearData ("datRoc"); */
+        /* resetPlot ("output"); */
+        /* clearData ("datOutputSig"); */
+        /* clearData ("datOutputBkg"); */
+        /* resetPlot ("amsSig"); */
+        /* clearData ("datAms"); */
+        /* clearData ("datSignificance"); */
     }
 
     void ClassificationSettings::endTestCycle () 
@@ -1004,7 +1004,7 @@ void ClassificationSettings::startTestCycle ()
             sigEff.push_back (seff);
             backRej.push_back (brej);
             
-            addPoint ("datRoc", seff, brej); // x, y
+            /* addPoint ("datRoc", seff, brej); // x, y */
 
 
 	    double currentCut = (i * binSizeROC)+minVal;
@@ -1027,8 +1027,8 @@ void ClassificationSettings::startTestCycle ()
             else
                 radicand = sqrt (radicand);
 
-            addPoint ("datAms", currentCut, radicand); // x, y
-	    addPoint ("datSignificance", currentCut, significance);
+            /* addPoint ("datAms", currentCut, radicand); // x, y */
+	    /* addPoint ("datSignificance", currentCut, significance); */
 
             if (radicand > bestAMS) 
 	    {
@@ -1042,8 +1042,8 @@ void ClassificationSettings::startTestCycle ()
 
         for (size_t i = 0; i < numBinsData; ++i)
         {
-            addPoint ("datOutputSig", x.at (i), datSig.at (i)/sumWeightsSig);
-            addPoint ("datOutputBkg", x.at (i), datBkg.at (i)/sumWeightsBkg);
+            /* addPoint ("datOutputSig", x.at (i), datSig.at (i)/sumWeightsSig); */
+            /* addPoint ("datOutputBkg", x.at (i), datBkg.at (i)/sumWeightsBkg); */
         }
 
 
@@ -1053,11 +1053,11 @@ void ClassificationSettings::startTestCycle ()
         ++testCycle;
 
 //inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
-        plot ("roc", "curvePoints", "datRoc", "lines", "cspline");
-        plot ("output", "outPtsSig", "datOutputSig", "lines", "cspline");
-        plot ("output", "outPtsBkg", "datOutputBkg", "lines", "cspline");
-        plot ("amsSig", "curveAms", "datAms", "lines", "cspline");
-        plot ("amsSig", "curveSignificance", "datSignificance", "lines", "cspline");
+        /* plot ("roc", "curvePoints", "datRoc", "lines", "cspline"); */
+        /* plot ("output", "outPtsSig", "datOutputSig", "lines", "cspline"); */
+        /* plot ("output", "outPtsBkg", "datOutputBkg", "lines", "cspline"); */
+        /* plot ("amsSig", "curveAms", "datAms", "lines", "cspline"); */
+        /* plot ("amsSig", "curveSignificance", "datSignificance", "lines", "cspline"); */
 
         std::cout << "bestCutAMS = " << bestCutAMS << "  ams = " << bestAMS
 		  << "      bestCutSignificance = " << bestCutSignificance << "  significance = " << bestSignificance << std::endl;

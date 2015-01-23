@@ -51,7 +51,7 @@ TMVA::MethodNN::MethodNN( const TString& jobName,
                           DataSetInfo& theData,
                           const TString& theOption,
                           TDirectory* theTargetDir )
-: MethodBase( jobName, Types::kMLP, methodTitle, theData, theOption, theTargetDir )
+: MethodBase( jobName, Types::kNN, methodTitle, theData, theOption, theTargetDir )
 {
    // standard constructor
 }
@@ -60,7 +60,7 @@ TMVA::MethodNN::MethodNN( const TString& jobName,
 TMVA::MethodNN::MethodNN( DataSetInfo& theData,
                           const TString& theWeightFile,
                           TDirectory* theTargetDir )
-   : MethodBase( Types::kMLP, theData, theWeightFile, theTargetDir )
+   : MethodBase( Types::kNN, theData, theWeightFile, theTargetDir )
 {
    // constructor from a weight file
 }
@@ -109,11 +109,11 @@ void TMVA::MethodNN::DeclareOptions()
    // BatchSize       <int>        Batch size: number of events/batch, only set if in Batch Mode,
    //                                          -1 for BatchSize=number_of_events
 
-   DeclareOptionRef(fTrainMethodS="BP", "TrainingMethod",
-                    "Train with Back-Propagation (BP), BFGS Algorithm (BFGS), or Genetic Algorithm (GA - slower and worse)");
-   AddPreDefVal(TString("BP"));
-   AddPreDefVal(TString("GA"));
-   AddPreDefVal(TString("BFGS"));
+   DeclareOptionRef(fTrainMethodS="SD", "TrainingMethod",
+                    "Train with back propagation steepest descend");
+   AddPreDefVal(TString("SD"));
+
+   DeclareOptionRef(fLayout="(N+2)*2,TANH|(N+10),TANH",    "Layout",    "neural network layout");
 
    DeclareOptionRef(fLearnRate=0.02,    "LearningRate",    "ANN learning rate parameter");
    DeclareOptionRef(fDecayRate=0.01,    "DecayRate",       "Decay rate for learning parameter");
@@ -130,10 +130,6 @@ void TMVA::MethodNN::DeclareOptions()
    DeclareOptionRef(fResetStep=50,   "ResetStep",    "How often BFGS should reset history");
    DeclareOptionRef(fTau      =3.0,  "Tau",          "LineSearch \"size step\"");
 
-   DeclareOptionRef(fBpModeS="sequential", "BPMode",
-                    "Back-propagation learning mode: sequential or batch");
-   AddPreDefVal(TString("sequential"));
-   AddPreDefVal(TString("batch"));
 
    DeclareOptionRef(fBatchSize=-1, "BatchSize",
                     "Batch size: number of events/batch, only set if in Batch Mode, -1 for BatchSize=number_of_events");
@@ -143,18 +139,72 @@ void TMVA::MethodNN::DeclareOptions()
 
    DeclareOptionRef(fSteps=-1, "ConvergenceTests",
                     "Number of steps (without improvement) required for convergence (<0 means automatic convergence check is turned off)");
-
-   DeclareOptionRef(fUseRegulator=kFALSE, "UseRegulator",
-                    "Use regulator to avoid over-training");   //zjh
-   DeclareOptionRef(fUpdateLimit=10000, "UpdateLimit",
-		    "Maximum times of regulator update");   //zjh
-   DeclareOptionRef(fCalculateErrors=kFALSE, "CalculateErrors",
-                    "Calculates inverse Hessian matrix at the end of the training to be able to calculate the uncertainties of an MVA value");   //zjh
-
-   DeclareOptionRef(fWeightRange=1.0, "WeightRange",
-                    "Take the events for the estimator calculations from small deviations from the desired value to large deviations only over the weight range");
-
 }
+
+
+std::vector<std::pair<int,NN::EnumFunction>> TMVA::MethodANNBase::ParseLayoutString(TString layerSpec)
+{
+    // parse layout specification string and return a vector, each entry
+    // containing the number of neurons to go in each successive layer
+    std::vector<std::pair<int,NN::EnumFunction>> layout;
+    const TString delim_Layer ("|");
+    const TString delim_Sub (",");
+
+    const inputSize = GetNvar ();
+
+    TObjArray* layerStrings = layerSpec.Tokenize (delim_Layer);
+    TIter nextLayer (layerStrings);
+    TString* layerString;
+    for (layerString = (TString*)nextLayer ())
+    {
+        int numNodes = 0;
+        NN::EnumFunction eActivationFunction = NN::TANH;
+
+        TObjArray* subStrings = layerString->Tokenize (delim_Sub);
+        TIter nextToken (subStrings);
+        TString* token;
+       
+        int idxToken = 0;
+        for (token = (TString*)nextToken ())
+        {
+            switch (idxToken)
+            {
+            case 0: // number of nodes
+            {
+                TString strNumNodes (*token);
+                TString strN ("x");
+                strNumNodes.ReplaceAll ("N", strN);
+                strNumNodes.ReplaceAll ("n", strN);
+                TFormulat fml ("tmp",strNumNodes);
+                numNodes = fml.Eval (inputSize);
+            }
+            case 1:
+            {
+                TString strActFnc (*token);
+                if (strActFnc == "RELU")
+                    eActivationFunction = NN::RELU;
+                else if (strActFnc == "TANH")
+                    eActivationFunction = NN::TANH;
+                else if (strActFnc == "SYMMRELU")
+                    eActivationFunction = NN::SYMMRELU;
+                else if (strActFnc == "SOFTSIGN")
+                    eActivationFunction = NN::SOFTSIGN;
+                else if (strActFnc == "SIGMOID")
+                    eActivationFunction = NN::SIGMOID;
+                else if (strActFnc == "LINEAR")
+                    eActivationFunction = NN::LINEAR;
+                else if (strActFnc == "GAUSS")
+                    eActivationFunction = NN::GAUSS;
+            }
+            }
+            layout.push_back (std::make_pair (numNodes,eActivationFunction));
+            ++idxToken;
+        }
+    }
+    return layout;
+}
+
+
 
 //_______________________________________________________________________
 void TMVA::MethodNN::ProcessOptions()
@@ -193,20 +243,20 @@ void TMVA::MethodNN::ProcessOptions()
                                                                 (*itSetting).isL1, (*itSetting).dropFraction, (*itSetting).dropRepetitions,
                                                                 fScaleToNumEvents);
    }
-   else if (fAnalysisType == Types::kMulticlass)
-   {
-       ptrSettings = std::make_unique <MulticlassSettings> ((*itSetting).convergenceSteps, (*itSetting).batchSize, 
-                                                            (*itSetting).testRepetitions, (*itSetting).factorWeightDecay,
-                                                            (*itSetting).isL1, (*itSetting).dropFraction, (*itSetting).dropRepetitions,
-                                                            fScaleToNumEvents);
-   }
-   else if (fAnalysisType == Types::kRegression)
-   {
-       ptrSettings = std::make_unique <RegressionSettings> ((*itSetting).convergenceSteps, (*itSetting).batchSize, 
-                                                            (*itSetting).testRepetitions, (*itSetting).factorWeightDecay,
-                                                            (*itSetting).isL1, (*itSetting).dropFraction, (*itSetting).dropRepetitions,
-                                                            fScaleToNumEvents);
-   }
+   // else if (fAnalysisType == Types::kMulticlass)
+   // {
+   //     ptrSettings = std::make_unique <MulticlassSettings> ((*itSetting).convergenceSteps, (*itSetting).batchSize, 
+   //                                                          (*itSetting).testRepetitions, (*itSetting).factorWeightDecay,
+   //                                                          (*itSetting).isL1, (*itSetting).dropFraction, (*itSetting).dropRepetitions,
+   //                                                          fScaleToNumEvents);
+   // }
+   // else if (fAnalysisType == Types::kRegression)
+   // {
+   //     ptrSettings = std::make_unique <RegressionSettings> ((*itSetting).convergenceSteps, (*itSetting).batchSize, 
+   //                                                          (*itSetting).testRepetitions, (*itSetting).factorWeightDecay,
+   //                                                          (*itSetting).isL1, (*itSetting).dropFraction, (*itSetting).dropRepetitions,
+   //                                                          fScaleToNumEvents);
+   // }
 
    settings.setWeightSums (fSumOfSigWeights_test, fSumOfBkgWeights_test);
 

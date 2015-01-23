@@ -55,7 +55,7 @@
 
 namespace TMVA {
 
-   class MethodNN
+    class MethodNN : public MethodBase
    {
 
    public:
@@ -78,6 +78,21 @@ namespace TMVA {
       void Train();
 
       Double_t GetMvaValue( Double_t* err=0, Double_t* errUpper=0 );
+
+      using MethodBase::ReadWeightsFromStream;
+
+      // write weights to stream
+      void AddWeightsXMLTo     ( void* parent ) const;
+
+      // read weights from stream
+      void ReadWeightsFromStream( std::istream & i );
+      void ReadWeightsFromXML   ( void* wghtnode );
+
+      // ranking of input variables
+      const Ranking* CreateRanking();
+
+      // nice output
+      void PrintCoefficients( void );
 
    protected:
 
