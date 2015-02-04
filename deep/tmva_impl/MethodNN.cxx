@@ -40,6 +40,9 @@
 #include "TMVA/Tools.h"
 #include "TMVA/Config.h"
 
+#include "TMVA/NeuralNet.h"
+#include "TMVA/Monitoring.h"
+
 REGISTER_METHOD(NN)
 
 ClassImp(TMVA::MethodNN)
@@ -109,36 +112,19 @@ void TMVA::MethodNN::DeclareOptions()
    // BatchSize       <int>        Batch size: number of events/batch, only set if in Batch Mode,
    //                                          -1 for BatchSize=number_of_events
 
-   DeclareOptionRef(fTrainMethodS="SD", "TrainingMethod",
-                    "Train with back propagation steepest descend");
-   AddPreDefVal(TString("SD"));
+   // DeclareOptionRef(fTrainMethodS="SD", "TrainingMethod",
+   //                  "Train with back propagation steepest descend");
+   // AddPreDefVal(TString("SD"));
 
-   DeclareOptionRef(fLayout="(N+2)*2,TANH|(N+10),TANH",    "Layout",    "neural network layout");
+   DeclareOptionRef(fLayout="TANH|(N+2)*2,TANH|(N+10),LINEAR",    "Layout",    "neural network layout");
+   DeclareOptionRef(fErrorStrategy="MUTUALEXCLUSIVE",    "ErrorStrategy",    "error strategy (regression: sum of squares; classification: crossentropy; multiclass: crossentropy/mutual exclusive cross entropy");
+   AddPreDefVal(TString("CROSSENTROPY"));
+   AddPreDefVal(TString("SUMOFSQUARES"));
+   AddPreDefVal(TString("MUTUALEXCLUSIVE"));
 
-   DeclareOptionRef(fLearnRate=0.02,    "LearningRate",    "ANN learning rate parameter");
-   DeclareOptionRef(fDecayRate=0.01,    "DecayRate",       "Decay rate for learning parameter");
-   DeclareOptionRef(fTestRate =10,      "TestRate",        "Test for overtraining performed at each #th epochs");
-   DeclareOptionRef(fEpochMon = kFALSE, "EpochMonitoring", "Provide epoch-wise monitoring plots according to TestRate (caution: causes big ROOT output file!)" );
-
-   DeclareOptionRef(fSamplingFraction=1.0, "Sampling","Only 'Sampling' (randomly selected) events are trained each epoch");
-   DeclareOptionRef(fSamplingEpoch=1.0,    "SamplingEpoch","Sampling is used for the first 'SamplingEpoch' epochs, afterwards, all events are taken for training");
-   DeclareOptionRef(fSamplingWeight=1.0,    "SamplingImportance"," The sampling weights of events in epochs which successful (worse estimator than before) are multiplied with SamplingImportance, else they are divided.");
-
-   DeclareOptionRef(fSamplingTraining=kTRUE,    "SamplingTraining","The training sample is sampled");
-   DeclareOptionRef(fSamplingTesting= kFALSE,    "SamplingTesting" ,"The testing sample is sampled");
-
-   DeclareOptionRef(fResetStep=50,   "ResetStep",    "How often BFGS should reset history");
-   DeclareOptionRef(fTau      =3.0,  "Tau",          "LineSearch \"size step\"");
+   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=100,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=100,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
 
 
-   DeclareOptionRef(fBatchSize=-1, "BatchSize",
-                    "Batch size: number of events/batch, only set if in Batch Mode, -1 for BatchSize=number_of_events");
-
-   DeclareOptionRef(fImprovement=1e-30, "ConvergenceImprove",
-                    "Minimum improvement which counts as improvement (<0 means automatic convergence check is turned off)");
-
-   DeclareOptionRef(fSteps=-1, "ConvergenceTests",
-                    "Number of steps (without improvement) required for convergence (<0 means automatic convergence check is turned off)");
 }
 
 
@@ -147,8 +133,8 @@ std::vector<std::pair<int,NN::EnumFunction>> TMVA::MethodANNBase::ParseLayoutStr
     // parse layout specification string and return a vector, each entry
     // containing the number of neurons to go in each successive layer
     std::vector<std::pair<int,NN::EnumFunction>> layout;
-    const TString delim_Layer ("|");
-    const TString delim_Sub (",");
+    const TString delim_Layer (",");
+    const TString delim_Sub ("|");
 
     const inputSize = GetNvar ();
 
@@ -169,16 +155,7 @@ std::vector<std::pair<int,NN::EnumFunction>> TMVA::MethodANNBase::ParseLayoutStr
         {
             switch (idxToken)
             {
-            case 0: // number of nodes
-            {
-                TString strNumNodes (*token);
-                TString strN ("x");
-                strNumNodes.ReplaceAll ("N", strN);
-                strNumNodes.ReplaceAll ("n", strN);
-                TFormulat fml ("tmp",strNumNodes);
-                numNodes = fml.Eval (inputSize);
-            }
-            case 1:
+            case 0:
             {
                 TString strActFnc (*token);
                 if (strActFnc == "RELU")
@@ -196,6 +173,15 @@ std::vector<std::pair<int,NN::EnumFunction>> TMVA::MethodANNBase::ParseLayoutStr
                 else if (strActFnc == "GAUSS")
                     eActivationFunction = NN::GAUSS;
             }
+            case 1: // number of nodes
+            {
+                TString strNumNodes (*token);
+                TString strN ("x");
+                strNumNodes.ReplaceAll ("N", strN);
+                strNumNodes.ReplaceAll ("n", strN);
+                TFormulat fml ("tmp",strNumNodes);
+                numNodes = fml.Eval (inputSize);
+            }
             }
             layout.push_back (std::make_pair (numNodes,eActivationFunction));
             ++idxToken;
@@ -204,6 +190,98 @@ std::vector<std::pair<int,NN::EnumFunction>> TMVA::MethodANNBase::ParseLayoutStr
     return layout;
 }
 
+
+
+// parse key value pairs in blocks -> return vector of blocks with map of key value pairs
+std::vector<std::map<TString,TString>> TMVA::MethodANNBase::ParseKeyValueString(TString parseString, TString blockDelim, TString tokenDelim)
+{
+    std::vector<std::map<TString,TString>> blockKeyValues;
+    const TString keyValueDelim ("=");
+
+    const inputSize = GetNvar ();
+
+    TObjArray* blockStrings = parseString.Tokenize (blockDelim);
+    TIter nextBlock (blockStrings);
+    TString* blockString;
+    for (blockString = (TString*)nextBlock ())
+    {
+        blockKeyValues.push_back (std::map<TString,TString> ()); // new block
+        std::map<TString,TString>& currentBlock = blockKeyValues.back ();
+
+        TObjArray* subStrings = layerString->Tokenize (tokenDelim);
+        TIter nextToken (subStrings);
+        TString* token;
+       
+        for (token = (TString*)nextToken ())
+        {
+            TString strKeyValue = (*token);
+            int delimPos = strKey.First (keyValueDelim.Data ());
+            if (delimPos <= 0)
+                continue;
+
+            TString strKey = TString (strKeyValue (0, delimPos)).ToUpper ();
+            TString strValue = TString (strKeyValue (delimPos+1, strKeyValue.Length ()));
+
+            strKey.Strip (TString::kBoth, ' ');
+            strValue.Strip (TString::kBoth, ' ');
+
+            currentBlock.insert (std::make_pair (strKey, strValue));
+        }
+    }
+    return blockKeyValues;
+}
+
+
+TString fetchValue (const std::map<TString, TString>& keyValueMap, TString key)
+{
+    std::map<TString, TString>::const_iterator it = keyValueMap.find (key.ToUpper ());
+    if (it == keyValueMap.end ())
+        return TString ("");
+    return it->second;
+}
+
+template <typename T>
+T fetchValue (const std::map<TString,TString>& keyValueMap, TString key, T defaultValue);
+
+template <>
+int fetchValue (const std::map<TString,TString>& keyValueMap, TString key, int defaultValue)
+{
+    TString value (fetchValue (keyValueMap, key));
+    if (value == "")
+        return defaultValue;
+    return value.Atoi ();
+}
+
+template <>
+double fetchValue (const std::map<TString,TString>& keyValueMap, TString key, double defaultValue)
+{
+    TString value (fetchValue (keyValueMap, key));
+    if (value == "")
+        return defaultValue;
+    return value.Atof ();
+}
+
+template <>
+TString fetchValue (const std::map<TString,TString>& keyValueMap, TString key, TString defaultValue)
+{
+    TString value (fetchValue (keyValueMap, key));
+    if (value == "")
+        return defaultValue;
+    return value;
+}
+
+template <>
+bool fetchValue (const std::map<TString,TString>& keyValueMap, TString key, bool defaultValue)
+{
+    TString value (fetchValue (keyValueMap, key));
+    if (value == "")
+        return defaultValue;
+    if (value.ToUpper () == "TRUE" ||
+        value.ToUpper () == "T" ||
+        value.ToUpper () == "1")
+        return true;
+    return false;
+}
 
 
 //_______________________________________________________________________
@@ -218,30 +296,41 @@ void TMVA::MethodNN::ProcessOptions()
             << "Will ignore negative events in training!"
             << Endl;
    }
-   
-   if      (fTrainMethodS == "BP"  ) fTrainingMethod = kBP;
-   else if (fTrainMethodS == "BFGS") fTrainingMethod = kBFGS;
-   else if (fTrainMethodS == "GA"  ) fTrainingMethod = kGA;
 
-   if      (fBpModeS == "sequential") fBPMode = kSequential;
-   else if (fBpModeS == "batch")      fBPMode = kBatch;
 
-   //   InitializeLearningRates();
-
-   if (fBPMode == kBatch) {
-      Data()->SetCurrentType(Types::kTraining);
-      Int_t numEvents = Data()->GetNEvents();
-      if (fBatchSize < 1 || fBatchSize > numEvents) fBatchSize = numEvents;
-   }
-
+   //                                                                                         block-delimiter  token-delimiter
+   std::vector<std::map<TString,TString>> strategyKeyValues = ParseKeyValueString (fStrategy, TString ("|"), TString (","));
 
    // create settings
    if (fAnalysisType == Types::kClassification)
    {
-       ptrSettings = std::make_unique <ClassificationSettings> ((*itSetting).convergenceSteps, (*itSetting).batchSize, 
-                                                                (*itSetting).testRepetitions, (*itSetting).factorWeightDecay,
-                                                                (*itSetting).isL1, (*itSetting).dropFraction, (*itSetting).dropRepetitions,
-                                                                fScaleToNumEvents);
+
+       if (fErrorStrategy == "SUMOFSQUARES") fModeErrorFunction = ErrorModeFunction::SUMOFSQUARES;
+       if (fErrorStrategy == "CROSSENTROPY") fModeErrorFunction = ErrorModeFunction::CROSSENTROPY;
+       if (fErrorStrategy == "MUTUALEXCLUSIVE") fModeErrorFunction = ErrorModeFunction::CROSSENTROPY_MUTUALEXCLUSIVE;
+
+       for (auto& block : strategyKeyValues)
+       {
+           size_t convergenceSteps = 100;
+           
+           int convergenceSteps = fetchValue (stringKeyValues, "ConvergenceSteps", 100);
+           int batchSize = fetchValue (stringKeyValues, "BatchSize", 30);
+           int testRepetitions = fetchValue (stringKeyValues, "TestRepetitions", 7);
+           double factorWeightDecay = fetchValue (stringKeyValues, "BatchSize", 0.0);
+           bool isL1 = fetchValue (stringKeyValues, "isL1", false);
+           double dropFraction = fetchValue (stringKeyValues, "DropFraction", 0.0);
+           int dropRepetitions = fetchValue (stringKeyValues, "DropRepetitions", 7);
+           
+           
+
+           std::shared_ptr<ClassificationSettings> ptrSettings = std::make_unique <ClassificationSettings> (
+               convergenceSteps, batchSize, 
+               testRepetitions, factorWeightDecay,
+               isL1, dropFraction, dropRepetitions,
+               fScaleToNumEvents);
+
+           fSettings.push_back (ptrSettings);
+       }
    }
    // else if (fAnalysisType == Types::kMulticlass)
    // {
@@ -266,6 +355,14 @@ void TMVA::MethodNN::ProcessOptions()
 //______________________________________________________________________________
 void TMVA::MethodNN::Train()
 {
+    
+    fMonitoring= NULL;
+    if (fMonitoring)
+    {
+        fMonitoring = new Monitoring ();
+        fMonitoring->Start ();
+    }
+
     // INITIALIZATION
     // create pattern
     std::vector<Pattern> trainPattern;
@@ -314,13 +411,8 @@ void TMVA::MethodNN::Train()
             //net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
             fNet.addLayer (NN::Layer ((*itLayout).numNodes, (*itLayout).activationFunction)); 
         }
-        fNet.addLayer (NN::Layer (outputSize, (*itLayout).activationFunction, fOutputMode)); 
-        fNet.setErrorFunction (fErrorFunction); 
-        // net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
-        // net.addLayer (NN::Layer (20, NN::EnumFunction::SYMMRELU)); 
-        // net.addLayer (NN::Layer (10, NN::EnumFunction::SYMMRELU)); 
-        // net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
-        // net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
+        fNet.addLayer (NN::Layer (outputSize, (*itLayout).activationFunction, NN::ModeOutputValues::SIGMOID)); 
+        fNet.setErrorFunction (fModeErrorFunction); 
 
         size_t numWeights = net.numWeights (inputSize);
         fWeights.resize (numWeights, 0.0);
@@ -334,8 +426,9 @@ void TMVA::MethodNN::Train()
     // and create "settings" and minimizer 
     for (auto itSetting = begin (fSettings), itSettingEnd = end (fSettings); itSetting != itSettingEnd; ++itSetting)
     {
-        NN::Steepest minimizer ((*itSetting).learningRate, (*itSetting).momentum, (*itSetting).repetitions);
-        std::unique_ptr<Settings> ptrSettings;
+        std::unique_ptr<Settings> ptrSettings = *itSetting;
+        ptrSetting->setMonitoring (monitoring);
+        NN::Steepest minimizer (ptrSetting->learningRate, ptrSetting->momentum, ptrSetting->repetitions);
 
         double E = 0;
         if ((*itSetting).minimizer == MinimizerType::fSteepest)
@@ -344,6 +437,7 @@ void TMVA::MethodNN::Train()
             E = fNet.train (fWeights, trainPattern, testPattern, minimizer, &ptrSettings.get ());
         }
     }
+    delete fMonitoring;
 }
 
 

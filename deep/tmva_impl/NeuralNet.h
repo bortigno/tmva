@@ -9,12 +9,11 @@
 #include <random>
 #include <thread>
 #include <future>
-#include "../gnuplotWrapper/gnuplot_i.hpp" //Gnuplot class handles POSIX-Pipe-communikation with Gnuplot
 
+#include "Pattern.h"
 
-#include <fenv.h>
+#include <fenv.h> // turn on or off exceptions for NaN and other numeric exceptions
 
-#include "Pattern.hpp"
 
 
 namespace TMVA
@@ -47,7 +46,7 @@ enum class EnumFunction
     DOUBLEINVERTEDGAUSS = 'D'
 };
 
-std::function<double(double)> ZeroFnc = [](double value){ return 0; };
+std::function<double(double)> ZeroFnc = [](double /*value*/){ return 0; };
 
 
 std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
@@ -57,7 +56,7 @@ std::function<double(double)> Tanh = [](double value){ return tanh (value); };
 std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
 
 std::function<double(double)> Linear = [](double value){ return value; };
-std::function<double(double)>  InvLinear = [](double value){ return 1.0; };
+std::function<double(double)>  InvLinear = [](double /*value*/){ return 1.0; };
 
 std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
 std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
@@ -513,7 +512,7 @@ template <typename LAYERDATA>
 class Settings
 {
 public:
-    typedef std::map<std::string,Gnuplot*> PlotMap;
+//    typedef std::map<std::string,Gnuplot*> PlotMap;
     typedef std::map<std::string,std::pair<std::vector<double>,std::vector<double> > > DataXYMap;
 
     Settings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
@@ -521,6 +520,8 @@ public:
 	      size_t dropRepetitions = 7);
     
     virtual ~Settings ();
+
+    void SetMonitoring (Monitoring* monitoring) { fMonitoring = monitoring; }
 
     size_t convergenceSteps () const { return m_convergenceSteps; }
     size_t batchSize () const { return m_batchSize; }

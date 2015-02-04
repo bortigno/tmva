@@ -113,6 +113,14 @@ namespace TMVA {
       void     Init();
 
 
+   private:
+      TString  fLayout;
+      TString  fErrorStrategy;
+      TString  fTrainingStrategy;
+      
+
+
+
       ClassDef(MethodNN,0) // neural network 
    };
 
