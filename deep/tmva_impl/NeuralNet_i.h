@@ -162,8 +162,8 @@ void update (ItSource itSource, ItSource itSourceEnd,
             {
                 Emin = E;
 
-                auto itLocW = begin (localWeights);
-                auto itLocWEnd = end (localWeights);
+                itLocW = begin (localWeights);
+                itLocWEnd = end (localWeights);
                 auto itW = begin (weights);
                 for (; itLocW != itLocWEnd; ++itLocW, ++itW)
                 {
@@ -453,13 +453,13 @@ double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, doubl
 
 
 
-    LayerData::LayerData (size_t size, 
+    LayerData::LayerData (size_t _size, 
 	       const_iterator_type itWeightBegin, 
 	       iterator_type itGradientBegin, 
 	       const_function_iterator_type itFunctionBegin, 
 	       const_function_iterator_type itInverseFunctionBegin,
 	       ModeOutputValues eModeOutput)
-	: m_size (size)
+	: m_size (_size)
 	, m_itConstWeightBegin   (itWeightBegin)
 	, m_itGradientBegin (itGradientBegin)
 	, m_itFunctionBegin (itFunctionBegin)
@@ -469,18 +469,18 @@ double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, doubl
 	, m_hasGradients (true)
 	, m_eModeOutput (eModeOutput) 
     {
-	m_values.assign (size, 0);
-	m_deltas.assign (size, 0);
-	m_valueGradients.assign (size, 0);
+	m_values.assign (_size, 0);
+	m_deltas.assign (_size, 0);
+	m_valueGradients.assign (_size, 0);
     }
 
 
 
 
-    LayerData::LayerData (size_t size, const_iterator_type itWeightBegin, 
+    LayerData::LayerData (size_t _size, const_iterator_type itWeightBegin, 
 	       const_function_iterator_type itFunctionBegin, 
 	       ModeOutputValues eModeOutput)
-	: m_size (size)
+	: m_size (_size)
 	, m_itConstWeightBegin   (itWeightBegin)
 	, m_itFunctionBegin (itFunctionBegin)
 	, m_isInputLayer (false)
@@ -488,35 +488,35 @@ double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, doubl
 	, m_hasGradients (false)
 	, m_eModeOutput (eModeOutput) 
     {
-	m_values.assign (size, 0);
+	m_values.assign (_size, 0);
     }
 
 
 
     typename LayerData::container_type LayerData::computeProbabilities ()
     {
-	container_type probabilities;
+	container_type probabilitiesContainer;
 	switch (m_eModeOutput)
 	{
 	case ModeOutputValues::SIGMOID:
         {
-	    std::transform (begin (m_values), end (m_values), std::back_inserter (probabilities), Sigmoid);
+	    std::transform (begin (m_values), end (m_values), std::back_inserter (probabilitiesContainer), Sigmoid);
 	    break;
         }
 	case ModeOutputValues::SOFTMAX:
         {
             double sum = 0;
-            probabilities = m_values;
-            std::for_each (begin (probabilities), end (probabilities), [&sum](double& p){ p = std::exp (p); sum += p; });
+            probabilitiesContainer = m_values;
+            std::for_each (begin (probabilitiesContainer), end (probabilitiesContainer), [&sum](double& p){ p = std::exp (p); sum += p; });
             if (sum != 0)
-                std::for_each (begin (probabilities), end (probabilities), [sum ](double& p){ p /= sum; });
+                std::for_each (begin (probabilitiesContainer), end (probabilitiesContainer), [sum ](double& p){ p /= sum; });
 	    break;
         }
 	case ModeOutputValues::DIRECT:
 	default:
-	    probabilities.assign (begin (m_values), end (m_values));
+	    probabilitiesContainer.assign (begin (m_values), end (m_values));
 	}
-	return probabilities;
+	return probabilitiesContainer;
     }
 
 
@@ -557,11 +557,11 @@ std::ostream& operator<< (std::ostream& ostr, LayerData const& data)
 
 
 
-    Layer::Layer (size_t numNodes, EnumFunction activationFunction, ModeOutputValues eModeOutputValues) 
-	: m_numNodes (numNodes) 
+    Layer::Layer (size_t _numNodes, EnumFunction activationFunction, ModeOutputValues eModeOutputValues) 
+	: m_numNodes (_numNodes) 
 	, m_eModeOutputValues (eModeOutputValues)
     {
-	for (size_t iNode = 0; iNode < numNodes; ++iNode)
+	for (size_t iNode = 0; iNode < _numNodes; ++iNode)
 	{
 	    auto actFnc = Linear;
 	    auto invActFnc = InvLinear;
@@ -757,29 +757,30 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 
 Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
-	      double _factorWeightDecay, bool isL1Regularization, double dropFraction,
-	      size_t dropRepetitions)
-        : m_convergenceSteps (_convergenceSteps)
-        , m_batchSize (_batchSize)
-        , m_testRepetitions (_testRepetitions)
-        , m_factorWeightDecay (_factorWeightDecay)
-	, count_E (0)
-	, count_dE (0)
-	, count_mb_E (0)
-	, count_mb_dE (0)
-        , m_isL1Regularization (isL1Regularization)
-	, m_dropFraction (dropFraction)
-	, m_dropRepetitions (dropRepetitions)
-    {
-    }
+                    double _factorWeightDecay, bool isL1Regularization, double _dropFraction,
+                    size_t _dropRepetitions)
+    : m_convergenceSteps (_convergenceSteps)
+    , m_batchSize (_batchSize)
+    , m_testRepetitions (_testRepetitions)
+    , m_factorWeightDecay (_factorWeightDecay)
+    , count_E (0)
+    , count_dE (0)
+    , count_mb_E (0)
+    , count_mb_dE (0)
+    , m_isL1Regularization (isL1Regularization)
+    , m_dropFraction (_dropFraction)
+    , m_dropRepetitions (_dropRepetitions)
+    , fMonitoring (NULL)
+{
+}
     
 Settings::~Settings () 
-    {
-        for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it)
-        {
-            delete it->second;
-        }
-    }
+{
+    /* for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it) */
+    /* { */
+    /*     delete it->second; */
+    /* } */
+}
 
 
 
@@ -807,42 +808,42 @@ inline void Settings::addPoint (std::string dataName, double x, double y)
 }
 
 
-inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
-{
-    Gnuplot* pPlot = getPlot (plotName);
-    std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName);
+/* inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing) */
+/* { */
+/*     Gnuplot* pPlot = getPlot (plotName); */
+/*     std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName); */
 
-    std::vector<double>& vecX = data.first;
-    std::vector<double>& vecY = data.second;
+/*     std::vector<double>& vecX = data.first; */
+/*     std::vector<double>& vecY = data.second; */
 
-    pPlot->set_style(style).set_smooth(smoothing).plot_xy(vecX,vecY,subName);
-    pPlot->unset_smooth ();
+/*     pPlot->set_style(style).set_smooth(smoothing).plot_xy(vecX,vecY,subName); */
+/*     pPlot->unset_smooth (); */
 
-    return pPlot;
-}
-
-
-void Settings::resetPlot (std::string plotName)
-{
-    Gnuplot* pPlot = getPlot (plotName);
-    pPlot->reset_plot ();
-}
+/*     return pPlot; */
+/* } */
 
 
+/* void Settings::resetPlot (std::string plotName) */
+/* { */
+/*     Gnuplot* pPlot = getPlot (plotName); */
+/*     pPlot->reset_plot (); */
+/* } */
 
-inline Gnuplot* Settings::getPlot (std::string plotName)
-{
-    PlotMap::iterator itPlot = plots.find (plotName);
-    if (itPlot == plots.end ())
-    {
-        std::cout << "create new gnuplot" << std::endl;
-        std::pair<PlotMap::iterator, bool> result = plots.insert (std::make_pair (plotName, new Gnuplot));
-        itPlot = result.first;
-    }
 
-    Gnuplot* pPlot = itPlot->second;
-    return pPlot;
-}
+
+/* inline Gnuplot* Settings::getPlot (std::string plotName) */
+/* { */
+/*     PlotMap::iterator itPlot = plots.find (plotName); */
+/*     if (itPlot == plots.end ()) */
+/*     { */
+/*         std::cout << "create new gnuplot" << std::endl; */
+/*         std::pair<PlotMap::iterator, bool> result = plots.insert (std::make_pair (plotName, new Gnuplot)); */
+/*         itPlot = result.first; */
+/*     } */
+
+/*     Gnuplot* pPlot = itPlot->second; */
+/*     return pPlot; */
+/* } */
 
 
 inline std::pair<std::vector<double>,std::vector<double> >& Settings::getData (std::string dataName)
@@ -870,7 +871,7 @@ inline std::pair<std::vector<double>,std::vector<double> >& Settings::getData (s
 
 
 
-void ClassificationSettings::testSample (double error, double output, double target, double weight)
+void ClassificationSettings::testSample (double /* error */, double output, double target, double weight)
     {
         m_output.push_back (output);
         m_targets.push_back (target);
@@ -1227,10 +1228,7 @@ void ClassificationSettings::startTestCycle ()
             settings.resetPlot ("errors");
             settings.addPoint ("trainErrors", cycleCount, trainError);
             settings.addPoint ("testErrors", cycleCount, testError);
-            settings.plot ("errors", "training", "trainErrors", "points", "");
-            settings.plot ("errors", "training_", "trainErrors", "lines", "cspline");
-            settings.plot ("errors", "test", "testErrors", "points", "");
-            settings.plot ("errors", "test_", "testErrors", "lines", "cspline");
+            settings.plot ();
 
 
 
@@ -1332,8 +1330,8 @@ void ClassificationSettings::startTestCycle ()
 	    layerData.push_back (LayerData (layer.numNodes (), itWeight, 
 						   begin (layer.activationFunctions ()),
 						   layer.modeOutputValues ()));
-	    size_t numWeights = layer.numWeights (numNodesPrev);
-	    itWeight += numWeights;
+	    size_t _numWeights = layer.numWeights (numNodesPrev);
+	    itWeight += _numWeights;
 	    numNodesPrev = layer.numNodes ();
 	}
 	    
@@ -1396,7 +1394,7 @@ void ClassificationSettings::startTestCycle ()
 
 
     template <typename LayerContainer, typename PassThrough, typename ItWeight, typename ItGradient, typename OutContainer>
-        double Net::forward_backward (LayerContainer& layers, PassThrough& settingsAndBatch, 
+        double Net::forward_backward (LayerContainer& _layers, PassThrough& settingsAndBatch, 
 			     ItWeight itWeightBegin, 
 			     ItGradient itGradientBegin, ItGradient itGradientEnd, 
 			     size_t trainFromLayer, 
@@ -1411,13 +1409,13 @@ void ClassificationSettings::startTestCycle ()
 	std::vector<std::vector<std::function<double(double)> > > activationFunctionsDropOut;
 	std::vector<std::vector<std::function<double(double)> > > inverseActivationFunctionsDropOut;
 
-	if (layers.empty ())
+	if (_layers.empty ())
 	    throw std::string ("no layers in this net");
 
 	if (usesDropOut)
 	{
 	    auto itDrop = begin (drop);
-	    for (auto& layer: layers)
+	    for (auto& layer: _layers)
 	    {
 		activationFunctionsDropOut.push_back (std::vector<std::function<double(double)> >());
 		inverseActivationFunctionsDropOut.push_back (std::vector<std::function<double(double)> >());
@@ -1446,10 +1444,10 @@ void ClassificationSettings::startTestCycle ()
 	double sumWeights = 0.0;	// -------------
 	for (const Pattern& pattern : batch)
 	{
-	    assert (layers.back ().numNodes () == pattern.output ().size ());
+	    assert (_layers.back ().numNodes () == pattern.output ().size ());
 	    size_t totalNumWeights = 0;
 	    std::vector<LayerData> layerData;
-            layerData.reserve (layers.size ()+1);
+            layerData.reserve (_layers.size ()+1);
 	    ItWeight itWeight = itWeightBegin;
 	    ItGradient itGradient = itGradientBegin;
 	    typename Pattern::const_iterator itInputBegin = pattern.beginInput ();
@@ -1458,7 +1456,7 @@ void ClassificationSettings::startTestCycle ()
 	    size_t numNodesPrev = pattern.input ().size ();
 	    auto itActFncLayer = begin (activationFunctionsDropOut);
 	    auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
-	    for (auto& layer: layers)
+	    for (auto& layer: _layers)
 	    {
 		const std::vector<std::function<double(double)> >& actFnc = usesDropOut ? (*itActFncLayer) : layer.activationFunctions ();
 		const std::vector<std::function<double(double)> >& invActFnc = usesDropOut ? (*itInvActFncLayer) : layer.inverseActivationFunctions ();
@@ -1475,10 +1473,10 @@ void ClassificationSettings::startTestCycle ()
 		    layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
 						    begin (actFnc), begin (invActFnc),
 						    layer.modeOutputValues ()));
-		size_t numWeights = layer.numWeights (numNodesPrev);
-		totalNumWeights += numWeights;
-		itWeight += numWeights;
-		itGradient += numWeights;
+		size_t _numWeights = layer.numWeights (numNodesPrev);
+		totalNumWeights += _numWeights;
+		itWeight += _numWeights;
+		itGradient += _numWeights;
 		numNodesPrev = layer.numNodes ();
 //                std::cout << layerData.back () << std::endl;
 	    }
@@ -1487,7 +1485,7 @@ void ClassificationSettings::startTestCycle ()
 	    // --------- forward -------------
 //            std::cout << "forward" << std::endl;
 	    bool doTraining (true);
-	    size_t idxLayer = 0, idxLayerEnd = layers.size ();
+	    size_t idxLayer = 0, idxLayerEnd = _layers.size ();
 	    for (; idxLayer < idxLayerEnd; ++idxLayer)
 	    {
 		LayerData& prevLayerData = layerData.at (idxLayer);
@@ -1525,7 +1523,7 @@ void ClassificationSettings::startTestCycle ()
 
 	    // ------------- backpropagation -------------
 	    idxLayer = layerData.size ();
-	    for (auto itLayer = end (layers), itLayerBegin = begin (layers); itLayer != itLayerBegin; --itLayer)
+	    for (auto itLayer = end (_layers), itLayerBegin = begin (_layers); itLayer != itLayerBegin; --itLayer)
 	    {
 		--idxLayer;
 		doTraining = idxLayer >= trainFromLayer;

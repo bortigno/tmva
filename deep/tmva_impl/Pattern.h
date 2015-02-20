@@ -44,20 +44,20 @@ public:
 
 
     template <typename ItValue>
-    Pattern (ItValue inputBegin, ItValue inputEnd, ItValue outputBegin, ItValue outputEnd, double weight = 1.0)
+    Pattern (ItValue inputBegin, ItValue inputEnd, ItValue outputBegin, ItValue outputEnd, double _weight = 1.0)
         : m_input (inputBegin, inputEnd)
         , m_output (outputBegin, outputEnd)
-        , m_weight (weight)
+        , m_weight (_weight)
     {
     }
 
 
 
     template <typename InputContainer, typename OutputContainer>
-    Pattern (InputContainer& input, OutputContainer& output, double weight = 1.0)
-        : m_input (std::begin (input), std::end (input))
-        , m_output (std::begin (output), std::end (output))
-        , m_weight (weight)
+    Pattern (InputContainer& _input, OutputContainer& _output, double _weight = 1.0)
+        : m_input (std::begin (_input), std::end (_input))
+        , m_output (std::begin (_output), std::end (_output))
+        , m_weight (_weight)
     {
     }
 

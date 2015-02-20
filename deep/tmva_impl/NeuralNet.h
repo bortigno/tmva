@@ -1,5 +1,6 @@
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <iterator>
 #include <functional>
@@ -11,6 +12,9 @@
 #include <future>
 
 #include "Pattern.h"
+#include "Monitoring.h"
+
+#include "TApplication.h"
 
 #include <fenv.h> // turn on or off exceptions for NaN and other numeric exceptions
 
@@ -521,7 +525,7 @@ public:
     
     virtual ~Settings ();
 
-    void SetMonitoring (Monitoring* monitoring) { fMonitoring = monitoring; }
+    void SetMonitoring (std::shared_ptr<Monitoring> ptrMonitoring) { fMonitoring = ptrMonitoring; }
 
     size_t convergenceSteps () const { return m_convergenceSteps; }
     size_t batchSize () const { return m_batchSize; }
@@ -531,21 +535,21 @@ public:
     size_t dropRepetitions () const { return m_dropRepetitions; }
     double dropFraction () const { return m_dropFraction; }
 
-    Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
+//    Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
     void resetPlot (std::string plotName);
 
 
 
     void addPoint (std::string dataName, double x, double y);
 
-    virtual void testSample (double error, double output, double target, double weight) {}
+    virtual void testSample (double /*error*/, double /*output*/, double /*target*/, double /*weight*/) {}
 
     
     virtual void startTestCycle () {}
     virtual void endTestCycle () {}
-    virtual void drawSample (const std::vector<double>& input, const std::vector<double>& output, const std::vector<double>& target, double patternWeight) {}
+    virtual void drawSample (const std::vector<double>& /*input*/, const std::vector<double>& /* output */, const std::vector<double>& /* target */, double /* patternWeight */) {}
 
-    virtual void computeResult (const Net& net, std::vector<double>& weights) {}
+    virtual void computeResult (const Net& /* net */, std::vector<double>& /* weights */) {}
 
     void clearData (std::string dataName);
 
@@ -569,11 +573,11 @@ public:
 
 private:    
     std::pair<std::vector<double>,std::vector<double> >& getData (std::string dataName);
-    Gnuplot* getPlot (std::string plotName);
+//    Gnuplot* getPlot (std::string plotName);
 
-    PlotMap plots;
+//    PlotMap plots;
     DataXYMap dataXY;
-
+    std::shared_ptr<Monitoring> fMonitoring;
 };
 
 
@@ -617,6 +621,9 @@ public:
 	, m_fileNameResult ()
 	, m_fileNameNetConfig ()
     {
+        int argc = 0;
+        char* txt = "";
+        char **argv = &txt;
         m_application = new TApplication ("my app", &argc, argv);
         m_application->SetReturnFromRun (true);
     }
