@@ -123,7 +123,8 @@ namespace TMVA {
       TMVA::NN::Net fNet;
       std::vector<double> fWeights;
 
-      TString  fLayout;
+      TString  fLayoutString;
+      std::vector<std::pair<int,TMVA::NN::EnumFunction>> fLayout;
       TString  fErrorStrategy;
       TString  fTrainingStrategy;
       TMVA::NN::ModeErrorFunction fModeErrorFunction;

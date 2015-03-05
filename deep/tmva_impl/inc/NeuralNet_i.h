@@ -758,7 +758,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
                     double _factorWeightDecay, bool isL1Regularization, double _dropFraction,
-                    size_t _dropRepetitions)
+                    size_t _dropRepetitions, MinimizerType _eMinimizerType, double _learningRate, 
+                    double _momentum, int _repetitions)
     : m_convergenceSteps (_convergenceSteps)
     , m_batchSize (_batchSize)
     , m_testRepetitions (_testRepetitions)
@@ -770,6 +771,10 @@ Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRep
     , m_isL1Regularization (isL1Regularization)
     , m_dropFraction (_dropFraction)
     , m_dropRepetitions (_dropRepetitions)
+    , fLearningRate (_learningRate)
+    , fMomentum (_momentum)
+    , fRepetitions (_repetitions)
+    , fMinimizerType (_eMinimizerType)
     , fMonitoring (NULL)
 {
 }

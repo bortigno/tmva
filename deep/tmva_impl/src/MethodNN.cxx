@@ -44,6 +44,24 @@
 #include "TMVA/NeuralNet.h"
 #include "TMVA/Monitoring.h"
 
+namespace TMVA
+{
+namespace NN
+{
+template <typename Container, typename T>
+void gaussDistribution (Container& container, T mean, T sigma)
+{
+    for (auto it = begin (container), itEnd = end (container); it != itEnd; ++it)
+    {
+        (*it) = NN::gaussDouble (mean, sigma);
+    }
+}
+};
+};
+
+
+
+
 REGISTER_METHOD(NN)
 
 ClassImp(TMVA::MethodNN)
@@ -117,7 +135,7 @@ void TMVA::MethodNN::DeclareOptions()
    //                  "Train with back propagation steepest descend");
    // AddPreDefVal(TString("SD"));
 
-   DeclareOptionRef(fLayout="TANH|(N+2)*2,TANH|(N+10),LINEAR",    "Layout",    "neural network layout");
+   DeclareOptionRef(fLayoutString="TANH|(N+2)*2,TANH|(N+10),LINEAR",    "Layout",    "neural network layout");
 
 
    DeclareOptionRef(fErrorStrategy="MUTUALEXCLUSIVE",    "ErrorStrategy",    "error strategy (regression: sum of squares; classification: crossentropy; multiclass: crossentropy/mutual exclusive cross entropy");
@@ -304,6 +322,7 @@ void TMVA::MethodNN::ProcessOptions()
             << Endl;
    }
 
+   std::vector<std::pair<int,TMVA::NN::EnumFunction>> fLayout = TMVA::MethodNN::ParseLayoutString (fLayoutString);
 
    //                                                                                         block-delimiter  token-delimiter
    std::vector<std::map<TString,TString>> strategyKeyValues = ParseKeyValueString (fTrainingStrategy, TString ("|"), TString (","));
@@ -325,14 +344,16 @@ void TMVA::MethodNN::ProcessOptions()
            bool isL1 = fetchValue (block, "isL1", false);
            double dropFraction = fetchValue (block, "DropFraction", 0.0);
            int dropRepetitions = fetchValue (block, "DropRepetitions", 7);
-           
+           double learningRate = fetchValue (block, "LearningRate", 1e-5);
+           double momentum = fetchValue (block, "Momentum", 0.3);
+           int repetitions = fetchValue (block, "Repetitions", 3);
            
 
            std::shared_ptr<TMVA::NN::ClassificationSettings> ptrSettings = make_shared <TMVA::NN::ClassificationSettings> (
                convergenceSteps, batchSize, 
                testRepetitions, factorWeightDecay,
                isL1, dropFraction, dropRepetitions,
-               fScaleToNumEvents);
+               fScaleToNumEvents, learningRate, momentum, repetitions);
 
            ptrSettings->setWeightSums (fSumOfSigWeights_test, fSumOfBkgWeights_test);
            fSettings.push_back (ptrSettings);
@@ -411,38 +432,38 @@ void TMVA::MethodNN::Train()
         size_t outputSize = trainPattern.front ().output ().size ();
 
         // configure neural net
-        for (auto itLayout = std::begin (fLayout), itLayoutEnd = std::end (fLayout); itLayout != itLayoutEnd; ++itLayout)
+        auto itLayout = std::begin (fLayout), itLayoutEnd = std::end (fLayout)-1;
+        for ( ; itLayout != itLayoutEnd; ++itLayout)
         {
             //net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
-            fNet.addLayer (NN::Layer ((*itLayout).numNodes, (*itLayout).activationFunction)); 
+            //                           number nodes    activation function
+            fNet.addLayer (NN::Layer ((*itLayout).first, (*itLayout).second)); 
         }
-        fNet.addLayer (NN::Layer (outputSize, (*itLayout).activationFunction, NN::ModeOutputValues::SIGMOID)); 
+        fNet.addLayer (NN::Layer (outputSize, (*itLayout).second, NN::ModeOutputValues::SIGMOID)); 
         fNet.setErrorFunction (fModeErrorFunction); 
 
-        size_t numWeights = net.numWeights (inputSize);
+        size_t numWeights = fNet.numWeights (inputSize);
         fWeights.resize (numWeights, 0.0);
 
         // initialize weights
-        gaussDistribution (fWeights, 0.1, 1.0/sqrt(inputSize));
+        TMVA::NN::gaussDistribution (fWeights, 0.1, 1.0/sqrt(inputSize));
     }
 
 
     // loop through settings 
     // and create "settings" and minimizer 
-    for (auto itSetting = begin (fSettings), itSettingEnd = end (fSettings); itSetting != itSettingEnd; ++itSetting)
+    for (auto itSettings = begin (fSettings), itSettingsEnd = end (fSettings); itSettings != itSettingsEnd; ++itSettings)
     {
-        std::unique_ptr<Settings> ptrSettings = *itSetting;
-        ptrSetting->setMonitoring (monitoring);
-        NN::Steepest minimizer (ptrSetting->learningRate, ptrSetting->momentum, ptrSetting->repetitions);
+        std::shared_ptr<TMVA::NN::Settings> ptrSettings = *itSettings;
+        ptrSettings->setMonitoring (fMonitoring);
 
         double E = 0;
-        if ((*itSetting).minimizer == MinimizerType::fSteepest)
+        if ((*itSettings)->minimizerType () == TMVA::NN::MinimizerType::fSteepest)
         {
-            NN::Steepest minimizer ((*itSetting).learningRate, (*itSetting).momentum, (*itSetting).repetitions);
-            E = fNet.train (fWeights, trainPattern, testPattern, minimizer, &ptrSettings.get ());
+            NN::Steepest minimizer ((*itSettings)->learningRate (), (*itSettings)->momentum (), (*itSettings)->repetitions ());
+            E = fNet.train (fWeights, trainPattern, testPattern, minimizer, *ptrSettings.get ());
         }
     }
-    delete fMonitoring;
 }
 
 
@@ -450,12 +471,12 @@ void TMVA::MethodNN::Train()
 
 
 //_______________________________________________________________________
-Double_t TMVA::MethodMLP::GetMvaValue( Double_t* errLower, Double_t* errUpper )
+Double_t TMVA::MethodNN::GetMvaValue( Double_t* errLower, Double_t* errUpper )
 {
     if (fWeights.empty ())
         return 0.0;
 
-    std::vector<Float_t> inputValues = GetEvent ();
+    const std::vector<Float_t>& inputValues = GetEvent ()->GetValues ();
     std::vector<double> input (inputValues.begin (), inputValues.end ());
     std::vector<double> output = fNet.compute (input, fWeights);
     if (output.empty ())
@@ -467,14 +488,14 @@ Double_t TMVA::MethodMLP::GetMvaValue( Double_t* errLower, Double_t* errUpper )
 
 
 //_______________________________________________________________________
-void TMVA::MethodMLP::MakeClassSpecific( std::ostream& fout, const TString& className ) const
+void TMVA::MethodNN::MakeClassSpecific( std::ostream& fout, const TString& className ) const
 {
    // write specific classifier response
-   MethodANNBase::MakeClassSpecific(fout, className);
+//   MethodANNBase::MakeClassSpecific(fout, className);
 }
 
 //_______________________________________________________________________
-void TMVA::MethodMLP::GetHelpMessage() const
+void TMVA::MethodNN::GetHelpMessage() const
 {
    // get help message text
    //

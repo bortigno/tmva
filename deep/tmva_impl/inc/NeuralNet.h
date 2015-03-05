@@ -190,7 +190,10 @@ void update (ItSource itSource, ItSource itSourceEnd,
 
 
 
-
+enum MinimizerType
+{
+    fSteepest
+};
 
 
 
@@ -522,12 +525,13 @@ public:
     typedef std::map<std::string,std::pair<std::vector<double>,std::vector<double> > > DataXYMap;
 
     Settings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
-	      double _factorWeightDecay = 1e-5, bool isL1Regularization = false, double dropFraction = 0.0,
-	      size_t dropRepetitions = 7);
+	      double _factorWeightDecay = 1e-5, bool _isL1Regularization = false, double _dropFraction = 0.0,
+	      size_t _dropRepetitions = 7, MinimizerType _eMinimizerType = MinimizerType::fSteepest, 
+              double _learningRate = 1e-5, double _momentum = 0.3, int _repetitions = 3);
     
     virtual ~Settings ();
 
-    void SetMonitoring (std::shared_ptr<Monitoring> ptrMonitoring) { fMonitoring = ptrMonitoring; }
+    void setMonitoring (std::shared_ptr<Monitoring> ptrMonitoring) { fMonitoring = ptrMonitoring; }
 
     size_t convergenceSteps () const { return m_convergenceSteps; }
     size_t batchSize () const { return m_batchSize; }
@@ -536,6 +540,11 @@ public:
 
     size_t dropRepetitions () const { return m_dropRepetitions; }
     double dropFraction () const { return m_dropFraction; }
+
+    double learningRate () const { return fLearningRate; }
+    double momentum () const { return fMomentum; }
+    int repetitions () const { return fRepetitions; }
+    MinimizerType minimizerType () const { return fMinimizerType; }
 
 //    Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
     virtual void resetPlot (std::string plotName);
@@ -574,6 +583,11 @@ public:
     double m_dropFraction;
     double m_dropRepetitions;
 
+    double fLearningRate;
+    double fMomentum;
+    int fRepetitions;
+    MinimizerType fMinimizerType;
+ 
 private:    
     std::pair<std::vector<double>,std::vector<double> >& getData (std::string dataName);
 //    Gnuplot* getPlot (std::string plotName);
