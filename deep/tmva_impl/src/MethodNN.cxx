@@ -353,7 +353,9 @@ void TMVA::MethodNN::ProcessOptions()
                convergenceSteps, batchSize, 
                testRepetitions, factorWeightDecay,
                isL1, dropFraction, dropRepetitions,
-               fScaleToNumEvents, learningRate, momentum, repetitions);
+               fScaleToNumEvents, TMVA::NN::MinimizerType::fSteepest, learningRate, 
+               momentum, repetitions);
+
 
            ptrSettings->setWeightSums (fSumOfSigWeights_test, fSumOfBkgWeights_test);
            fSettings.push_back (ptrSettings);

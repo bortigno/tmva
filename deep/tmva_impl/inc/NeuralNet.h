@@ -627,8 +627,10 @@ public:
     ClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
 			    double _factorWeightDecay = 1e-5, bool _isL1Regularization = false, 
 			    double _dropFraction = 0.0, size_t _dropRepetitions = 7,
-			    size_t _scaleToNumEvents = 0)
-        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _isL1Regularization, _dropFraction, _dropRepetitions)
+			    size_t _scaleToNumEvents = 0, MinimizerType _eMinimizerType = MinimizerType::fSteepest, 
+                            double _learningRate = 1e-5, double _momentum = 0.3, int _repetitions = 3)
+        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _isL1Regularization, _dropFraction, _dropRepetitions,
+                    _eMinimizerType, _learningRate, _momentum, _repetitions)
         , m_ams ()
         , m_sumOfSigWeights (0)
         , m_sumOfBkgWeights (0)
