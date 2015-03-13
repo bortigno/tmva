@@ -489,6 +489,298 @@ Double_t TMVA::MethodNN::GetMvaValue( Double_t* errLower, Double_t* errUpper )
 
 
 
+
+
+
+//_______________________________________________________________________
+void TMVA::MethodNN::AddWeightsXMLTo( void* parent ) const 
+{
+   // create XML description of NN classifier
+   // for all layers
+
+   void* nn = gTools().xmlengine().NewChild(parent, 0, "NN");
+   void* xmlLayout = gTools().xmlengine().NewChild(nn, 0, "Layout");
+   gTools().xmlengine().NewAttr(xmlLayout, 0, "NumberLayers", gTools().StringFromInt(numLayers) );
+   for (Int_t i = 0; i < numLayers; i++) 
+   {
+       const TMVA::NN::Layer& layer = fNet.layer (i);
+       int numNodes = layer.numNodes ();
+       char activationFunction = (char)layer.activationFunction ();
+       char outputMode = (char)layer.outputMode ();
+
+       void* layerxml = gTools().xmlengine().NewChild(xmlLayout, 0, "Layer");
+       gTools().xmlengine().NewAttr(layerxml, 0, "Connection",    TString("FULL") );
+       gTools().xmlengine().NewAttr(layerxml, 0, "Nodes",    gTools().StringFromInt(numNodes) );
+       gTools().xmlengine().NewAttr(layerxml, 0, "ActivationFunction",    TString (activationFunction) );
+       gTools().xmlengine().NewAttr(layerxml, 0, "OutputMode",    TString (outputMode) );
+   }
+
+
+   void* weightsxml = gTools().xmlengine().NewChild(nn, 0, "Weights");
+   std::stringstream s("");
+   s.precision( 16 );
+   for (std::vector<double>::const_iterator it = fWeights.begin (), itEnd = fWeights.end (); it != itEnd; ++it)
+   {
+       s << (*it) << " ";
+   }
+}
+
+
+//_______________________________________________________________________
+void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
+{
+   // read MLP from xml weight file
+    fNet.clear ();
+
+   void* nn = gTools().GetChild(wghtnode, "NN");
+   if (!nn)
+      nn = wghtnode;
+   
+   void* xmlLayout = NULL;
+   xmlLayout = gTools().GetChild(wghtnode, "Layout");
+   if (!xmlLayout)
+       return;
+
+   void* ch = gTools().xmlengine().GetChild (xmlLayout);
+   TString connection;
+   UInt_t numNodes;
+   TString activationFunction;
+   TString outputMode;
+   while (ch) 
+   {
+      gTools().ReadAttr (ch, "Connection", connection);
+      gTools().ReadAttr (ch, "Nodes", numNodes);
+      gTools().ReadAttr (ch, "ActivationFunction", activationFunction);
+      gTools().ReadAttr (ch, "OutputMode", outputMode);
+      ch = gTools().GetNextChild(ch);
+   }
+
+
+
+   void* xmlWeights  = NULL;
+   xmlWeights = gTools().GetChild(wghtnode, "Weights");
+   if (!xmlWeights)
+       return;
+
+   TString weight;
+
+            const char* content = gTools().GetContent(nodeN);
+            std::stringstream sstr (content);
+            for (UInt_t iSyn = 0; iSyn<nSyn; iSyn++) { // synapses
+
+               TSynapse* synapse = neuron->PostLinkAt(iSyn);
+               sstr >> weight;
+               //Log() << kWARNING << neuron << " " << weight <<  Endl;
+               synapse->SetWeight(weight);
+            }
+
+
+   while (ch) 
+   {
+      gTools().ReadAttr (ch, "Connection", connection);
+      gTools().ReadAttr (ch, "Nodes", numNodes);
+      gTools().ReadAttr (ch, "ActivationFunction", activationFunction);
+      gTools().ReadAttr (ch, "OutputMode", outputMode);
+      ch = gTools().GetNextChild(ch);
+   }
+
+
+
+   void* ch = gTools().xmlengine().GetChild (xmlLayout);
+   TString connection;
+   UInt_t numNodes;
+   TString activationFunction;
+   TString outputMode;
+   while (ch) 
+   {
+      gTools().ReadAttr (ch, "Connection", connection);
+      gTools().ReadAttr (ch, "Nodes", numNodes);
+      gTools().ReadAttr (ch, "ActivationFunction", activationFunction);
+      gTools().ReadAttr (ch, "OutputMode", outputMode);
+      ch = gTools().GetNextChild(ch);
+   }
+
+
+   // build the layout first
+   Bool_t fromFile = kTRUE;
+   std::vector<Int_t>* layout = new std::vector<Int_t>();
+
+   void* xmlLayout = NULL;
+   xmlLayout = gTools().GetChild(wghtnode, "Layout");
+   if( !xmlLayout )
+      xmlLayout = wghtnode;
+
+   UInt_t nLayers;
+   gTools().ReadAttr( xmlLayout, "NLayers", nLayers );
+   layout->resize( nLayers );
+
+   void* ch = gTools().xmlengine().GetChild(xmlLayout);
+   UInt_t index;
+   UInt_t nNeurons;
+   while (ch) {
+      gTools().ReadAttr( ch, "Index",   index   );
+      gTools().ReadAttr( ch, "NNeurons", nNeurons );
+      layout->at(index) = nNeurons;
+      ch = gTools().GetNextChild(ch);
+   }
+
+   BuildNetwork( layout, NULL, fromFile );
+   // fill the weights of the synapses
+   UInt_t nSyn;
+   Float_t weight;
+   ch = gTools().xmlengine().GetChild(xmlLayout);
+   UInt_t iLayer = 0;
+   while (ch) {  // layers
+      TObjArray* layer = (TObjArray*)fNetwork->At(iLayer);
+      gTools().ReadAttr( ch, "Index",   index   );
+      gTools().ReadAttr( ch, "NNeurons", nNeurons );
+
+      void* nodeN = gTools().GetChild(ch);
+      UInt_t iNeuron = 0;
+      while( nodeN ){ // neurons
+         TNeuron *neuron = (TNeuron*)layer->At(iNeuron);
+         gTools().ReadAttr( nodeN, "NSynapses", nSyn );
+         if( nSyn > 0 ){
+            const char* content = gTools().GetContent(nodeN);
+            std::stringstream s(content);
+            for (UInt_t iSyn = 0; iSyn<nSyn; iSyn++) { // synapses
+
+               TSynapse* synapse = neuron->PostLinkAt(iSyn);
+               s >> weight;
+               //Log() << kWARNING << neuron << " " << weight <<  Endl;
+               synapse->SetWeight(weight);
+            }
+         }
+         nodeN = gTools().GetNextChild(nodeN);
+         iNeuron++;
+      }
+      ch = gTools().GetNextChild(ch);
+      iLayer++;
+   }
+
+   delete layout;
+
+   void* xmlInvHessian = NULL;
+   xmlInvHessian = gTools().GetChild(wghtnode, "InverseHessian");
+   if( !xmlInvHessian )
+      // no inverse hessian available
+      return;
+
+   fUseRegulator = kTRUE;
+
+   Int_t nElements = 0;
+   Int_t nRows     = 0;
+   Int_t nCols     = 0;
+   gTools().ReadAttr( xmlInvHessian, "NElements", nElements );
+   gTools().ReadAttr( xmlInvHessian, "NRows", nRows );
+   gTools().ReadAttr( xmlInvHessian, "NCols", nCols );
+
+   // adjust the matrix dimensions
+   fInvHessian.ResizeTo( nRows, nCols );
+
+   // prepare an array to read in the values
+   Double_t* elements;
+   if (nElements > std::numeric_limits<int>::max()-100){
+      Log() << kFATAL << "you tried to read a hessian matrix with " << nElements << " elements, --> too large, guess s.th. went wrong reading from the weight file" << Endl;
+      return;
+   } else {
+      elements = new Double_t[nElements+10];
+   }     
+
+
+
+   void* xmlRow = gTools().xmlengine().GetChild(xmlInvHessian);
+   Int_t row = 0;
+   index = 0;
+   while (xmlRow) {  // rows
+      gTools().ReadAttr( xmlRow, "Index",   row   );
+
+      const char* content = gTools().xmlengine().GetNodeContent(xmlRow);
+
+      std::stringstream s(content);
+      for (Int_t iCol = 0; iCol<nCols; iCol++) { // columns
+	 s >> (*(elements+index));
+	 ++index;
+      }
+      xmlRow = gTools().xmlengine().GetNext(xmlRow);
+      ++row;
+   }
+
+   fInvHessian.SetMatrixArray( elements );
+
+   delete[] elements;
+}
+
+
+//_______________________________________________________________________
+void TMVA::MethodNN::ReadWeightsFromStream( std::istream & istr)
+{
+   // destroy/clear the network then read it back in from the weights file
+
+   // delete network so we can reconstruct network from scratch
+
+   TString dummy;
+
+   // synapse weights
+   Double_t weight;
+   std::vector<Double_t>* weights = new std::vector<Double_t>();
+   istr>> dummy;
+   while (istr>> dummy >> weight) weights->push_back(weight); // use w/ slower write-out
+
+   ForceWeights(weights);
+   
+
+   delete weights;
+}
+
+//_______________________________________________________________________
+const TMVA::Ranking* TMVA::MethodNN::CreateRanking()
+{
+   // compute ranking of input variables by summing function of weights
+
+   // create the ranking object
+   fRanking = new Ranking( GetName(), "Importance" );
+
+   TNeuron*  neuron;
+   TSynapse* synapse;
+   Double_t  importance, avgVal;
+   TString varName;
+
+   for (UInt_t ivar = 0; ivar < GetNvar(); ivar++) {
+
+      neuron = GetInputNeuron(ivar);
+      Int_t numSynapses = neuron->NumPostLinks();
+      importance = 0;
+      varName = GetInputVar(ivar); // fix this line
+
+      // figure out average value of variable i
+      Double_t meanS, meanB, rmsS, rmsB, xmin, xmax;
+      Statistics( TMVA::Types::kTraining, varName, 
+                  meanS, meanB, rmsS, rmsB, xmin, xmax );
+
+      avgVal = (TMath::Abs(meanS) + TMath::Abs(meanB))/2.0;
+      double meanrms = (TMath::Abs(rmsS) + TMath::Abs(rmsB))/2.;
+      if (avgVal<meanrms) avgVal = meanrms;      
+      if (IsNormalised()) avgVal = 0.5*(1 + gTools().NormVariable( avgVal, GetXmin( ivar ), GetXmax( ivar ))); 
+
+      for (Int_t j = 0; j < numSynapses; j++) {
+         synapse = neuron->PostLinkAt(j);
+         importance += synapse->GetWeight() * synapse->GetWeight();
+      }
+      
+      importance *= avgVal * avgVal;
+
+      fRanking->AddRank( Rank( varName, importance ) );
+   }
+
+   return fRanking;
+}
+
+
+
+
+
+
 //_______________________________________________________________________
 void TMVA::MethodNN::MakeClassSpecific( std::ostream& fout, const TString& className ) const
 {
