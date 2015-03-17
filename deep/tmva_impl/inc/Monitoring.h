@@ -11,7 +11,7 @@ namespace TMVA
     {
 
     public:
-        Monitoring (int argc, char* argv[])
+        Monitoring (int argc, char* /*argv[]*/)
             : fArgc (argc)
         {
             fArgv = new char[argc] ();

@@ -1,4 +1,4 @@
-
+#pragma once
 
 namespace TMVA
 {
@@ -557,7 +557,7 @@ std::ostream& operator<< (std::ostream& ostr, LayerData const& data)
 
 
 
-    Layer::Layer (size_t _numNodes, EnumFunction activationFunction, ModeOutputValues eModeOutputValues) 
+    Layer::Layer (size_t _numNodes, EnumFunction _activationFunction, ModeOutputValues eModeOutputValues) 
 	: m_numNodes (_numNodes) 
 	, m_eModeOutputValues (eModeOutputValues)
     {
@@ -566,7 +566,7 @@ std::ostream& operator<< (std::ostream& ostr, LayerData const& data)
 	    auto actFnc = Linear;
 	    auto invActFnc = InvLinear;
 	    m_activationFunction = EnumFunction::LINEAR;
-	    switch (activationFunction)
+	    switch (_activationFunction)
 	    {
 	    case EnumFunction::ZERO:
 		actFnc = ZeroFnc;

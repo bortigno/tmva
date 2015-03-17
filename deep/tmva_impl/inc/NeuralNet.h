@@ -28,7 +28,7 @@ namespace TMVA
 namespace NN
 {
 
-    double gaussDouble (double mean, double sigma);
+//    double gaussDouble (double mean, double sigma);
 
 
 
@@ -470,6 +470,8 @@ public:
     Layer (size_t numNodes, EnumFunction activationFunction, ModeOutputValues eModeOutputValues = ModeOutputValues::DIRECT);
 
     ModeOutputValues modeOutputValues () const { return m_eModeOutputValues; }
+    EnumFunction activationFunction () const { return m_activationFunction; }
+
     void modeOutputValues (ModeOutputValues eModeOutputValues) { m_eModeOutputValues = eModeOutputValues; }
 
     size_t numNodes () const { return m_numNodes; }
@@ -477,7 +479,6 @@ public:
 
     const std::vector<std::function<double(double)> >& activationFunctions  () const { return m_vecActivationFunctions; }
     const std::vector<std::function<double(double)> >& inverseActivationFunctions  () const { return m_vecInverseActivationFunctions; }
-
 
 
     std::string write () const;
@@ -641,8 +642,7 @@ public:
 	, m_fileNameNetConfig ()
     {
         int argc = 0;
-        char* txt = "";
-        char **argv = &txt;
+        char *argv[] = {(char*)""};
         m_application = new TApplication ("my app", &argc, argv);
         m_application->SetReturnFromRun (true);
     }
