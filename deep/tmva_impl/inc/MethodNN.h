@@ -24,6 +24,8 @@
  * (http://tmva.sourceforge.net/LICENSE)                                          *
  **********************************************************************************/
 
+#pragma once
+
 #ifndef ROOT_TMVA_MethodNN
 #define ROOT_TMVA_MethodNN
 
@@ -51,9 +53,9 @@
 #ifndef ROOT_TMVA_MethodBase
 #include "TMVA/MethodBase.h"
 #endif
+#ifndef TMVA_NEURAL_NET
 #include "TMVA/NeuralNet.h"
-
-#include "NeuralNet.h"
+#endif
 
 
 

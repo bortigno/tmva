@@ -1,3 +1,5 @@
+#ifndef TMVA_NEURAL_NET
+#define TMVA_NEURAL_NET
 #pragma once
 
 #include <vector>
@@ -52,43 +54,6 @@ enum class EnumFunction
     DOUBLEINVERTEDGAUSS = 'D'
 };
 
-std::function<double(double)> ZeroFnc = [](double /*value*/){ return 0; };
-
-
-std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
-std::function<double(double)> InvSigmoid = [](double value){ double s = Sigmoid (value); return s*(1.0-s); };
-
-std::function<double(double)> Tanh = [](double value){ return tanh (value); };
-std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
-
-std::function<double(double)> Linear = [](double value){ return value; };
-std::function<double(double)>  InvLinear = [](double /*value*/){ return 1.0; };
-
-std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
-std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
-
-std::function<double(double)> ReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : 0; };
-std::function<double(double)> InvReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : 0; };
-
-std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
-std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
-
-std::function<double(double)> TanhShift = [](double value){ return tanh (value-0.3); };
-std::function<double(double)> InvTanhShift = [](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); };
-
-std::function<double(double)> SoftSign = [](double value){ return value / (1.0 + fabs (value)); };
-std::function<double(double)> InvSoftSign = [](double value){ return std::pow ((1.0 - fabs (value)),2.0); };
-
-std::function<double(double)> Gauss = [](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); };
-std::function<double(double)> InvGauss = [](double value){ const double s = 6.0; return -2.0 * value * s*s * Gauss (value); };
-
-std::function<double(double)> GaussComplement = [](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0));; };
-std::function<double(double)> InvGaussComplement = [](double value){ const double s = 6.0; return +2.0 * value * s*s * GaussComplement (value); };
-
-std::function<double(double)> DoubleInvertedGauss = [](double value)
-{ const double s = 8.0; const double shift = 0.1; return exp (-std::pow((value-shift)*s,2.0)) - exp (-std::pow((value+shift)*s,2.0)); };
-std::function<double(double)> InvDoubleInvertedGauss = [](double value)
-{ const double s = 8.0; const double shift = 0.1; return -2.0 * (value-shift) * s*s * DoubleInvertedGauss (value-shift) + 2.0 * (value+shift) * s*s * DoubleInvertedGauss (value+shift);  };
 
 
 
@@ -98,8 +63,6 @@ std::function<double(double)> InvDoubleInvertedGauss = [](double value)
 
 class Net;
 
-
-static void write (std::string fileName, const Net& net, const std::vector<double>& weights);
 
 
 
@@ -454,12 +417,12 @@ private:
 
     ModeOutputValues m_eModeOutput;
 
-    friend std::ostream& operator<< (std::ostream& ostr, LayerData const& data);
+//    friend std::ostream& operator<< (std::ostream& ostr, LayerData const& data);
 };
 
 
 
-std::ostream& operator<< (std::ostream& ostr, LayerData const& data);
+//std::ostream& operator<< (std::ostream& ostr, LayerData const& data);
 
 
 // defines the layout of a layer
@@ -481,8 +444,6 @@ public:
     const std::vector<std::function<double(double)> >& inverseActivationFunctions  () const { return m_vecInverseActivationFunctions; }
 
 
-    std::string write () const;
-    
 private:
 
 
@@ -500,7 +461,6 @@ private:
 
 
 
-static Layer readLayer (std::istream& ss);
 
 
 template <typename LAYERDATA>
@@ -782,7 +742,6 @@ public:
     std::vector<Layer>& layers ()  { return m_layers; }
 
 
-    std::ostream& write (std::ostream& ostr) const;
 
     void clear () 
     {
@@ -795,7 +754,6 @@ private:
     std::vector<Layer> m_layers;
     ModeErrorFunction m_eErrorFunction;
 
-    friend std::ostream& operator<< (std::ostream& ostr, Net const& net);
 };
 
 
@@ -804,107 +762,6 @@ private:
 
 
 
-
-std::ostream& operator<< (std::ostream& ostr, Net const& net)
-{
-    ostr << "NET" << std::endl;
-    for (Layer const& layer : net.m_layers)
-    {
-	ostr << layer.write ();
-	ostr << std::endl;
-    }
-    ostr << std::endl;
-    return ostr;
-}
-
-
-std::istream& read (std::istream& istr, Net& net)
-{
-    // net
-    std::string line, key;
-    if (!getline (istr, line)) // "NET"
-        return istr;
-
-    if (line != "===NET===")
-	return istr;
-
-    while (istr.good ())
-    {
-	if (!getline (istr, line))
-	    return istr;
-
-	std::istringstream ss_line (line);
-	std::getline(ss_line, key, '=');
- 
-	if (key == "ERRORFUNCTION")
-	{
-	    char errorFnc;
-	    ss_line >> errorFnc;
-	    net.setErrorFunction (ModeErrorFunction (errorFnc));
-	}
-	else if (line == "---LAYER---")
-	    net.addLayer (readLayer (istr));
-	else
-	    return istr;
-    }
-    return istr;
-}
-
-
-
-
-
-
-
-static void write (std::string fileName, const Net& net, const std::vector<double>& weights) 
-{
-    std::ofstream file (fileName, std::ios::trunc);	
-    net.write (file);
-    file << "===WEIGHTS===" << std::endl;
-    for (double w : weights)
-    {
-	file << w << " ";
-    }
-    file << std::endl;
-}
-
-
-std::tuple<Net, std::vector<double>> read (std::string fileName) 
-{
-    std::vector<double> weights;
-    Net net;
-
-    std::ifstream infile (fileName);
-
-    // net
-    if (infile.is_open () && infile.good ())
-    {
-	read (infile, net);
-    }
-
-
-    // weights
-    std::string line;
-    if (!getline (infile, line))
-        return std::make_tuple (net, weights);
-
-    std::stringstream ssline (line);
-
-    while (ssline)
-    {
-        double value;
-        std::string token;
-        if (!getline (ssline, token, ' ')) 
-            break;
-
-	std::stringstream tr;
-	tr << token;
-	tr >> value;
-
-        weights.push_back (value);
-    }
-    return std::make_tuple (net, weights);
-}
 
 
 
@@ -915,3 +772,6 @@ std::tuple<Net, std::vector<double>> read (std::string fileName)
 
 // include the implementations (in header file, because they are templated)
 #include "NeuralNet_i.h"
+
+#endif
+

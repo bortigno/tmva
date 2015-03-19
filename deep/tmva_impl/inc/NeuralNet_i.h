@@ -7,6 +7,48 @@ namespace NN
 
 
 
+
+std::function<double(double)> ZeroFnc = [](double /*value*/){ return 0; };
+
+
+std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
+std::function<double(double)> InvSigmoid = [](double value){ double s = Sigmoid (value); return s*(1.0-s); };
+
+std::function<double(double)> Tanh = [](double value){ return tanh (value); };
+std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
+
+std::function<double(double)> Linear = [](double value){ return value; };
+std::function<double(double)>  InvLinear = [](double /*value*/){ return 1.0; };
+
+std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
+std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
+
+std::function<double(double)> ReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : 0; };
+std::function<double(double)> InvReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : 0; };
+
+std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
+std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
+
+std::function<double(double)> TanhShift = [](double value){ return tanh (value-0.3); };
+std::function<double(double)> InvTanhShift = [](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); };
+
+std::function<double(double)> SoftSign = [](double value){ return value / (1.0 + fabs (value)); };
+std::function<double(double)> InvSoftSign = [](double value){ return std::pow ((1.0 - fabs (value)),2.0); };
+
+std::function<double(double)> Gauss = [](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); };
+std::function<double(double)> InvGauss = [](double value){ const double s = 6.0; return -2.0 * value * s*s * Gauss (value); };
+
+std::function<double(double)> GaussComplement = [](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0));; };
+std::function<double(double)> InvGaussComplement = [](double value){ const double s = 6.0; return +2.0 * value * s*s * GaussComplement (value); };
+
+std::function<double(double)> DoubleInvertedGauss = [](double value)
+{ const double s = 8.0; const double shift = 0.1; return exp (-std::pow((value-shift)*s,2.0)) - exp (-std::pow((value+shift)*s,2.0)); };
+std::function<double(double)> InvDoubleInvertedGauss = [](double value)
+{ const double s = 8.0; const double shift = 0.1; return -2.0 * (value-shift) * s*s * DoubleInvertedGauss (value-shift) + 2.0 * (value+shift) * s*s * DoubleInvertedGauss (value+shift);  };
+
+
+
+
 inline double gaussDouble (double mean, double sigma)
 {
     static std::default_random_engine generator;
@@ -521,39 +563,6 @@ double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, doubl
 
 
 
-std::ostream& operator<< (std::ostream& ostr, LayerData const& data)
-{
-    ostr << "---LAYER---";
-    ostr << "size= " << data.m_size << "   ";
-    if (data.m_isInputLayer)
-    {
-        ostr << "input layer, nodes: {";
-        for (auto it = data.m_itInputBegin; it != data.m_itInputEnd; ++it)
-            ostr << (*it) << ", ";
-        ostr << "}   ";
-    }
-    else
-    {
-        ostr << "nodes: {";
-        for (auto it = begin (data.m_values), itEnd = end (data.m_values); it != itEnd; ++it)
-            ostr << (*it) << ", ";
-        ostr << "}   ";
-    }
-    ostr << "deltas: {";
-    for (auto it = begin (data.m_deltas), itEnd = end (data.m_deltas); it != itEnd; ++it)
-        ostr << (*it) << ", ";
-    ostr << "}   ";
-    if (data.m_hasWeights)
-    {
-        ostr << "weights: {" << (*data.weightsBegin ()) << ", ...}   ";
-    }
-    if (data.m_hasGradients)
-    {
-        ostr << "gradients: {" << (*data.gradientsBegin ()) << ", ...}   ";
-    }
-    return ostr;
-}
-
 
 
 
@@ -630,68 +639,6 @@ std::ostream& operator<< (std::ostream& ostr, LayerData const& data)
     }
 
 
-
-
-    std::string Layer::write () const
-    {
-	std::stringstream signature;
-	signature << "---LAYER---" << std::endl;
-	signature << "LAYER=FULL" << std::endl;
-	signature << "NODES=" << numNodes () << std::endl;
-	signature << "ACTFNC=" << (char)m_activationFunction << std::endl;
-	signature << "OUTMODE=" << (char)m_eModeOutputValues << std::endl;
-	signature << "---LAYER-END---";
-	return signature.str ();
-    }
-
-    
-
-
-static Layer readLayer (std::istream& ss)
-{
-    std::string key, value, line;
-
-    size_t numNodes (0);
-    EnumFunction actFnc (EnumFunction::LINEAR);
-    ModeOutputValues modeOut (ModeOutputValues::DIRECT);
-    std::string layerType;
-    std::string endLayerString ("---LAYER-END---");
-    while(std::getline(ss, line))
-    {
-	if (line.compare(0, endLayerString.length (), endLayerString) == 0)
-	    break;
-
-	// Create an istringstream instance to parse the key and the value
-	std::istringstream ss_line (line);
-	std::getline(ss_line, key, '=');
- 
-	if (key == "LAYER")
-	{
-	    ss_line >> layerType;
-	}
-	else if (key == "NODES") 
-	{
-	    ss_line >> numNodes;
-	}
-	else if (key == "ACTFNC") 
-	{
-	    char actFncVal;
-	    ss_line >> actFncVal;
-	    actFnc = EnumFunction (actFncVal);
-	}
-	else if (key == "OUTMODE") 
-	{
-	    char modeOutputValues;
-	    ss_line >> modeOutputValues;
-	    modeOut = ModeOutputValues (modeOutputValues);
-	}
-    }
-    if (layerType == "FULL")
-    {
-	return Layer (numNodes, actFnc, modeOut);
-    }
-    return Layer (0, EnumFunction::LINEAR, ModeOutputValues::DIRECT);
-}
 
 
 
@@ -1600,16 +1547,6 @@ void ClassificationSettings::startTestCycle ()
 
 
 
-    std::ostream& Net::write (std::ostream& ostr) const
-    {
-	ostr << "===NET===" << std::endl;
-	ostr << "ERRORFUNCTION=" << (char)m_eErrorFunction << std::endl;
-	for (const Layer& layer: m_layers)
-	{
-	    ostr << layer.write () << std::endl;
-	}
-	return ostr;
-    }
 
 
 
