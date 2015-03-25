@@ -24,7 +24,7 @@
  * (http://tmva.sourceforge.net/LICENSE)                                          *
  **********************************************************************************/
 
-#pragma once
+//#pragma once
 
 #ifndef ROOT_TMVA_MethodNN
 #define ROOT_TMVA_MethodNN

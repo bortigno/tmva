@@ -2,6 +2,7 @@
 #define TMVA_NEURAL_NET
 #pragma once
 
+#include <map>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -175,7 +176,7 @@ public:
     {}
 
     template <typename Function, typename Weights, typename PassThrough>
-        double operator() (Function& fitnessFunction, Weights& weights, PassThrough& passThrough);
+        inline double operator() (Function& fitnessFunction, Weights& weights, PassThrough& passThrough);
 
 
     double m_alpha;
@@ -508,8 +509,8 @@ public:
     MinimizerType minimizerType () const { return fMinimizerType; }
 
 //    Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
-    virtual void resetPlot (std::string plotName);
-    virtual void plot ();
+//    virtual void resetPlot (std::string plotName);
+//    virtual void plot ();
 
 
 

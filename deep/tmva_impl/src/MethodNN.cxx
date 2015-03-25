@@ -314,7 +314,7 @@ bool fetchValue (const std::map<TString,TString>& keyValueMap, TString key, bool
 void TMVA::MethodNN::ProcessOptions()
 {
    // process user options
-   MethodBase::ProcessOptions();
+//   MethodBase::ProcessOptions();
 
    
    if (IgnoreEventsWithNegWeightsInTraining()) {

@@ -1,3 +1,5 @@
+#ifndef TMVA_NEURAL_NET_I
+#define TMVA_NEURAL_NET_I
 #pragma once
 
 namespace TMVA
@@ -8,53 +10,53 @@ namespace NN
 
 
 
-std::function<double(double)> ZeroFnc = [](double /*value*/){ return 0; };
+static std::function<double(double)> ZeroFnc = [](double /*value*/){ return 0; };
 
 
-std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
-std::function<double(double)> InvSigmoid = [](double value){ double s = Sigmoid (value); return s*(1.0-s); };
+static std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
+static std::function<double(double)> InvSigmoid = [](double value){ double s = Sigmoid (value); return s*(1.0-s); };
 
-std::function<double(double)> Tanh = [](double value){ return tanh (value); };
-std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
+static std::function<double(double)> Tanh = [](double value){ return tanh (value); };
+static std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
 
-std::function<double(double)> Linear = [](double value){ return value; };
-std::function<double(double)>  InvLinear = [](double /*value*/){ return 1.0; };
+static std::function<double(double)> Linear = [](double value){ return value; };
+static std::function<double(double)>  InvLinear = [](double /*value*/){ return 1.0; };
 
-std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
-std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
+static std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
+static std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
 
-std::function<double(double)> ReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : 0; };
-std::function<double(double)> InvReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : 0; };
+static std::function<double(double)> ReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : 0; };
+static std::function<double(double)> InvReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : 0; };
 
-std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
-std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
+static std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
+static std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
 
-std::function<double(double)> TanhShift = [](double value){ return tanh (value-0.3); };
-std::function<double(double)> InvTanhShift = [](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); };
+static std::function<double(double)> TanhShift = [](double value){ return tanh (value-0.3); };
+static std::function<double(double)> InvTanhShift = [](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); };
 
-std::function<double(double)> SoftSign = [](double value){ return value / (1.0 + fabs (value)); };
-std::function<double(double)> InvSoftSign = [](double value){ return std::pow ((1.0 - fabs (value)),2.0); };
+static std::function<double(double)> SoftSign = [](double value){ return value / (1.0 + fabs (value)); };
+static std::function<double(double)> InvSoftSign = [](double value){ return std::pow ((1.0 - fabs (value)),2.0); };
 
-std::function<double(double)> Gauss = [](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); };
-std::function<double(double)> InvGauss = [](double value){ const double s = 6.0; return -2.0 * value * s*s * Gauss (value); };
+static std::function<double(double)> Gauss = [](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); };
+static std::function<double(double)> InvGauss = [](double value){ const double s = 6.0; return -2.0 * value * s*s * Gauss (value); };
 
-std::function<double(double)> GaussComplement = [](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0));; };
-std::function<double(double)> InvGaussComplement = [](double value){ const double s = 6.0; return +2.0 * value * s*s * GaussComplement (value); };
+static std::function<double(double)> GaussComplement = [](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0));; };
+static std::function<double(double)> InvGaussComplement = [](double value){ const double s = 6.0; return +2.0 * value * s*s * GaussComplement (value); };
 
-std::function<double(double)> DoubleInvertedGauss = [](double value)
+static std::function<double(double)> DoubleInvertedGauss = [](double value)
 { const double s = 8.0; const double shift = 0.1; return exp (-std::pow((value-shift)*s,2.0)) - exp (-std::pow((value+shift)*s,2.0)); };
-std::function<double(double)> InvDoubleInvertedGauss = [](double value)
+static std::function<double(double)> InvDoubleInvertedGauss = [](double value)
 { const double s = 8.0; const double shift = 0.1; return -2.0 * (value-shift) * s*s * DoubleInvertedGauss (value-shift) + 2.0 * (value+shift) * s*s * DoubleInvertedGauss (value+shift);  };
 
 
 
 
-inline double gaussDouble (double mean, double sigma)
-{
-    static std::default_random_engine generator;
-    std::normal_distribution<double> distribution (mean, sigma);
-    return distribution (generator);
-}
+double gaussDouble (double mean, double sigma);
+/* { */
+/*     static std::default_random_engine generator; */
+/*     std::normal_distribution<double> distribution (mean, sigma); */
+/*     return distribution (generator); */
+/* } */
 
 
 template <typename ItSource, typename ItWeight, typename ItTarget>
@@ -480,163 +482,163 @@ double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, doubl
 
 
 
-    LayerData::LayerData (const_iterator_type itInputBegin, const_iterator_type itInputEnd, ModeOutputValues eModeOutput)
-	: m_isInputLayer (true)
-	, m_hasWeights (false)
-	, m_hasGradients (false)
-	, m_eModeOutput (eModeOutput) 
-    {
-	m_itInputBegin = itInputBegin;
-	m_itInputEnd   = itInputEnd;
-	m_size = std::distance (itInputBegin, itInputEnd);
-	m_deltas.assign (m_size, 0);
-    }
+    /* LayerData::LayerData (const_iterator_type itInputBegin, const_iterator_type itInputEnd, ModeOutputValues eModeOutput) */
+    /*     : m_isInputLayer (true) */
+    /*     , m_hasWeights (false) */
+    /*     , m_hasGradients (false) */
+    /*     , m_eModeOutput (eModeOutput)  */
+    /* { */
+    /*     m_itInputBegin = itInputBegin; */
+    /*     m_itInputEnd   = itInputEnd; */
+    /*     m_size = std::distance (itInputBegin, itInputEnd); */
+    /*     m_deltas.assign (m_size, 0); */
+    /* } */
 
 
 
 
-    LayerData::LayerData (size_t _size, 
-	       const_iterator_type itWeightBegin, 
-	       iterator_type itGradientBegin, 
-	       const_function_iterator_type itFunctionBegin, 
-	       const_function_iterator_type itInverseFunctionBegin,
-	       ModeOutputValues eModeOutput)
-	: m_size (_size)
-	, m_itConstWeightBegin   (itWeightBegin)
-	, m_itGradientBegin (itGradientBegin)
-	, m_itFunctionBegin (itFunctionBegin)
-	, m_itInverseFunctionBegin (itInverseFunctionBegin)
-	, m_isInputLayer (false)
-	, m_hasWeights (true)
-	, m_hasGradients (true)
-	, m_eModeOutput (eModeOutput) 
-    {
-	m_values.assign (_size, 0);
-	m_deltas.assign (_size, 0);
-	m_valueGradients.assign (_size, 0);
-    }
+    /* LayerData::LayerData (size_t _size,  */
+    /*            const_iterator_type itWeightBegin,  */
+    /*            iterator_type itGradientBegin,  */
+    /*            const_function_iterator_type itFunctionBegin,  */
+    /*            const_function_iterator_type itInverseFunctionBegin, */
+    /*            ModeOutputValues eModeOutput) */
+    /*     : m_size (_size) */
+    /*     , m_itConstWeightBegin   (itWeightBegin) */
+    /*     , m_itGradientBegin (itGradientBegin) */
+    /*     , m_itFunctionBegin (itFunctionBegin) */
+    /*     , m_itInverseFunctionBegin (itInverseFunctionBegin) */
+    /*     , m_isInputLayer (false) */
+    /*     , m_hasWeights (true) */
+    /*     , m_hasGradients (true) */
+    /*     , m_eModeOutput (eModeOutput)  */
+    /* { */
+    /*     m_values.assign (_size, 0); */
+    /*     m_deltas.assign (_size, 0); */
+    /*     m_valueGradients.assign (_size, 0); */
+    /* } */
 
 
 
 
-    LayerData::LayerData (size_t _size, const_iterator_type itWeightBegin, 
-	       const_function_iterator_type itFunctionBegin, 
-	       ModeOutputValues eModeOutput)
-	: m_size (_size)
-	, m_itConstWeightBegin   (itWeightBegin)
-	, m_itFunctionBegin (itFunctionBegin)
-	, m_isInputLayer (false)
-	, m_hasWeights (true)
-	, m_hasGradients (false)
-	, m_eModeOutput (eModeOutput) 
-    {
-	m_values.assign (_size, 0);
-    }
+    /* LayerData::LayerData (size_t _size, const_iterator_type itWeightBegin,  */
+    /*            const_function_iterator_type itFunctionBegin,  */
+    /*            ModeOutputValues eModeOutput) */
+    /*     : m_size (_size) */
+    /*     , m_itConstWeightBegin   (itWeightBegin) */
+    /*     , m_itFunctionBegin (itFunctionBegin) */
+    /*     , m_isInputLayer (false) */
+    /*     , m_hasWeights (true) */
+    /*     , m_hasGradients (false) */
+    /*     , m_eModeOutput (eModeOutput)  */
+    /* { */
+    /*     m_values.assign (_size, 0); */
+    /* } */
 
 
 
-    typename LayerData::container_type LayerData::computeProbabilities ()
-    {
-	container_type probabilitiesContainer;
-	switch (m_eModeOutput)
-	{
-	case ModeOutputValues::SIGMOID:
-        {
-	    std::transform (begin (m_values), end (m_values), std::back_inserter (probabilitiesContainer), Sigmoid);
-	    break;
-        }
-	case ModeOutputValues::SOFTMAX:
-        {
-            double sum = 0;
-            probabilitiesContainer = m_values;
-            std::for_each (begin (probabilitiesContainer), end (probabilitiesContainer), [&sum](double& p){ p = std::exp (p); sum += p; });
-            if (sum != 0)
-                std::for_each (begin (probabilitiesContainer), end (probabilitiesContainer), [sum ](double& p){ p /= sum; });
-	    break;
-        }
-	case ModeOutputValues::DIRECT:
-	default:
-	    probabilitiesContainer.assign (begin (m_values), end (m_values));
-	}
-	return probabilitiesContainer;
-    }
+    /* typename LayerData::container_type LayerData::computeProbabilities () */
+    /* { */
+    /*     container_type probabilitiesContainer; */
+    /*     switch (m_eModeOutput) */
+    /*     { */
+    /*     case ModeOutputValues::SIGMOID: */
+    /*     { */
+    /*         std::transform (begin (m_values), end (m_values), std::back_inserter (probabilitiesContainer), Sigmoid); */
+    /*         break; */
+    /*     } */
+    /*     case ModeOutputValues::SOFTMAX: */
+    /*     { */
+    /*         double sum = 0; */
+    /*         probabilitiesContainer = m_values; */
+    /*         std::for_each (begin (probabilitiesContainer), end (probabilitiesContainer), [&sum](double& p){ p = std::exp (p); sum += p; }); */
+    /*         if (sum != 0) */
+    /*             std::for_each (begin (probabilitiesContainer), end (probabilitiesContainer), [sum ](double& p){ p /= sum; }); */
+    /*         break; */
+    /*     } */
+    /*     case ModeOutputValues::DIRECT: */
+    /*     default: */
+    /*         probabilitiesContainer.assign (begin (m_values), end (m_values)); */
+    /*     } */
+    /*     return probabilitiesContainer; */
+    /* } */
 
 
 
 
 
 
-    Layer::Layer (size_t _numNodes, EnumFunction _activationFunction, ModeOutputValues eModeOutputValues) 
-	: m_numNodes (_numNodes) 
-	, m_eModeOutputValues (eModeOutputValues)
-    {
-	for (size_t iNode = 0; iNode < _numNodes; ++iNode)
-	{
-	    auto actFnc = Linear;
-	    auto invActFnc = InvLinear;
-	    m_activationFunction = EnumFunction::LINEAR;
-	    switch (_activationFunction)
-	    {
-	    case EnumFunction::ZERO:
-		actFnc = ZeroFnc;
-		invActFnc = ZeroFnc;
-		m_activationFunction = EnumFunction::ZERO;
-		break;
-	    case EnumFunction::LINEAR:
-		actFnc = Linear;
-		invActFnc = InvLinear;
-		m_activationFunction = EnumFunction::LINEAR;
-		break;
-	    case EnumFunction::TANH:
-		actFnc = Tanh;
-		invActFnc = InvTanh;
-		m_activationFunction = EnumFunction::TANH;
-		break;
-	    case EnumFunction::RELU:
-		actFnc = ReLU;
-		invActFnc = InvReLU;
-		m_activationFunction = EnumFunction::RELU;
-		break;
-	    case EnumFunction::SYMMRELU:
-		actFnc = SymmReLU;
-		invActFnc = InvSymmReLU;
-		m_activationFunction = EnumFunction::SYMMRELU;
-		break;
-	    case EnumFunction::TANHSHIFT:
-		actFnc = TanhShift;
-		invActFnc = InvTanhShift;
-		m_activationFunction = EnumFunction::TANHSHIFT;
-		break;
-	    case EnumFunction::SOFTSIGN:
-		actFnc = SoftSign;
-		invActFnc = InvSoftSign;
-		m_activationFunction = EnumFunction::SOFTSIGN;
-		break;
-	    case EnumFunction::SIGMOID:
-		actFnc = Sigmoid;
-		invActFnc = InvSigmoid;
-		m_activationFunction = EnumFunction::SIGMOID;
-		break;
-	    case EnumFunction::GAUSS:
-		actFnc = Gauss;
-		invActFnc = InvGauss;
-		m_activationFunction = EnumFunction::GAUSS;
-		break;
-	    case EnumFunction::GAUSSCOMPLEMENT:
-		actFnc = GaussComplement;
-		invActFnc = InvGaussComplement;
-		m_activationFunction = EnumFunction::GAUSSCOMPLEMENT;
-		break;
-	    case EnumFunction::DOUBLEINVERTEDGAUSS:
-		actFnc = DoubleInvertedGauss;
-		invActFnc = InvDoubleInvertedGauss;
-		m_activationFunction = EnumFunction::DOUBLEINVERTEDGAUSS;
-		break;
-	    }
-	    m_vecActivationFunctions.push_back (actFnc);
-	    m_vecInverseActivationFunctions.push_back (invActFnc);
-	}
-    }
+    /* Layer::Layer (size_t _numNodes, EnumFunction _activationFunction, ModeOutputValues eModeOutputValues)  */
+    /*     : m_numNodes (_numNodes)  */
+    /*     , m_eModeOutputValues (eModeOutputValues) */
+    /* { */
+    /*     for (size_t iNode = 0; iNode < _numNodes; ++iNode) */
+    /*     { */
+    /*         auto actFnc = Linear; */
+    /*         auto invActFnc = InvLinear; */
+    /*         m_activationFunction = EnumFunction::LINEAR; */
+    /*         switch (_activationFunction) */
+    /*         { */
+    /*         case EnumFunction::ZERO: */
+    /*     	actFnc = ZeroFnc; */
+    /*     	invActFnc = ZeroFnc; */
+    /*     	m_activationFunction = EnumFunction::ZERO; */
+    /*     	break; */
+    /*         case EnumFunction::LINEAR: */
+    /*     	actFnc = Linear; */
+    /*     	invActFnc = InvLinear; */
+    /*     	m_activationFunction = EnumFunction::LINEAR; */
+    /*     	break; */
+    /*         case EnumFunction::TANH: */
+    /*     	actFnc = Tanh; */
+    /*     	invActFnc = InvTanh; */
+    /*     	m_activationFunction = EnumFunction::TANH; */
+    /*     	break; */
+    /*         case EnumFunction::RELU: */
+    /*     	actFnc = ReLU; */
+    /*     	invActFnc = InvReLU; */
+    /*     	m_activationFunction = EnumFunction::RELU; */
+    /*     	break; */
+    /*         case EnumFunction::SYMMRELU: */
+    /*     	actFnc = SymmReLU; */
+    /*     	invActFnc = InvSymmReLU; */
+    /*     	m_activationFunction = EnumFunction::SYMMRELU; */
+    /*     	break; */
+    /*         case EnumFunction::TANHSHIFT: */
+    /*     	actFnc = TanhShift; */
+    /*     	invActFnc = InvTanhShift; */
+    /*     	m_activationFunction = EnumFunction::TANHSHIFT; */
+    /*     	break; */
+    /*         case EnumFunction::SOFTSIGN: */
+    /*     	actFnc = SoftSign; */
+    /*     	invActFnc = InvSoftSign; */
+    /*     	m_activationFunction = EnumFunction::SOFTSIGN; */
+    /*     	break; */
+    /*         case EnumFunction::SIGMOID: */
+    /*     	actFnc = Sigmoid; */
+    /*     	invActFnc = InvSigmoid; */
+    /*     	m_activationFunction = EnumFunction::SIGMOID; */
+    /*     	break; */
+    /*         case EnumFunction::GAUSS: */
+    /*     	actFnc = Gauss; */
+    /*     	invActFnc = InvGauss; */
+    /*     	m_activationFunction = EnumFunction::GAUSS; */
+    /*     	break; */
+    /*         case EnumFunction::GAUSSCOMPLEMENT: */
+    /*     	actFnc = GaussComplement; */
+    /*     	invActFnc = InvGaussComplement; */
+    /*     	m_activationFunction = EnumFunction::GAUSSCOMPLEMENT; */
+    /*     	break; */
+    /*         case EnumFunction::DOUBLEINVERTEDGAUSS: */
+    /*     	actFnc = DoubleInvertedGauss; */
+    /*     	invActFnc = InvDoubleInvertedGauss; */
+    /*     	m_activationFunction = EnumFunction::DOUBLEINVERTEDGAUSS; */
+    /*     	break; */
+    /*         } */
+    /*         m_vecActivationFunctions.push_back (actFnc); */
+    /*         m_vecInverseActivationFunctions.push_back (invActFnc); */
+    /*     } */
+    /* } */
 
 
 
@@ -703,61 +705,61 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 
 
-Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
-                    double _factorWeightDecay, bool isL1Regularization, double _dropFraction,
-                    size_t _dropRepetitions, MinimizerType _eMinimizerType, double _learningRate, 
-                    double _momentum, int _repetitions)
-    : m_convergenceSteps (_convergenceSteps)
-    , m_batchSize (_batchSize)
-    , m_testRepetitions (_testRepetitions)
-    , m_factorWeightDecay (_factorWeightDecay)
-    , count_E (0)
-    , count_dE (0)
-    , count_mb_E (0)
-    , count_mb_dE (0)
-    , m_isL1Regularization (isL1Regularization)
-    , m_dropFraction (_dropFraction)
-    , m_dropRepetitions (_dropRepetitions)
-    , fLearningRate (_learningRate)
-    , fMomentum (_momentum)
-    , fRepetitions (_repetitions)
-    , fMinimizerType (_eMinimizerType)
-    , fMonitoring (NULL)
-{
-}
+/* Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions,  */
+/*                     double _factorWeightDecay, bool isL1Regularization, double _dropFraction, */
+/*                     size_t _dropRepetitions, MinimizerType _eMinimizerType, double _learningRate,  */
+/*                     double _momentum, int _repetitions) */
+/*     : m_convergenceSteps (_convergenceSteps) */
+/*     , m_batchSize (_batchSize) */
+/*     , m_testRepetitions (_testRepetitions) */
+/*     , m_factorWeightDecay (_factorWeightDecay) */
+/*     , count_E (0) */
+/*     , count_dE (0) */
+/*     , count_mb_E (0) */
+/*     , count_mb_dE (0) */
+/*     , m_isL1Regularization (isL1Regularization) */
+/*     , m_dropFraction (_dropFraction) */
+/*     , m_dropRepetitions (_dropRepetitions) */
+/*     , fLearningRate (_learningRate) */
+/*     , fMomentum (_momentum) */
+/*     , fRepetitions (_repetitions) */
+/*     , fMinimizerType (_eMinimizerType) */
+/*     , fMonitoring (NULL) */
+/* { */
+/* } */
     
-Settings::~Settings () 
-{
-    /* for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it) */
-    /* { */
-    /*     delete it->second; */
-    /* } */
-}
+/* Settings::~Settings ()  */
+/* { */
+/*     /\* for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it) *\/ */
+/*     /\* { *\/ */
+/*     /\*     delete it->second; *\/ */
+/*     /\* } *\/ */
+/* } */
 
 
 
 
-inline void Settings::clearData (std::string dataName)
-{
-    std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName);
+/* inline void Settings::clearData (std::string dataName) */
+/* { */
+/*     std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName); */
 
-    std::vector<double>& vecX = data.first;
-    std::vector<double>& vecY = data.second;
+/*     std::vector<double>& vecX = data.first; */
+/*     std::vector<double>& vecY = data.second; */
 
-    vecX.clear ();
-    vecY.clear ();
-}
+/*     vecX.clear (); */
+/*     vecY.clear (); */
+/* } */
 
-inline void Settings::addPoint (std::string dataName, double x, double y)
-{
-    std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName);
+/* inline void Settings::addPoint (std::string dataName, double x, double y) */
+/* { */
+/*     std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName); */
 
-    std::vector<double>& vecX = data.first;
-    std::vector<double>& vecY = data.second;
+/*     std::vector<double>& vecX = data.first; */
+/*     std::vector<double>& vecY = data.second; */
 
-    vecX.push_back (x);
-    vecY.push_back (y);
-}
+/*     vecX.push_back (x); */
+/*     vecY.push_back (y); */
+/* } */
 
 
 /* inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing) */
@@ -798,19 +800,17 @@ inline void Settings::addPoint (std::string dataName, double x, double y)
 /* } */
 
 
-inline std::pair<std::vector<double>,std::vector<double> >& Settings::getData (std::string dataName)
-{
-    DataXYMap::iterator itDataXY = dataXY.find (dataName);
-    if (itDataXY == dataXY.end ())
-    {
-        std::pair<DataXYMap::iterator, bool> result = dataXY.insert (std::make_pair (dataName, std::make_pair(std::vector<double>(),std::vector<double>())));
-        itDataXY = result.first;
-    }
+/* inline std::pair<std::vector<double>,std::vector<double> >& Settings::getData (std::string dataName) */
+/* { */
+/*     DataXYMap::iterator itDataXY = dataXY.find (dataName); */
+/*     if (itDataXY == dataXY.end ()) */
+/*     { */
+/*         std::pair<DataXYMap::iterator, bool> result = dataXY.insert (std::make_pair (dataName, std::make_pair(std::vector<double>(),std::vector<double>()))); */
+/*         itDataXY = result.first; */
+/*     } */
 
-    return itDataXY->second;
-}
-
-
+/*     return itDataXY->second; */
+/* } */
 
 
 
@@ -823,209 +823,211 @@ inline std::pair<std::vector<double>,std::vector<double> >& Settings::getData (s
 
 
 
-void ClassificationSettings::testSample (double /* error */, double output, double target, double weight)
-    {
-        m_output.push_back (output);
-        m_targets.push_back (target);
-        m_weights.push_back (weight);
-    }
 
 
-void ClassificationSettings::startTestCycle () 
-    {
-        m_output.clear ();
-        m_targets.clear ();
-        m_weights.clear ();
-        /* resetPlot ("roc"); */
-        /* clearData ("datRoc"); */
-        /* resetPlot ("output"); */
-        /* clearData ("datOutputSig"); */
-        /* clearData ("datOutputBkg"); */
-        /* resetPlot ("amsSig"); */
-        /* clearData ("datAms"); */
-        /* clearData ("datSignificance"); */
-    }
+/* void ClassificationSettings::testSample (double /\* error *\/, double output, double target, double weight) */
+/*     { */
+/*         m_output.push_back (output); */
+/*         m_targets.push_back (target); */
+/*         m_weights.push_back (weight); */
+/*     } */
 
-    void ClassificationSettings::endTestCycle () 
-    {
-        if (m_output.empty ())
-            return;
-        double minVal = *std::min_element (begin (m_output), end (m_output));
-        double maxVal = *std::max_element (begin (m_output), end (m_output));
-        const size_t numBinsROC = 1000;
-        const size_t numBinsData = 100;
 
-        std::vector<double> truePositives (numBinsROC+1, 0);
-        std::vector<double> falsePositives (numBinsROC+1, 0);
-        std::vector<double> trueNegatives (numBinsROC+1, 0);
-        std::vector<double> falseNegatives (numBinsROC+1, 0);
+/* void ClassificationSettings::startTestCycle ()  */
+/*     { */
+/*         m_output.clear (); */
+/*         m_targets.clear (); */
+/*         m_weights.clear (); */
+/*         /\* resetPlot ("roc"); *\/ */
+/*         /\* clearData ("datRoc"); *\/ */
+/*         /\* resetPlot ("output"); *\/ */
+/*         /\* clearData ("datOutputSig"); *\/ */
+/*         /\* clearData ("datOutputBkg"); *\/ */
+/*         /\* resetPlot ("amsSig"); *\/ */
+/*         /\* clearData ("datAms"); *\/ */
+/*         /\* clearData ("datSignificance"); *\/ */
+/*     } */
 
-        std::vector<double> x (numBinsData, 0);
-        std::vector<double> datSig (numBinsData+1, 0);
-        std::vector<double> datBkg (numBinsData+1, 0);
+/*     void ClassificationSettings::endTestCycle ()  */
+/*     { */
+/*         if (m_output.empty ()) */
+/*             return; */
+/*         double minVal = *std::min_element (begin (m_output), end (m_output)); */
+/*         double maxVal = *std::max_element (begin (m_output), end (m_output)); */
+/*         const size_t numBinsROC = 1000; */
+/*         const size_t numBinsData = 100; */
 
-        double binSizeROC = (maxVal - minVal)/(double)numBinsROC;
-        double binSizeData = (maxVal - minVal)/(double)numBinsData;
+/*         std::vector<double> truePositives (numBinsROC+1, 0); */
+/*         std::vector<double> falsePositives (numBinsROC+1, 0); */
+/*         std::vector<double> trueNegatives (numBinsROC+1, 0); */
+/*         std::vector<double> falseNegatives (numBinsROC+1, 0); */
 
-        double sumWeightsSig = 0.0;
-        double sumWeightsBkg = 0.0;
+/*         std::vector<double> x (numBinsData, 0); */
+/*         std::vector<double> datSig (numBinsData+1, 0); */
+/*         std::vector<double> datBkg (numBinsData+1, 0); */
 
-        for (size_t b = 0; b < numBinsData; ++b)
-        {
-            double binData = minVal + b*binSizeData;
-            x.at (b) = binData;
-        }
+/*         double binSizeROC = (maxVal - minVal)/(double)numBinsROC; */
+/*         double binSizeData = (maxVal - minVal)/(double)numBinsData; */
 
-        if (fabs(binSizeROC) < 0.0001)
-            return;
+/*         double sumWeightsSig = 0.0; */
+/*         double sumWeightsBkg = 0.0; */
 
-        for (size_t i = 0, iEnd = m_output.size (); i < iEnd; ++i)
-        {
-            double val = m_output.at (i);
-            double truth = m_targets.at (i);
-            double weight = m_weights.at (i);
+/*         for (size_t b = 0; b < numBinsData; ++b) */
+/*         { */
+/*             double binData = minVal + b*binSizeData; */
+/*             x.at (b) = binData; */
+/*         } */
 
-            bool isSignal = (truth > 0.5 ? true : false);
+/*         if (fabs(binSizeROC) < 0.0001) */
+/*             return; */
 
-            if (m_sumOfSigWeights != 0 && m_sumOfBkgWeights != 0)
-            {
-                if (isSignal)
-                    weight *= m_sumOfSigWeights;
-                else
-                    weight *= m_sumOfBkgWeights;
-            }
+/*         for (size_t i = 0, iEnd = m_output.size (); i < iEnd; ++i) */
+/*         { */
+/*             double val = m_output.at (i); */
+/*             double truth = m_targets.at (i); */
+/*             double weight = m_weights.at (i); */
 
-            size_t binROC = (val-minVal)/binSizeROC;
-            size_t binData = (val-minVal)/binSizeData;
+/*             bool isSignal = (truth > 0.5 ? true : false); */
 
-            if (isSignal)
-            {
-                for (size_t n = 0; n <= binROC; ++n)
-                {
-                    truePositives.at (n) += weight;
-                }
-                for (size_t n = binROC+1; n < numBinsROC; ++n)
-                {
-                    falseNegatives.at (n) += weight;
-                }
+/*             if (m_sumOfSigWeights != 0 && m_sumOfBkgWeights != 0) */
+/*             { */
+/*                 if (isSignal) */
+/*                     weight *= m_sumOfSigWeights; */
+/*                 else */
+/*                     weight *= m_sumOfBkgWeights; */
+/*             } */
 
-                datSig.at (binData) += weight;
-                sumWeightsSig += weight;
-            }
-            else
-            {
-                for (size_t n = 0; n <= binROC; ++n)
-                {
-                    falsePositives.at (n) += weight;
-                }
-                for (size_t n = binROC+1; n < numBinsROC; ++n)
-                {
-                    trueNegatives.at (n) += weight;
-                }
+/*             size_t binROC = (val-minVal)/binSizeROC; */
+/*             size_t binData = (val-minVal)/binSizeData; */
 
-                datBkg.at (binData) += weight;
-                sumWeightsBkg += weight;
-            }
-        }
+/*             if (isSignal) */
+/*             { */
+/*                 for (size_t n = 0; n <= binROC; ++n) */
+/*                 { */
+/*                     truePositives.at (n) += weight; */
+/*                 } */
+/*                 for (size_t n = binROC+1; n < numBinsROC; ++n) */
+/*                 { */
+/*                     falseNegatives.at (n) += weight; */
+/*                 } */
 
-        std::vector<double> sigEff;
-        std::vector<double> backRej;
+/*                 datSig.at (binData) += weight; */
+/*                 sumWeightsSig += weight; */
+/*             } */
+/*             else */
+/*             { */
+/*                 for (size_t n = 0; n <= binROC; ++n) */
+/*                 { */
+/*                     falsePositives.at (n) += weight; */
+/*                 } */
+/*                 for (size_t n = binROC+1; n < numBinsROC; ++n) */
+/*                 { */
+/*                     trueNegatives.at (n) += weight; */
+/*                 } */
 
-        double bestSignificance = 0;
-        double bestCutAMS = 0;
-        double bestCutSignificance = 0;
+/*                 datBkg.at (binData) += weight; */
+/*                 sumWeightsBkg += weight; */
+/*             } */
+/*         } */
 
-        double bestAMS = 0;
+/*         std::vector<double> sigEff; */
+/*         std::vector<double> backRej; */
 
-	double numEventsScaleFactor = 1.0;
-	if (m_scaleToNumEvents > 0)
-	{
-	    size_t numEvents = m_output.size ();
-	    numEventsScaleFactor = double (m_scaleToNumEvents)/double (numEvents);
-	}
+/*         double bestSignificance = 0; */
+/*         double bestCutAMS = 0; */
+/*         double bestCutSignificance = 0; */
 
-        for (size_t i = 0; i < numBinsROC; ++i)
-        {
-            double tp = truePositives.at (i) * numEventsScaleFactor;
-            double fp = falsePositives.at (i) * numEventsScaleFactor;
-            double tn = trueNegatives.at (i) * numEventsScaleFactor;
-            double fn = falseNegatives.at (i) * numEventsScaleFactor;
+/*         double bestAMS = 0; */
 
-            double seff = (tp+fn == 0.0 ? 1.0 : (tp / (tp+fn)));
-	    double brej = (tn+fp == 0.0 ? 0.0 : (tn / (tn+fp)));
+/* 	double numEventsScaleFactor = 1.0; */
+/* 	if (m_scaleToNumEvents > 0) */
+/* 	{ */
+/* 	    size_t numEvents = m_output.size (); */
+/* 	    numEventsScaleFactor = double (m_scaleToNumEvents)/double (numEvents); */
+/* 	} */
 
-            sigEff.push_back (seff);
-            backRej.push_back (brej);
+/*         for (size_t i = 0; i < numBinsROC; ++i) */
+/*         { */
+/*             double tp = truePositives.at (i) * numEventsScaleFactor; */
+/*             double fp = falsePositives.at (i) * numEventsScaleFactor; */
+/*             double tn = trueNegatives.at (i) * numEventsScaleFactor; */
+/*             double fn = falseNegatives.at (i) * numEventsScaleFactor; */
+
+/*             double seff = (tp+fn == 0.0 ? 1.0 : (tp / (tp+fn))); */
+/* 	    double brej = (tn+fp == 0.0 ? 0.0 : (tn / (tn+fp))); */
+
+/*             sigEff.push_back (seff); */
+/*             backRej.push_back (brej); */
             
-            /* addPoint ("datRoc", seff, brej); // x, y */
+/*             /\* addPoint ("datRoc", seff, brej); // x, y *\/ */
 
 
-	    double currentCut = (i * binSizeROC)+minVal;
+/* 	    double currentCut = (i * binSizeROC)+minVal; */
 
-            double sig = tp;
-            double bkg = fp;
-            double significance = sig / sqrt (sig + bkg);
-            if (significance > bestSignificance)
-            {
-                bestSignificance = significance;
-                bestCutSignificance = currentCut;
-            }
+/*             double sig = tp; */
+/*             double bkg = fp; */
+/*             double significance = sig / sqrt (sig + bkg); */
+/*             if (significance > bestSignificance) */
+/*             { */
+/*                 bestSignificance = significance; */
+/*                 bestCutSignificance = currentCut; */
+/*             } */
 
-            double br = 10.0;
-            double s = tp;
-            double b = fp;
-            double radicand = 2 *( (s+b+br) * log (1.0 + s/(b+br)) -s);
-            if (radicand < 0)
-                std::cout << "radicand is negative." << std::endl;
-            else
-                radicand = sqrt (radicand);
+/*             double br = 10.0; */
+/*             double s = tp; */
+/*             double b = fp; */
+/*             double radicand = 2 *( (s+b+br) * log (1.0 + s/(b+br)) -s); */
+/*             if (radicand < 0) */
+/*                 std::cout << "radicand is negative." << std::endl; */
+/*             else */
+/*                 radicand = sqrt (radicand); */
 
-            /* addPoint ("datAms", currentCut, radicand); // x, y */
-	    /* addPoint ("datSignificance", currentCut, significance); */
+/*             /\* addPoint ("datAms", currentCut, radicand); // x, y *\/ */
+/* 	    /\* addPoint ("datSignificance", currentCut, significance); *\/ */
 
-            if (radicand > bestAMS) 
-	    {
-                bestAMS = radicand;
-		bestCutAMS = currentCut;
-	    }
-        }
+/*             if (radicand > bestAMS)  */
+/* 	    { */
+/*                 bestAMS = radicand; */
+/* 		bestCutAMS = currentCut; */
+/* 	    } */
+/*         } */
 
-        m_significances.push_back (bestSignificance);
-        static size_t testCycle = 0;
+/*         m_significances.push_back (bestSignificance); */
+/*         static size_t testCycle = 0; */
 
-        for (size_t i = 0; i < numBinsData; ++i)
-        {
-            /* addPoint ("datOutputSig", x.at (i), datSig.at (i)/sumWeightsSig); */
-            /* addPoint ("datOutputBkg", x.at (i), datBkg.at (i)/sumWeightsBkg); */
-        }
+/*         for (size_t i = 0; i < numBinsData; ++i) */
+/*         { */
+/*             /\* addPoint ("datOutputSig", x.at (i), datSig.at (i)/sumWeightsSig); *\/ */
+/*             /\* addPoint ("datOutputBkg", x.at (i), datBkg.at (i)/sumWeightsBkg); *\/ */
+/*         } */
 
 
         
-        m_ams.push_back (bestAMS);
+/*         m_ams.push_back (bestAMS); */
 
-        ++testCycle;
+/*         ++testCycle; */
 
-//inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
-        /* plot ("roc", "curvePoints", "datRoc", "lines", "cspline"); */
-        /* plot ("output", "outPtsSig", "datOutputSig", "lines", "cspline"); */
-        /* plot ("output", "outPtsBkg", "datOutputBkg", "lines", "cspline"); */
-        /* plot ("amsSig", "curveAms", "datAms", "lines", "cspline"); */
-        /* plot ("amsSig", "curveSignificance", "datSignificance", "lines", "cspline"); */
+/* //inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing) */
+/*         /\* plot ("roc", "curvePoints", "datRoc", "lines", "cspline"); *\/ */
+/*         /\* plot ("output", "outPtsSig", "datOutputSig", "lines", "cspline"); *\/ */
+/*         /\* plot ("output", "outPtsBkg", "datOutputBkg", "lines", "cspline"); *\/ */
+/*         /\* plot ("amsSig", "curveAms", "datAms", "lines", "cspline"); *\/ */
+/*         /\* plot ("amsSig", "curveSignificance", "datSignificance", "lines", "cspline"); *\/ */
 
-        std::cout << "bestCutAMS = " << bestCutAMS << "  ams = " << bestAMS
-		  << "      bestCutSignificance = " << bestCutSignificance << "  significance = " << bestSignificance << std::endl;
-	m_cutValue = bestCutAMS;
-    }
+/*         std::cout << "bestCutAMS = " << bestCutAMS << "  ams = " << bestAMS */
+/* 		  << "      bestCutSignificance = " << bestCutSignificance << "  significance = " << bestSignificance << std::endl; */
+/* 	m_cutValue = bestCutAMS; */
+/*     } */
 
 
 
-    void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights) { m_sumOfSigWeights = sumOfSigWeights; m_sumOfBkgWeights = sumOfBkgWeights; }
-    void ClassificationSettings::setResultComputation (std::string _fileNameNetConfig, std::string _fileNameResult, std::vector<Pattern>* _resultPatternContainer)
-    {
-	m_pResultPatternContainer = _resultPatternContainer;
-	m_fileNameResult = _fileNameResult;
-	m_fileNameNetConfig = _fileNameNetConfig;
-    }
+    /* void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights) { m_sumOfSigWeights = sumOfSigWeights; m_sumOfBkgWeights = sumOfBkgWeights; } */
+    /* void ClassificationSettings::setResultComputation (std::string _fileNameNetConfig, std::string _fileNameResult, std::vector<Pattern>* _resultPatternContainer) */
+    /* { */
+    /*     m_pResultPatternContainer = _resultPatternContainer; */
+    /*     m_fileNameResult = _fileNameResult; */
+    /*     m_fileNameNetConfig = _fileNameNetConfig; */
+    /* } */
 
 
 
@@ -1177,10 +1179,10 @@ void ClassificationSettings::startTestCycle ()
 
             static double x = -1.0;
             x += 1.0;
-            settings.resetPlot ("errors");
+//            settings.resetPlot ("errors");
             settings.addPoint ("trainErrors", cycleCount, trainError);
             settings.addPoint ("testErrors", cycleCount, testError);
-            settings.plot ();
+//            settings.plot ();
 
 
 
@@ -1250,20 +1252,20 @@ void ClassificationSettings::startTestCycle ()
 
 
 
-    size_t Net::numWeights (size_t numInputNodes, size_t trainingStartLayer) const 
-    {
-	size_t num (0);
-	size_t index (0);
-	size_t prevNodes (numInputNodes);
-	for (auto& layer : m_layers)
-	{
-	    if (index >= trainingStartLayer)
-		num += layer.numWeights (prevNodes);
-	    prevNodes = layer.numNodes ();
-	    ++index;
-	}
-	return num;
-    }
+    /* size_t Net::numWeights (size_t numInputNodes, size_t trainingStartLayer) const  */
+    /* { */
+    /*     size_t num (0); */
+    /*     size_t index (0); */
+    /*     size_t prevNodes (numInputNodes); */
+    /*     for (auto& layer : m_layers) */
+    /*     { */
+    /*         if (index >= trainingStartLayer) */
+    /*     	num += layer.numWeights (prevNodes); */
+    /*         prevNodes = layer.numNodes (); */
+    /*         ++index; */
+    /*     } */
+    /*     return num; */
+    /* } */
 
 
     template <typename Weights>
@@ -1571,3 +1573,4 @@ void ClassificationSettings::startTestCycle ()
 }; // namespace NN
 }; // namespace TMVA
 
+#endif
