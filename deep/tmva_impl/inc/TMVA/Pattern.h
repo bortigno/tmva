@@ -52,6 +52,14 @@ public:
     {
     }
 
+    template <typename ItValue>
+    Pattern (ItValue inputBegin, ItValue inputEnd, double outputValue, double _weight = 1.0)
+        : m_input (inputBegin, inputEnd)
+        , m_weight (_weight)
+    {
+        m_output.push_back (outputValue);
+    }
+
 
 
     template <typename InputContainer, typename OutputContainer>

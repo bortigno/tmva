@@ -74,7 +74,8 @@ TMVA::MethodNN::MethodNN( const TString& jobName,
                           DataSetInfo& theData,
                           const TString& theOption,
                           TDirectory* theTargetDir )
-: MethodBase( jobName, Types::kNN, methodTitle, theData, theOption, theTargetDir )
+    : MethodBase( jobName, Types::kNN, methodTitle, theData, theOption, theTargetDir )
+    , fResume (false)
 {
    // standard constructor
 }
@@ -84,6 +85,7 @@ TMVA::MethodNN::MethodNN( DataSetInfo& theData,
                           const TString& theWeightFile,
                           TDirectory* theTargetDir )
    : MethodBase( Types::kNN, theData, theWeightFile, theTargetDir )
+    , fResume (false)
 {
    // constructor from a weight file
 }
@@ -144,7 +146,7 @@ void TMVA::MethodNN::DeclareOptions()
    AddPreDefVal(TString("SUMOFSQUARES"));
    AddPreDefVal(TString("MUTUALEXCLUSIVE"));
 
-   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=100,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=100,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
+   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
 
 
 }
@@ -162,24 +164,23 @@ std::vector<std::pair<int,TMVA::NN::EnumFunction>> TMVA::MethodNN::ParseLayoutSt
 
     TObjArray* layerStrings = layerSpec.Tokenize (delim_Layer);
     TIter nextLayer (layerStrings);
-    TString* layerString;
-    for (; layerString != NULL; layerString = (TString*)nextLayer ())
+    TObjString* layerString = (TObjString*)nextLayer ();
+    for (; layerString != NULL; layerString = (TObjString*)nextLayer ())
     {
         int numNodes = 0;
         TMVA::NN::EnumFunction eActivationFunction = NN::EnumFunction::TANH;
 
-        TObjArray* subStrings = layerString->Tokenize (delim_Sub);
+        TObjArray* subStrings = layerString->GetString ().Tokenize (delim_Sub);
         TIter nextToken (subStrings);
-        TString* token;
-       
+        TObjString* token = (TObjString*)nextToken ();
         int idxToken = 0;
-        for (; token != NULL; token = (TString*)nextToken ())
+        for (; token != NULL; token = (TObjString*)nextToken ())
         {
             switch (idxToken)
             {
             case 0:
             {
-                TString strActFnc (*token);
+                TString strActFnc (token->GetString ());
                 if (strActFnc == "RELU")
                     eActivationFunction = NN::EnumFunction::RELU;
                 else if (strActFnc == "TANH")
@@ -195,19 +196,21 @@ std::vector<std::pair<int,TMVA::NN::EnumFunction>> TMVA::MethodNN::ParseLayoutSt
                 else if (strActFnc == "GAUSS")
                     eActivationFunction = NN::EnumFunction::GAUSS;
             }
+            break;
             case 1: // number of nodes
             {
-                TString strNumNodes (*token);
+                TString strNumNodes (token->GetString ());
                 TString strN ("x");
                 strNumNodes.ReplaceAll ("N", strN);
                 strNumNodes.ReplaceAll ("n", strN);
                 TFormula fml ("tmp",strNumNodes);
                 numNodes = fml.Eval (inputSize);
             }
+            break;
             }
-            layout.push_back (std::make_pair (numNodes,eActivationFunction));
             ++idxToken;
         }
+        layout.push_back (std::make_pair (numNodes,eActivationFunction));
     }
     return layout;
 }
@@ -224,19 +227,19 @@ std::vector<std::map<TString,TString>> TMVA::MethodNN::ParseKeyValueString(TStri
 
     TObjArray* blockStrings = parseString.Tokenize (blockDelim);
     TIter nextBlock (blockStrings);
-    TString* blockString;
-    for (; blockString != NULL; blockString = (TString*)nextBlock ())
+    TObjString* blockString = (TObjString*)nextBlock ();
+    for (; blockString != NULL; blockString = (TObjString*)nextBlock ())
     {
         blockKeyValues.push_back (std::map<TString,TString> ()); // new block
         std::map<TString,TString>& currentBlock = blockKeyValues.back ();
 
-        TObjArray* subStrings = blockString->Tokenize (tokenDelim);
+        TObjArray* subStrings = blockString->GetString ().Tokenize (tokenDelim);
         TIter nextToken (subStrings);
-        TString* token;
+        TObjString* token = (TObjString*)nextToken ();
        
-        for (; token != NULL; token = (TString*)nextToken ())
+        for (; token != NULL; token = (TObjString*)nextToken ())
         {
-            TString strKeyValue = (*token);
+            TString strKeyValue (token->GetString ());
             int delimPos = strKeyValue.First (keyValueDelim.Data ());
             if (delimPos <= 0)
                 continue;
@@ -399,24 +402,42 @@ void TMVA::MethodNN::Train()
 
     const std::vector<TMVA::Event*>& eventCollectionTraining = GetEventCollection (Types::kTraining);
     const std::vector<TMVA::Event*>& eventCollectionTesting  = GetEventCollection (Types::kTesting);
+    std::cout << "event collection training, size = " << eventCollectionTraining.size () << std::endl;
+    std::cout << "event collection testing, size = " << eventCollectionTesting.size () << std::endl;
 
     for (size_t iEvt = 0, iEvtEnd = eventCollectionTraining.size (); iEvt < iEvtEnd; ++iEvt)
     {
         const TMVA::Event* event = eventCollectionTraining.at (iEvt);
         const std::vector<Float_t>& values  = event->GetValues  ();
-        const std::vector<Float_t>& targets = event->GetTargets ();
-        trainPattern.push_back (Pattern (values.begin  (), values.end (), targets.begin (), targets.end (), event->GetWeight ()));
+        if (fAnalysisType == Types::kClassification)
+        {
+            double outputValue = event->GetClass () == 0 ? 0.2 : 0.8;
+            trainPattern.push_back (Pattern (values.begin  (), values.end (), outputValue, event->GetWeight ()));
+        }
+        else
+        {
+            const std::vector<Float_t>& targets = event->GetTargets ();
+            trainPattern.push_back (Pattern (values.begin  (), values.end (), targets.begin (), targets.end (), event->GetWeight ()));
+        }
     }
 
     for (size_t iEvt = 0, iEvtEnd = eventCollectionTesting.size (); iEvt < iEvtEnd; ++iEvt)
     {
         const TMVA::Event* event = eventCollectionTesting.at (iEvt);
         const std::vector<Float_t>& values  = event->GetValues  ();
-        const std::vector<Float_t>& targets = event->GetTargets ();
-        trainPattern.push_back (Pattern (values.begin  (), values.end (), targets.begin (), targets.end (), event->GetWeight ()));
+        if (fAnalysisType == Types::kClassification)
+        {
+            double outputValue = event->GetClass () == 0 ? 0.2 : 0.8;
+            testPattern.push_back (Pattern (values.begin  (), values.end (), outputValue, event->GetWeight ()));
+        }
+        else
+        {
+            const std::vector<Float_t>& targets = event->GetTargets ();
+            testPattern.push_back (Pattern (values.begin  (), values.end (), targets.begin (), targets.end (), event->GetWeight ()));
+        }
     }
 
-
+    std::cout << "data filled" << std::endl;
     if (trainPattern.empty () || testPattern.empty ())
         return;
 
@@ -427,25 +448,31 @@ void TMVA::MethodNN::Train()
     // if "resume" from saved weights
     if (fResume)
     {
+        std::cout << ".. resume" << std::endl;
 //        std::tie (fNet, fWeights) = ReadWeights (fFileName);
     }
     else // initialize weights and net
     {
-        size_t inputSize = trainPattern.front ().input ().size ();
-        size_t outputSize = trainPattern.front ().output ().size ();
+        std::cout << "initialize weights and net" << std::endl;
+        size_t inputSize = GetNVariables (); //trainPattern.front ().input ().size ();
+        size_t outputSize = fAnalysisType == Types::kClassification ? 1 : GetNTargets (); //trainPattern.front ().output ().size ();
+
+        std::cout << "input size = "  << inputSize << "   output size = " << outputSize << std::endl;
+
 
         // configure neural net
         auto itLayout = std::begin (fLayout), itLayoutEnd = std::end (fLayout)-1;
         for ( ; itLayout != itLayoutEnd; ++itLayout)
         {
-            //net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
-            //                           number nodes    activation function
+            std::cout << "  add layer (" << ((*itLayout).first) << " , " << ((char)(*itLayout).second) << ")"  << std::endl;
             fNet.addLayer (NN::Layer ((*itLayout).first, (*itLayout).second)); 
         }
+        std::cout << "add output layer" << std::endl;
         fNet.addLayer (NN::Layer (outputSize, (*itLayout).second, NN::ModeOutputValues::SIGMOID)); 
         fNet.setErrorFunction (fModeErrorFunction); 
 
         size_t numWeights = fNet.numWeights (inputSize);
+        std::cout << "numWeights = " << numWeights << std::endl;
         fWeights.resize (numWeights, 0.0);
 
         // initialize weights
@@ -457,14 +484,20 @@ void TMVA::MethodNN::Train()
     // and create "settings" and minimizer 
     for (auto itSettings = begin (fSettings), itSettingsEnd = end (fSettings); itSettings != itSettingsEnd; ++itSettings)
     {
+        std::cout << "settings" << std::endl;
         std::shared_ptr<TMVA::NN::Settings> ptrSettings = *itSettings;
+        std::cout << "set monitoring" << std::endl;
         ptrSettings->setMonitoring (fMonitoring);
 
         double E = 0;
+        std::cout << "check minimizer type" << std::endl;
         if ((*itSettings)->minimizerType () == TMVA::NN::MinimizerType::fSteepest)
         {
+            std::cout << "initialize minimizer" << std::endl;
             NN::Steepest minimizer ((*itSettings)->learningRate (), (*itSettings)->momentum (), (*itSettings)->repetitions ());
+            std::cout << "start the training" << std::endl;
             E = fNet.train (fWeights, trainPattern, testPattern, minimizer, *ptrSettings.get ());
+            std::cout << "training finished" << std::endl;
         }
     }
 }
@@ -518,37 +551,49 @@ void TMVA::MethodNN::AddWeightsXMLTo( void* parent ) const
    }
 
 
-   void* weightsxml = gTools().xmlengine().NewChild(nn, 0, "Weights");
-   gTools().xmlengine().NewAttr (weightsxml, 0, "NumberWeights", gTools().StringFromInt((int)fWeights.size ()));
+   void* weightsxml = gTools().xmlengine().NewChild(nn, 0, "Synapses");
+   gTools().xmlengine().NewAttr (weightsxml, 0, "NumberSynapses", gTools().StringFromInt((int)fWeights.size ()));
    std::stringstream s("");
    s.precision( 16 );
+   fWeights.clear ();
    for (std::vector<double>::const_iterator it = fWeights.begin (), itEnd = fWeights.end (); it != itEnd; ++it)
    {
-       s << (*it) << " ";
+       s << std::scientific << (*it) << " ";
    }
+   gTools().xmlengine().AddRawLine (weightsxml, s.str().c_str());
+   std::cout << "synapses written to XML" << std::endl;
 }
 
 
 //_______________________________________________________________________
 void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
 {
+   std::cout << "read weights from XML" << std::endl;
    // read MLP from xml weight file
     fNet.clear ();
 
    void* nn = gTools().GetChild(wghtnode, "NN");
    if (!nn)
+   {
+       std::cout << "no node NN in XML, use weightnode" << std::endl;
       nn = wghtnode;
+   }
    
    void* xmlLayout = NULL;
    xmlLayout = gTools().GetChild(wghtnode, "Layout");
    if (!xmlLayout)
+   {
+       std::cout << "no node Layout in XML" << std::endl;
        return;
+   }
 
+   std::cout << "read layout from XML" << std::endl;
    void* ch = gTools().xmlengine().GetChild (xmlLayout);
    TString connection;
    UInt_t numNodes;
    TString activationFunction;
    TString outputMode;
+   fNet.clear ();
    while (ch) 
    {
       gTools().ReadAttr (ch, "Connection", connection);
@@ -556,25 +601,31 @@ void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
       gTools().ReadAttr (ch, "ActivationFunction", activationFunction);
       gTools().ReadAttr (ch, "OutputMode", outputMode);
       ch = gTools().GetNextChild(ch);
+
+      fNet.addLayer (NN::Layer (numNodes, (TMVA::NN::EnumFunction)activationFunction (0), (NN::ModeOutputValues)outputMode (0))); 
    }
 
-
+   std::cout << "read weights XML" << std::endl;
 
    void* xmlWeights  = NULL;
-   xmlWeights = gTools().GetChild(wghtnode, "Weights");
+   xmlWeights = gTools().GetChild(wghtnode, "Synapses");
    if (!xmlWeights)
        return;
 
    Int_t numWeights (0);
-   gTools().ReadAttr (xmlWeights, "NumberWeights", numWeights);
+   gTools().ReadAttr (xmlWeights, "NumberSynapses", numWeights);
+   std::cout << "number synapses = " << numWeights << std::endl;
    const char* content = gTools().GetContent (xmlWeights);
+   std::cout << "synapse content from XML = " << content << std::endl;
    std::stringstream sstr (content);
    for (Int_t iWeight = 0; iWeight<numWeights; ++iWeight) 
    { // synapses
        Double_t weight;
        sstr >> weight;
+       std::cout << weight << " ";
        fWeights.push_back (weight);
    }
+   std::cout << std::endl;
 }
 
 

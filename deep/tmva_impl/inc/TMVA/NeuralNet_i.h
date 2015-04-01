@@ -1197,7 +1197,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
                 ++convergenceCount;
 
 
-	    if (convergenceCount >= settings.convergenceSteps ())
+	    if (convergenceCount >= settings.convergenceSteps () || testError <= 0)
 	    {
 		if (dropOutChangeCount > 0)
 		    dropOutWeightFactor (dropContainer, weights, dropFraction);
@@ -1364,7 +1364,10 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 	std::vector<std::vector<std::function<double(double)> > > inverseActivationFunctionsDropOut;
 
 	if (_layers.empty ())
+        {
+            std::cout << "no layers in this net" << std::endl;
 	    throw std::string ("no layers in this net");
+        }
 
 	if (usesDropOut)
 	{
