@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TApplication.h"
+//#include "TApplication.h"
 #include "TCanvas.h"
 #include "TSystem.h"
 //#include <stdio.h>
@@ -29,25 +29,26 @@ namespace TMVA
 
         void Start ()
         {
-            fApplication = new TApplication ("TMVA Monitoring", &fArgc, &fArgv);
-            fApplication->SetReturnFromRun (true);
+//            fApplication = new TApplication ("TMVA Monitoring", &fArgc, &fArgv);
+//            fApplication->SetReturnFromRun (true);
 
-            fCanvas = new TCanvas ("TMVA Monitoring", "Monitoring", 1000, 500);
+//            fCanvas = new TCanvas ("TMVA Monitoring", "Monitoring", 1000, 500);
         }
 
 
         void ProcessEvents ()
         {
-            GetCanvas ()->Modified();
-            GetCanvas ()->Update();
-            gSystem->ProcessEvents(); //canvas can be edited during the loop
+//            GetCanvas ()->Modified();
+//            GetCanvas ()->Update();
+//            gSystem->ProcessEvents(); //canvas can be edited during the loop
         }
 
         TCanvas* GetCanvas () { return fCanvas; }
 
     private:
         TCanvas* fCanvas;
-        TApplication* fApplication;
+
+//        TApplication* fApplication;
 
         int fArgc;
         char* fArgv;

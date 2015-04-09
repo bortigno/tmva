@@ -102,7 +102,11 @@ namespace TMVA {
       // nice output
       void PrintCoefficients( void );
 
+      // write classifier-specific monitoring information to target file
+      virtual void     WriteMonitoringHistosToFile() const;
+
    protected:
+
 
       // make ROOT-independent C++ class for classifier response (classifier-specific implementation)
       void MakeClassSpecific( std::ostream&, const TString& ) const;

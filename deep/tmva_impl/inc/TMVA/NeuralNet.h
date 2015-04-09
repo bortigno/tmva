@@ -20,6 +20,7 @@
 #include "Monitoring.h"
 
 #include "TApplication.h"
+#include "Timer.h"
 
 #include <fenv.h> // turn on or off exceptions for NaN and other numeric exceptions
 
@@ -486,7 +487,8 @@ public:
 //    typedef std::map<std::string,Gnuplot*> PlotMap;
     typedef std::map<std::string,std::pair<std::vector<double>,std::vector<double> > > DataXYMap;
 
-    Settings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
+    Settings (TString name,
+              size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
 	      double _factorWeightDecay = 1e-5, bool _isL1Regularization = false, double _dropFraction = 0.0,
 	      size_t _dropRepetitions = 7, MinimizerType _eMinimizerType = MinimizerType::fSteepest, 
               double _learningRate = 1e-5, double _momentum = 0.3, int _repetitions = 3);
@@ -518,7 +520,21 @@ public:
 
     virtual void testSample (double /*error*/, double /*output*/, double /*target*/, double /*weight*/) {}
 
-    
+    virtual void setProgressLimits (double minProgress = 0, double maxProgress = 100) 
+    { 
+        m_minProgress = minProgress;
+        m_maxProgress = maxProgress; 
+    }
+    virtual void startTraining () 
+    {
+        m_timer.DrawProgressBar (Int_t(m_minProgress));
+    }
+    virtual void cycle (double progress, TString text) 
+    {
+        std::cout << "min prog " << m_minProgress << " max prog " << m_maxProgress << " prog " << progress << " value " << (m_minProgress+(m_maxProgress-m_minProgress)*(progress*/100.0)) << std::endl;
+        m_timer.DrawProgressBar (Int_t(m_minProgress+(m_maxProgress-m_minProgress)*(progress*/100.0)), text);
+    }
+
     virtual void startTestCycle () {}
     virtual void endTestCycle () {}
     virtual void drawSample (const std::vector<double>& /*input*/, const std::vector<double>& /* output */, const std::vector<double>& /* target */, double /* patternWeight */) {}
@@ -530,6 +546,11 @@ public:
     bool isL1 () const { return m_isL1Regularization; }
 
 public:
+    Timer  m_timer;
+    double m_minProgress;
+    double m_maxProgress;
+
+
     size_t m_convergenceSteps;
     size_t m_batchSize;
     size_t m_testRepetitions;
@@ -586,12 +607,14 @@ private:
 class ClassificationSettings : public Settings
 {
 public:
-    ClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
+    ClassificationSettings (TString name,
+                            size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
 			    double _factorWeightDecay = 1e-5, bool _isL1Regularization = false, 
 			    double _dropFraction = 0.0, size_t _dropRepetitions = 7,
 			    size_t _scaleToNumEvents = 0, MinimizerType _eMinimizerType = MinimizerType::fSteepest, 
                             double _learningRate = 1e-5, double _momentum = 0.3, int _repetitions = 3)
-        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _isL1Regularization, _dropFraction, _dropRepetitions,
+        : Settings (name, _convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, 
+                    _isL1Regularization, _dropFraction, _dropRepetitions,
                     _eMinimizerType, _learningRate, _momentum, _repetitions)
         , m_ams ()
         , m_sumOfSigWeights (0)
@@ -604,13 +627,13 @@ public:
     {
         int argc = 0;
         char *argv[] = {(char*)""};
-        m_application = new TApplication ("my app", &argc, argv);
-        m_application->SetReturnFromRun (true);
+//        m_application = new TApplication ("my app", &argc, argv);
+//        m_application->SetReturnFromRun (true);
     }
 
     virtual ~ClassificationSettings () 
     {
-        delete m_application;
+//        delete m_application;
     }
 
 
@@ -643,7 +666,7 @@ public:
     std::string m_fileNameResult;
     std::string m_fileNameNetConfig;
 
-    TApplication* m_application;
+//    TApplication* m_application;
 };
 
 

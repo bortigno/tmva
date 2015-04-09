@@ -1089,8 +1089,9 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 		  const std::vector<Pattern>& testPattern, 
                   Minimizer& minimizer, Settings& settings)
     {
-        std::cout << "START TRAINING" << std::endl;
+//        std::cout << "START TRAINING" << std::endl;
         size_t convergenceCount = 0;
+        size_t maxConvergenceCount = 0;
         double minError = 1e10;
 
         size_t cycleCount = 0;
@@ -1100,10 +1101,11 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 	DropContainer dropContainer;
 
+        settings.startTraining ();
         // until convergence
         do
         {
-            std::cout << "train cycle " << cycleCount << std::endl;
+//            std::cout << "train cycle " << cycleCount << std::endl;
             ++cycleCount;
 
 	    // shuffle training pattern
@@ -1187,14 +1189,17 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 
 //	(*this).print (std::cout);
-            std::cout << "check convergence; minError " << minError << "  current " << testError << "  current convergence count " << convergenceCount << std::endl;
+//            std::cout << "check convergence; minError " << minError << "  current " << testError << "  current convergence count " << convergenceCount << std::endl;
             if (testError < minError)
             {
                 convergenceCount = 0;
                 minError = testError;
             }
             else
+            {
                 ++convergenceCount;
+                maxConvergenceCount = std::max (convergenceCount, maxConvergenceCount);
+            }
 
 
 	    if (convergenceCount >= settings.convergenceSteps () || testError <= 0)
@@ -1205,11 +1210,15 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 	    }
 
 
-            std::cout << "testError : " << testError << "   trainError : " << trainError << std::endl;
+            TString convText = Form( "<D^2> (train/test/epoch): %.4g/%.4g/%d", trainError, testError, cycleCount);
+            double progress = maxConvergenceCount /(double)settings.convergenceSteps ();
+            settings.cycle (progress, convText);
         }
 	while (true);
+        TString convText = Form( "<D^2> (train/test/epoch): %.4g/%.4g/%d", trainError, testError, cycleCount);
+        double progress = maxConvergenceCount /(double)settings.convergenceSteps ();
+        settings.cycle (progress, convText);
 
-        std::cout << "END TRAINING" << std::endl;
         return testError;
     }
 

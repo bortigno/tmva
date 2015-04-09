@@ -45,6 +45,14 @@
 #include "TMVA/NeuralNet.h"
 #include "TMVA/Monitoring.h"
 
+
+REGISTER_METHOD(NN)
+
+ClassImp(TMVA::MethodNN)
+
+
+
+
 namespace TMVA
 {
 namespace NN
@@ -63,9 +71,6 @@ void gaussDistribution (Container& container, T mean, T sigma)
 
 
 
-REGISTER_METHOD(NN)
-
-ClassImp(TMVA::MethodNN)
 
 
 //______________________________________________________________________________
@@ -138,7 +143,7 @@ void TMVA::MethodNN::DeclareOptions()
    //                  "Train with back propagation steepest descend");
    // AddPreDefVal(TString("SD"));
 
-   DeclareOptionRef(fLayoutString="TANH|(N+2)*2,TANH|(N+10),LINEAR",    "Layout",    "neural network layout");
+   DeclareOptionRef(fLayoutString="TANH|(N+30)*2,TANH|(N+30),LINEAR",    "Layout",    "neural network layout");
 
 
    DeclareOptionRef(fErrorStrategy="MUTUALEXCLUSIVE",    "ErrorStrategy",    "error strategy (regression: sum of squares; classification: crossentropy; multiclass: crossentropy/mutual exclusive cross entropy");
@@ -146,7 +151,7 @@ void TMVA::MethodNN::DeclareOptions()
    AddPreDefVal(TString("SUMOFSQUARES"));
    AddPreDefVal(TString("MUTUALEXCLUSIVE"));
 
-   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=70,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
+   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
 
 
 }
@@ -354,6 +359,7 @@ void TMVA::MethodNN::ProcessOptions()
            
 
            std::shared_ptr<TMVA::NN::ClassificationSettings> ptrSettings = make_shared <TMVA::NN::ClassificationSettings> (
+               GetName  (),
                convergenceSteps, batchSize, 
                testRepetitions, factorWeightDecay,
                isL1, dropFraction, dropRepetitions,
@@ -389,11 +395,11 @@ void TMVA::MethodNN::Train()
 {
     
     fMonitoring= NULL;
-    if (fMonitoring)
-    {
-        fMonitoring = make_shared<Monitoring>();
-        fMonitoring->Start ();
-    }
+    // if (fMonitoring)
+    // {
+    //     fMonitoring = make_shared<Monitoring>();
+    //     fMonitoring->Start ();
+    // }
 
     // INITIALIZATION
     // create pattern
@@ -482,13 +488,14 @@ void TMVA::MethodNN::Train()
 
     // loop through settings 
     // and create "settings" and minimizer 
-    for (auto itSettings = begin (fSettings), itSettingsEnd = end (fSettings); itSettings != itSettingsEnd; ++itSettings)
+    int idxSetting = 0;
+    for (auto itSettings = begin (fSettings), itSettingsEnd = end (fSettings); itSettings != itSettingsEnd; ++itSettings, ++idxSetting)
     {
         std::cout << "settings" << std::endl;
         std::shared_ptr<TMVA::NN::Settings> ptrSettings = *itSettings;
         std::cout << "set monitoring" << std::endl;
         ptrSettings->setMonitoring (fMonitoring);
-
+        ptrSettings->setProgressLimits ((idxSetting)*100.0/(fSettings.size ()), (idxSetting+1)*100.0/(fSettings.size ()));
         double E = 0;
         std::cout << "check minimizer type" << std::endl;
         if ((*itSettings)->minimizerType () == TMVA::NN::MinimizerType::fSteepest)
@@ -532,7 +539,7 @@ void TMVA::MethodNN::AddWeightsXMLTo( void* parent ) const
    // create XML description of NN classifier
    // for all layers
 
-   void* nn = gTools().xmlengine().NewChild(parent, 0, "NN");
+   void* nn = gTools().xmlengine().NewChild(parent, 0, "Weights");
    void* xmlLayout = gTools().xmlengine().NewChild(nn, 0, "Layout");
    Int_t numLayers = fNet.layers ().size ();
    gTools().xmlengine().NewAttr(xmlLayout, 0, "NumberLayers", gTools().StringFromInt (numLayers) );
@@ -555,13 +562,11 @@ void TMVA::MethodNN::AddWeightsXMLTo( void* parent ) const
    gTools().xmlengine().NewAttr (weightsxml, 0, "NumberSynapses", gTools().StringFromInt((int)fWeights.size ()));
    std::stringstream s("");
    s.precision( 16 );
-   fWeights.clear ();
    for (std::vector<double>::const_iterator it = fWeights.begin (), itEnd = fWeights.end (); it != itEnd; ++it)
    {
        s << std::scientific << (*it) << " ";
    }
    gTools().xmlengine().AddRawLine (weightsxml, s.str().c_str());
-   std::cout << "synapses written to XML" << std::endl;
 }
 
 
@@ -572,10 +577,10 @@ void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
    // read MLP from xml weight file
     fNet.clear ();
 
-   void* nn = gTools().GetChild(wghtnode, "NN");
+   void* nn = gTools().GetChild(wghtnode, "Weights");
    if (!nn)
    {
-       std::cout << "no node NN in XML, use weightnode" << std::endl;
+       std::cout << "no node \"Weights\" in XML, use weightnode" << std::endl;
       nn = wghtnode;
    }
    
@@ -622,7 +627,7 @@ void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
    { // synapses
        Double_t weight;
        sstr >> weight;
-       std::cout << weight << " ";
+//       std::cout << weight << " ";
        fWeights.push_back (weight);
    }
    std::cout << std::endl;
@@ -657,6 +662,10 @@ const TMVA::Ranking* TMVA::MethodNN::CreateRanking()
 
    // create the ranking object
    fRanking = new Ranking( GetName(), "Importance" );
+
+   for (UInt_t ivar=0; ivar<GetNvar(); ivar++) {
+       fRanking->AddRank( Rank( GetInputLabel(ivar), 1.0));
+   }
 
    // TNeuron*  neuron;
    // TSynapse* synapse;
@@ -763,5 +772,16 @@ void TMVA::MethodNN::GetHelpMessage() const
    Log() << "The number of cycles should be above 500. As said, if the number of" << Endl;
    Log() << "adjustable weights is small compared to the training sample size," << Endl;
    Log() << "using a large number of training samples should not lead to overtraining." << Endl;
+}
+
+
+
+//_______________________________________________________________________
+void  TMVA::MethodNN::WriteMonitoringHistosToFile( void ) const
+{
+   // write histograms and PDFs to file for monitoring purposes
+
+   Log() << kINFO << "Write monitoring histograms to file: " << BaseDir()->GetPath() << Endl;
+   BaseDir()->cd();
 }
 
