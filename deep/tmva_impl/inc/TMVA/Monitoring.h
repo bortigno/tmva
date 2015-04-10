@@ -13,11 +13,13 @@ namespace TMVA
     public:
         Monitoring (int argc, char* /*argv[]*/)
             : fArgc (argc)
+            , fCanvas (NULL)
         {
             fArgv = new char[argc] ();
         }    
 
         Monitoring ()
+            : fCanvas (NULL)
         {
         }    
 
@@ -32,15 +34,15 @@ namespace TMVA
 //            fApplication = new TApplication ("TMVA Monitoring", &fArgc, &fArgv);
 //            fApplication->SetReturnFromRun (true);
 
-//            fCanvas = new TCanvas ("TMVA Monitoring", "Monitoring", 1000, 500);
+            fCanvas = new TCanvas ("TMVA Monitoring", "Monitoring", 1000, 500);
         }
 
 
         void ProcessEvents ()
         {
-//            GetCanvas ()->Modified();
-//            GetCanvas ()->Update();
-//            gSystem->ProcessEvents(); //canvas can be edited during the loop
+            GetCanvas ()->Modified();
+            GetCanvas ()->Update();
+            gSystem->ProcessEvents(); //canvas can be edited during the loop
         }
 
         TCanvas* GetCanvas () { return fCanvas; }

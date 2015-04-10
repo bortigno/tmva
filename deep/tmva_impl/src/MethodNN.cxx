@@ -143,7 +143,9 @@ void TMVA::MethodNN::DeclareOptions()
    //                  "Train with back propagation steepest descend");
    // AddPreDefVal(TString("SD"));
 
-   DeclareOptionRef(fLayoutString="TANH|(N+30)*2,TANH|(N+30),LINEAR",    "Layout",    "neural network layout");
+//   DeclareOptionRef(fLayoutString="TANH|(N+30)*2,TANH|(N+30),LINEAR",    "Layout",    "neural network layout");
+// DeclareOptionRef(fLayoutString="RELU|(N+20)*2,RELU|(N+10)*2,LINEAR",    "Layout",    "neural network layout");
+   DeclareOptionRef(fLayoutString="SYMMRELU|(N+100)*2,LINEAR",    "Layout",    "neural network layout");
 
 
    DeclareOptionRef(fErrorStrategy="MUTUALEXCLUSIVE",    "ErrorStrategy",    "error strategy (regression: sum of squares; classification: crossentropy; multiclass: crossentropy/mutual exclusive cross entropy");
@@ -151,7 +153,7 @@ void TMVA::MethodNN::DeclareOptions()
    AddPreDefVal(TString("SUMOFSQUARES"));
    AddPreDefVal(TString("MUTUALEXCLUSIVE"));
 
-   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
+   DeclareOptionRef(fTrainingStrategy="LearningRate=1e-3,Momentum=0.3,Repetitions=3,ConvergenceSteps=15,BatchSize=20,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=15,BatchSize=70,TestRepetitions=7,WeightDecay=0.001,L1=true,DropFraction=0.0,DropRepetitions=5",    "TrainingStrategy",    "defines the training strategies");
 
 
 }
@@ -395,11 +397,11 @@ void TMVA::MethodNN::Train()
 {
     
     fMonitoring= NULL;
-    // if (fMonitoring)
-    // {
-    //     fMonitoring = make_shared<Monitoring>();
-    //     fMonitoring->Start ();
-    // }
+    if (fMonitoring)
+    {
+        fMonitoring = make_shared<Monitoring>();
+        fMonitoring->Start ();
+    }
 
     // INITIALIZATION
     // create pattern
@@ -408,8 +410,6 @@ void TMVA::MethodNN::Train()
 
     const std::vector<TMVA::Event*>& eventCollectionTraining = GetEventCollection (Types::kTraining);
     const std::vector<TMVA::Event*>& eventCollectionTesting  = GetEventCollection (Types::kTesting);
-    std::cout << "event collection training, size = " << eventCollectionTraining.size () << std::endl;
-    std::cout << "event collection testing, size = " << eventCollectionTesting.size () << std::endl;
 
     for (size_t iEvt = 0, iEvtEnd = eventCollectionTraining.size (); iEvt < iEvtEnd; ++iEvt)
     {
@@ -443,7 +443,6 @@ void TMVA::MethodNN::Train()
         }
     }
 
-    std::cout << "data filled" << std::endl;
     if (trainPattern.empty () || testPattern.empty ())
         return;
 
@@ -573,7 +572,6 @@ void TMVA::MethodNN::AddWeightsXMLTo( void* parent ) const
 //_______________________________________________________________________
 void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
 {
-   std::cout << "read weights from XML" << std::endl;
    // read MLP from xml weight file
     fNet.clear ();
 
@@ -621,13 +619,11 @@ void TMVA::MethodNN::ReadWeightsFromXML( void* wghtnode )
    gTools().ReadAttr (xmlWeights, "NumberSynapses", numWeights);
    std::cout << "number synapses = " << numWeights << std::endl;
    const char* content = gTools().GetContent (xmlWeights);
-   std::cout << "synapse content from XML = " << content << std::endl;
    std::stringstream sstr (content);
    for (Int_t iWeight = 0; iWeight<numWeights; ++iWeight) 
    { // synapses
        Double_t weight;
        sstr >> weight;
-//       std::cout << weight << " ";
        fWeights.push_back (weight);
    }
    std::cout << std::endl;

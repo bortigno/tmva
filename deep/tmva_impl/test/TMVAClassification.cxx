@@ -413,8 +413,16 @@ int main( int argc, char** argv )
 
    if (Use["NN"])
    {
+//       TString layoutString ("Layout=RELU|(N+100)*2,LINEAR");
+       TString layoutString ("Layout=RELU|(N+200)*2,RELU");
+       TString trainingStrategyString ("TrainingStrategy=LearningRate=1e-3,Momentum=0.3,Repetitions=3,ConvergenceSteps=5,BatchSize=100,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.4,DropRepetitions=5|LearningRate=1e-4,Momentum=0.3,Repetitions=3,ConvergenceSteps=15,BatchSize=50,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.0,DropRepetitions=5");
+
+       TString nnOptions ("!H:!V:VarTransform=Normalize");
+       nnOptions.Append (":"); nnOptions.Append (layoutString);
+       nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
+
        std::cout << "book NN" << std::endl;
-       factory->BookMethod( TMVA::Types::kNN, "NN", "!H:!V" ); // NN
+       factory->BookMethod( TMVA::Types::kNN, "NN", nnOptions ); // NN
        std::cout << "book NN finished" << std::endl;
    }
 

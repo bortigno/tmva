@@ -531,8 +531,7 @@ public:
     }
     virtual void cycle (double progress, TString text) 
     {
-        std::cout << "min prog " << m_minProgress << " max prog " << m_maxProgress << " prog " << progress << " value " << (m_minProgress+(m_maxProgress-m_minProgress)*(progress*/100.0)) << std::endl;
-        m_timer.DrawProgressBar (Int_t(m_minProgress+(m_maxProgress-m_minProgress)*(progress*/100.0)), text);
+        m_timer.DrawProgressBar (Int_t(m_minProgress+(m_maxProgress-m_minProgress)*(progress/100.0)), text);
     }
 
     virtual void startTestCycle () {}
