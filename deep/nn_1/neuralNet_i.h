@@ -1100,6 +1100,7 @@ void ClassificationSettings::startTestCycle ()
 	    for (size_t iWeight = 0, iWeightEnd = layer.numWeights (numInput); iWeight < iWeightEnd; ++iWeight)
 	    {
 		(*itWeight) = NN::gaussDouble (0.0, 2.0/nIn); // factor 2.0 for ReLU
+		++itWeight;
 	    }
 	    numInput = layer.numNodes ();
 	}
