@@ -539,16 +539,158 @@ void Higgs ()
 
 
 
+void createChessData (int numPattern)
+{
+   const int nvar = 2;
+   double xvar[nvar];
+
+   // output files
+   std::ofstream file_data;
+
+   file_data.open ("chess_data.csv");
+
+   double sigma=0.3;
+   double meanX;
+   double meanY;
+   int xtype=1, ytype=1;
+   int iCurrent=0;
+   int m_nDim = 2; // actually the boundary, there is a "bump" for every interger value
+                     // between in the Inteval [-m_nDim,m_nDim]
+
+   file_data << "id,x,y,weight,label" << std::endl;
+
+   while (iCurrent < numPattern)
+   {
+       xtype=1;
+       for (int i=-m_nDim; i <=  m_nDim; i++)
+       {
+           ytype  =  1;
+           for (int j=-m_nDim; j <=  m_nDim; j++)
+           {
+               meanX=double(i);
+               meanY=double(j);
+               xvar[0]=NN::gaussDouble(meanY,sigma);
+               xvar[1]=NN::gaussDouble(meanX,sigma);
+               int type   = xtype*ytype;
+               file_data << iCurrent << "," << xvar[0] << "," << xvar[1] << "," << 1.0 << "," << (type==1 ? "s" : "b") << std::endl;
+               iCurrent++;
+               ytype *= -1;
+           }
+           xtype *= -1;
+       }
+   }
+
+   file_data.close ();
+}
+
+
+
+void Chess ()
+{
+
+
+
+//    feenableexcept (FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW|FE_UNDERFLOW);
+    feenableexcept (FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW); // exceptions bei underflow, overflow und divide by zero (damit man den fehler gleich findet)
+
+
+    std::string filenameTrain ("chess_data.csv");
+    std::string filenameTest ("chess_data.csv");
+
+    std::vector<std::string> fieldNamesTrain; 
+    std::vector<std::string> fieldNamesTest; 
+    size_t skipTrain = 0;
+    size_t numberTrain = 10000;
+    size_t skipTest  =  10000;
+    size_t numberTest  =  10000;
+    
+    double sumOfSigWeights_train (0);
+    double sumOfBkgWeights_train (0);
+    double sumOfSigWeights_test (0);
+    double sumOfBkgWeights_test (0);
+
+    std::vector<Pattern> trainPattern = readCSV (filenameTrain, fieldNamesTrain, "id", "label", "weight", 
+                                                 sumOfSigWeights_train, sumOfBkgWeights_train, numberTrain, skipTrain);
+    std::vector<Pattern> testPattern = readCSV (filenameTest, fieldNamesTest, "id", "label", "weight", 
+                                                sumOfSigWeights_test, sumOfBkgWeights_test, numberTest, skipTest);
+
+    std::cout << "read " << trainPattern.size () << " training pattern from CSV file" << std::endl;
+    std::cout << "read " << testPattern.size () <<  " test pattern from CSV file" << std::endl;
+
+    assert (!trainPattern.empty ());
+    assert (!testPattern.empty ());
+
+
+    // reading
+    NN::Net net;
+    std::vector<double> weights;
+
+#if false // read from saved file
+    std::tie (net, weights) = read ("chess.net");
+
+    // net.layers ().back ().modeOutputValues (ModeOutputValues::DIRECT); 
+    // net.setErrorFunction (ModeErrorFunction::SUMOFSQUARES);
+    
+#else
+//    size_t inputSize = trainPattern.front ().input ().size ();
+    size_t outputSize = trainPattern.front ().output ().size ();
+
+    net.addLayer (NN::Layer (4, NN::EnumFunction::RELU)); 
+    net.addLayer (NN::Layer (3, NN::EnumFunction::RELU)); 
+    net.addLayer (NN::Layer (2, NN::EnumFunction::RELU)); 
+    net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
+    net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
+
+//    size_t numWeightsFirstLayer = net.layers ().front ().numWeights (inputSize);
+
+//    size_t numWeights = net.numWeights (inputSize);
+
+//    gaussDistribution (weights, 0.1, 1.0/sqrt(inputSize));
+    net.initializeWeights (NN::WeightInitializationStrategy::XAVIER, 
+			   trainPattern.begin (),
+			   trainPattern.end (), 
+			   std::back_inserter (weights));
+
+#endif
+    
+    NN::Steepest minimizer (1e-4, 0.3, 3);
+    {
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
+				     /*factorWeightDecay*/ 0.0, /*isL1*/false, 
+				     /*dropFraction*/ 0.5, /*dropRepetitions*/ 10, /*scaleToNumEvents*/ 10000);
+
+    settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
+//    settings.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
+    /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
+    }
+
+    NN::Steepest minimizer2 (1e-5, 0.1, 3);
+    NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
+				     /*factorWeightDecay*/ 0.0, /*isL1*/false, 
+				     /*dropFraction*/ 0.0, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000);
+    settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
+//    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
+    /*double E = */net.train (weights, trainPattern, testPattern, minimizer2, settings2);
+
+    wait_for_key();
+
+}
+
+
+
 
 int main ()
 { 
+//    createChessData (20000);
+//    return 1;
 //    feenableexcept (FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW|FE_UNDERFLOW);
     feenableexcept (FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW); // exceptions bei underflow, overflow und divide by zero (damit man den fehler gleich findet)
 
 
 //    checkGradients ();
 //    testXOR ();
-    Higgs ();
+//    Higgs ();
+    Chess ();
 //    testClassification ();
 //    testWriteRead ();
 

@@ -126,8 +126,8 @@ void update (ItSource itSource, ItSource itSourceEnd,
         double Steepest::operator() (Function& fitnessFunction, Weights& weights, PassThrough& passThrough) 
     {
 	size_t numWeights = weights.size ();
-	std::vector<double> gradients (numWeights, 0.0);
-	std::vector<double> localWeights (begin (weights), end (weights));
+	std::vector<NNTYPE> gradients (numWeights, 0.0);
+	std::vector<NNTYPE> localWeights (begin (weights), end (weights));
         if (m_prevGradients.empty ())
             m_prevGradients.assign (weights.size (), 0);
 
@@ -142,13 +142,15 @@ void update (ItSource itSource, ItSource itSourceEnd,
             if (currentRepetition >= m_repetitions)
                 break;
 
+            double alpha = gaussDouble (m_alpha, m_alpha/2.0);
+
             auto itLocW = begin (localWeights);
             auto itLocWEnd = end (localWeights);
             auto itG = begin (gradients);
             auto itPrevG = begin (m_prevGradients);
             for (; itLocW != itLocWEnd; ++itLocW, ++itG, ++itPrevG)
             {
-                (*itG) *= m_alpha;
+                (*itG) *= alpha;
                 (*itG) += m_beta * (*itPrevG);
                 (*itLocW) += (*itG);
                 (*itPrevG) = (*itG);
@@ -167,7 +169,10 @@ void update (ItSource itSource, ItSource itSourceEnd,
                 {
                     (*itW) = (*itLocW);
                 }
+                std::cout << ".";
             }
+            else
+                std::cout << "X";
             ++currentRepetition;
         }
         return Emin;
@@ -1075,6 +1080,30 @@ void ClassificationSettings::startTestCycle ()
 
 
 
+    template <typename ItPat, typename OutIterator>
+    void Net::initializeWeights (WeightInitializationStrategy eInitStrategy, 
+				     ItPat itPatternBegin, 
+				     ItPat itPatternEnd, 
+				     OutIterator itWeight)
+    {
+	// input and output properties
+	int numInput = (*itPatternBegin).inputSize ();
+
+	// compute variance and mean of input and output
+	//...
+	
+
+	// compute the weights
+	for (auto& layer: layers ())
+	{
+	    double nIn = numInput;
+	    for (size_t iWeight = 0, iWeightEnd = layer.numWeights (numInput); iWeight < iWeightEnd; ++iWeight)
+	    {
+		(*itWeight) = NN::gaussDouble (0.0, 2.0/nIn); // factor 2.0 for ReLU
+	    }
+	    numInput = layer.numNodes ();
+	}
+    }
 
 
 

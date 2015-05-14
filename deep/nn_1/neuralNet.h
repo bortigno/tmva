@@ -699,6 +699,10 @@ enum class ModeErrorFunction
     CROSSENTROPY_MUTUALEXCLUSIVE = 'M'
 };
 
+enum class WeightInitializationStrategy
+{
+    XAVIER, TEST
+};
 
 
 
@@ -774,6 +778,13 @@ public:
 
     const std::vector<Layer>& layers () const { return m_layers; }
     std::vector<Layer>& layers ()  { return m_layers; }
+
+
+    template <typename ItPat, typename OutIterator>
+    void initializeWeights (WeightInitializationStrategy eInitStrategy, 
+			    ItPat itPatternBegin, 
+			    ItPat itPatternEnd, 
+			    OutIterator itWeight);
 
 
     std::ostream& write (std::ostream& ostr) const;
