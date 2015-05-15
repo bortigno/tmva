@@ -44,11 +44,40 @@ void wait_for_key ()
 }
 
 
+/* template <typename Iterator> */
+/*     std::pair<double, double> meanVariance (Iterator begin, Iterator end) */
+/* { */
+/*     double sum = std::accumulate (begin, end, 0.0); */
+/*     double mean = sum/std::distance (begin, end); */
+    
+/*     std::vector<double> diff (v.size ()); */
+/*     std::transform (begin, end, diff.begin (), std::bind2nd (std::minux<double>(), mean)); */
+/*     double sq_sum = std::inner_product (diff.begin (), diff.end (), diff.begin (), 0.0); */
+/*     double variance = sq_sum/v.size (); */
+
+/*     return std::make_pair (mean, variance); */
+/* } */
 
 
+template <typename Iterator>
+    std::pair<double, double> computeMeanVariance (Iterator begin, Iterator end)
+{
+    double mean = 0;
+    double M2 = 0;
+    double variance = 0.0;
 
+    size_t n = std::distance (begin, end);
+    for (Iterator it = begin; it != end; ++it)
+    {
+        double value = (*it);
+        double delta = value - mean;
+        mean += delta/n;
+        M2 += delta*(value - mean);
+        variance = M2/(n - 1);
+    }
 
-
+    return std::make_pair(mean,variance);
+}
 
 
 
@@ -90,8 +119,8 @@ std::function<double(double)>  InvLinear = [](double value){ return 1.0; };
 std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
 std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
 
-std::function<double(double)> ReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : 0; };
-std::function<double(double)> InvReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : 0; };
+std::function<double(double)> ReLU = [](double value){ const double margin = 0.0; return value > margin ? value-margin : 0; };
+std::function<double(double)> InvReLU = [](double value){ const double margin = 0.0; return value > margin ? 1.0 : 0; };
 
 std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
 std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
@@ -116,6 +145,40 @@ std::function<double(double)> InvDoubleInvertedGauss = [](double value)
 
 
 
+class Monitoring
+{
+public:
+    struct PlotData
+    {
+        PlotData (bool _useErr) : useErr (_useErr) {}
+        std::vector<double> x;
+        std::vector<double> y;
+        std::vector<double> err;
+        bool useErr;
+        
+        void clear () { x.clear (); y.clear (); err.clear (); }
+    };
+
+
+    typedef std::map<std::string,Gnuplot*> PlotMap;
+    typedef std::map<std::string,PlotData> DataMap;
+
+    virtual ~Monitoring ();
+
+    Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
+    void resetPlot (std::string plotName);
+
+    void addPoint (std::string dataName, double x, double y);
+    void addPoint (std::string dataName, double x, double y, double err);
+    void clearData (std::string dataName);
+
+private:    
+    DataMap::mapped_type& getData (std::string dataName);
+    Gnuplot* getPlot (std::string plotName);
+
+    PlotMap plots;
+    DataMap data;
+};
 
 
 
@@ -215,21 +278,53 @@ void update (ItSource itSource, ItSource itSourceEnd,
 
 
 
+class MinimizerMonitoring
+{
+public:
+    MinimizerMonitoring (Monitoring* pMonitoring = NULL, std::vector<size_t> layerSizes = std::vector<size_t> ());
+
+
+    // plotting
+    Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
+    void resetPlot (std::string plotName);
+    void addPoint (std::string dataName, double x, double y);
+    void addPoint (std::string dataName, double x, double y, double err);
+    void clearData (std::string dataName);
+
+    // plot gradient means and variances
+    template <typename Gradients>
+    void plotGradients (const Gradients& gradients);
+
+
+    // plot weight means and variances
+    template <typename Weights>
+    void plotWeights (const Weights& weights);
+
+
+private:
+    Monitoring* m_pMonitoring;
+    std::vector<size_t> m_layerSizes;
+
+    double m_xGrad;
+    double m_xWeights;
+
+    size_t m_countGrad;
+    size_t m_countWeights;
+};
 
 
 
-
-class Steepest
+class Steepest : public MinimizerMonitoring
 {
 public:
 
     size_t m_repetitions;
 
-    Steepest (double learningRate = 1e-4, double momentum = 0.5, size_t repetitions = 10) 
-	: m_repetitions (repetitions)
-        , m_alpha (learningRate)
-        , m_beta (momentum)
-    {}
+    Steepest (double learningRate = 1e-4, 
+              double momentum = 0.5, 
+              size_t repetitions = 10, 
+              Monitoring* pMonitoring = NULL, 
+              std::vector<size_t> layerSizes = std::vector<size_t> ());
 
     template <typename Function, typename Weights, typename PassThrough>
         double operator() (Function& fitnessFunction, Weights& weights, PassThrough& passThrough);
@@ -238,6 +333,12 @@ public:
     double m_alpha;
     double m_beta;
     std::vector<double> m_prevGradients;
+
+    
+
+private:
+    Monitoring* m_pMonitoring;
+    std::vector<size_t> m_layerSizes;
 };
 
 
@@ -538,17 +639,15 @@ template <typename LAYERDATA>
 
 
 
+
+
 class Settings
 {
 public:
-    typedef std::map<std::string,Gnuplot*> PlotMap;
-    typedef std::map<std::string,std::pair<std::vector<double>,std::vector<double> > > DataXYMap;
-
     Settings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
 	      double _factorWeightDecay = 1e-5, bool isL1Regularization = false, double dropFraction = 0.0,
-	      size_t dropRepetitions = 7);
+	      size_t dropRepetitions = 7, Monitoring* pMonitoring = NULL);
     
-    virtual ~Settings ();
 
     size_t convergenceSteps () const { return m_convergenceSteps; }
     size_t batchSize () const { return m_batchSize; }
@@ -594,12 +693,16 @@ public:
     double m_dropFraction;
     double m_dropRepetitions;
 
-private:    
-    std::pair<std::vector<double>,std::vector<double> >& getData (std::string dataName);
-    Gnuplot* getPlot (std::string plotName);
+private:
 
-    PlotMap plots;
-    DataXYMap dataXY;
+    Monitoring*   m_pMonitoring;
+
+/* private:     */
+/*     std::pair<std::vector<double>,std::vector<double> >& getData (std::string dataName); */
+/*     Gnuplot* getPlot (std::string plotName); */
+
+/*     PlotMap plots; */
+/*     DataXYMap dataXY; */
 
 };
 
@@ -633,8 +736,8 @@ public:
     ClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
 			    double _factorWeightDecay = 1e-5, bool _isL1Regularization = false, 
 			    double _dropFraction = 0.0, size_t _dropRepetitions = 7,
-			    size_t _scaleToNumEvents = 0)
-        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _isL1Regularization, _dropFraction, _dropRepetitions)
+			    size_t _scaleToNumEvents = 0, Monitoring* pMonitoring = NULL)
+        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _isL1Regularization, _dropFraction, _dropRepetitions, pMonitoring)
         , m_ams ()
         , m_sumOfSigWeights (0)
         , m_sumOfBkgWeights (0)

@@ -1,6 +1,6 @@
 
 #include "neuralNet.h"
-
+ 
 
 
 
@@ -635,9 +635,9 @@ void Chess ()
 //    size_t inputSize = trainPattern.front ().input ().size ();
     size_t outputSize = trainPattern.front ().output ().size ();
 
-    net.addLayer (NN::Layer (4, NN::EnumFunction::RELU)); 
-    net.addLayer (NN::Layer (3, NN::EnumFunction::RELU)); 
-    net.addLayer (NN::Layer (2, NN::EnumFunction::RELU)); 
+    net.addLayer (NN::Layer (30, NN::EnumFunction::RELU)); 
+    net.addLayer (NN::Layer (30, NN::EnumFunction::RELU)); 
+//    net.addLayer (NN::Layer (2, NN::EnumFunction::RELU)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
@@ -653,21 +653,32 @@ void Chess ()
 
 #endif
     
-    NN::Steepest minimizer (1e-4, 0.3, 3);
+    NN::Monitoring monitoring;
+    std::vector<size_t> layerSizesForMonitoring;
+
+    size_t inputSize = trainPattern.front ().input ().size ();
+    for (auto& layer : net.layers ())
+    {
+        layerSizesForMonitoring.push_back (layer.numWeights (inputSize));
+        inputSize = layer.numNodes ();
+    }
+
+
+    NN::Steepest minimizer (1e-3, 0.3, 3, &monitoring, layerSizesForMonitoring);
     {
 	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0.0, /*isL1*/false, 
-				     /*dropFraction*/ 0.5, /*dropRepetitions*/ 10, /*scaleToNumEvents*/ 10000);
+                                             /*dropFraction*/ 0.0, /*dropRepetitions*/ 10, /*scaleToNumEvents*/ 10000, &monitoring);
 
     settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
     /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
 
-    NN::Steepest minimizer2 (1e-5, 0.1, 3);
+    NN::Steepest minimizer2 (1e-5, 0.1, 3, &monitoring, layerSizesForMonitoring);
     NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0.0, /*isL1*/false, 
-				     /*dropFraction*/ 0.0, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000);
+                                          /*dropFraction*/ 0.0, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000, &monitoring);
     settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
     /*double E = */net.train (weights, trainPattern, testPattern, minimizer2, settings2);

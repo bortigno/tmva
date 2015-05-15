@@ -118,7 +118,128 @@ void update (ItSource itSource, ItSource itSourceEnd,
 
 
 
+inline MinimizerMonitoring::MinimizerMonitoring (Monitoring* pMonitoring, std::vector<size_t> layerSizes)
+    : m_pMonitoring (pMonitoring)
+    , m_layerSizes (layerSizes)
+    , m_xGrad (0)
+    , m_xWeights (0)
+    , m_countGrad (0)
+    , m_countWeights (0)
+{
+}
 
+
+inline Gnuplot* MinimizerMonitoring::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
+{
+    if (!m_pMonitoring)
+        return NULL;
+    return m_pMonitoring->plot (plotName, subName, dataName, style, smoothing);
+}
+
+
+
+void MinimizerMonitoring::resetPlot (std::string plotName)
+{
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->resetPlot (plotName);
+}
+
+
+inline void MinimizerMonitoring::clearData (std::string dataName)
+{
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->clearData (dataName);
+}
+
+
+
+inline void MinimizerMonitoring::addPoint (std::string dataName, double x, double y)
+{
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->addPoint (dataName, x, y);
+}
+
+inline void MinimizerMonitoring::addPoint (std::string dataName, double x, double y, double err)
+{
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->addPoint (dataName, x, y, err);
+}
+
+
+template <typename Gradients>
+inline void MinimizerMonitoring::plotGradients (const Gradients& gradients)
+{
+    if (m_countGrad % 100 == 0)
+    {
+    int index = 0;
+    for (size_t size : m_layerSizes)
+    {
+        std::pair<double,double> meanVariance = computeMeanVariance (begin (gradients), begin (gradients) + size);
+
+        std::stringstream sstrGrad;
+        sstrGrad << "grad_" << index;
+//        addPoint (sstrGrad.str (), m_xGrad, meanVariance.first, sqrt (meanVariance.second));
+        addPoint (sstrGrad.str (), m_xGrad, sqrt (meanVariance.second));
+        ++index;
+    }
+    ++m_xGrad;
+
+    resetPlot ("gradients");
+    for (int index = 0, indexEnd = m_layerSizes.size (); index < indexEnd; ++index)
+    {
+        std::stringstream sstrGrad;
+        sstrGrad << "grad_" << index;
+        plot ("gradients", sstrGrad.str (), sstrGrad.str (), "lines", "cspline");
+    }
+    }
+    ++m_countGrad;
+}
+
+template <typename Weights>
+inline void MinimizerMonitoring::plotWeights (const Weights& weights)
+{
+    if (m_countWeights % 100 == 0)
+    {
+    int index = 0;
+    for (size_t size : m_layerSizes)
+    {
+        std::pair<double,double> meanVariance = computeMeanVariance (begin (weights), begin (weights) + size);
+
+        std::stringstream sstrWeights;
+        sstrWeights << "weights_" << index;
+//        addPoint (sstrWeights.str (), m_xWeights, meanVariance.first, sqrt (meanVariance.second));
+        addPoint (sstrWeights.str (), m_xWeights, sqrt (meanVariance.second));
+        ++index;
+    }
+    ++m_xWeights;
+
+    resetPlot ("weights");
+    for (int index = 0, indexEnd = m_layerSizes.size (); index < indexEnd; ++index)
+    {
+        std::stringstream sstrWeight;
+        sstrWeight << "weight_" << index;
+        plot ("weights", sstrWeight.str (), sstrWeight.str (), "lines", "cspline");
+    }
+    }
+    ++m_countWeights;
+}
+
+
+Steepest::Steepest (double learningRate, 
+                    double momentum, 
+                    size_t repetitions, 
+                    Monitoring* pMonitoring, 
+                    std::vector<size_t> layerSizes) 
+    : MinimizerMonitoring (pMonitoring, layerSizes)
+    , m_repetitions (repetitions)
+    , m_alpha (learningRate)
+    , m_beta (momentum)
+{
+}
 
 
 
@@ -134,6 +255,10 @@ void update (ItSource itSource, ItSource itSourceEnd,
 
         double Ebase = fitnessFunction (passThrough, weights, gradients);
         double Emin = Ebase;
+
+        plotWeights (weights);
+        plotGradients (gradients);
+
 
         bool success = true;
         size_t currentRepetition = 0;
@@ -158,17 +283,17 @@ void update (ItSource itSource, ItSource itSourceEnd,
             gradients.assign (numWeights, 0.0);
             double E = fitnessFunction (passThrough, localWeights, gradients);
 
+            itLocW = begin (localWeights);
+            itLocWEnd = end (localWeights);
+            auto itW = begin (weights);
+            for (; itLocW != itLocWEnd; ++itLocW, ++itW)
+            {
+                (*itW) = (*itLocW);
+            }
+
             if (E < Emin)
             {
                 Emin = E;
-
-                auto itLocW = begin (localWeights);
-                auto itLocWEnd = end (localWeights);
-                auto itW = begin (weights);
-                for (; itLocW != itLocWEnd; ++itLocW, ++itW)
-                {
-                    (*itW) = (*itLocW);
-                }
                 std::cout << ".";
             }
             else
@@ -760,80 +885,124 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 
 Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
-	      double _factorWeightDecay, bool isL1Regularization, double dropFraction,
-	      size_t dropRepetitions)
-        : m_convergenceSteps (_convergenceSteps)
-        , m_batchSize (_batchSize)
-        , m_testRepetitions (_testRepetitions)
-        , m_factorWeightDecay (_factorWeightDecay)
-	, count_E (0)
-	, count_dE (0)
-	, count_mb_E (0)
-	, count_mb_dE (0)
-        , m_isL1Regularization (isL1Regularization)
-	, m_dropFraction (dropFraction)
-	, m_dropRepetitions (dropRepetitions)
+                    double _factorWeightDecay, bool isL1Regularization, double dropFraction,
+                    size_t dropRepetitions, Monitoring* pMonitoring)
+    : m_convergenceSteps (_convergenceSteps)
+    , m_batchSize (_batchSize)
+    , m_testRepetitions (_testRepetitions)
+    , m_factorWeightDecay (_factorWeightDecay)
+    , count_E (0)
+    , count_dE (0)
+    , count_mb_E (0)
+    , count_mb_dE (0)
+    , m_isL1Regularization (isL1Regularization)
+    , m_dropFraction (dropFraction)
+    , m_dropRepetitions (dropRepetitions)
+    , m_pMonitoring (pMonitoring)
     {
     }
     
-Settings::~Settings () 
+Monitoring::~Monitoring () 
+{
+    for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it)
     {
-        for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it)
-        {
-            delete it->second;
-        }
+        delete it->second;
     }
+}
 
 
+
+
+inline void Monitoring::clearData (std::string dataName)
+{
+    DataMap::mapped_type& data = getData (dataName);
+    data.clear ();
+}
 
 
 inline void Settings::clearData (std::string dataName)
 {
-    std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName);
-
-    std::vector<double>& vecX = data.first;
-    std::vector<double>& vecY = data.second;
-
-    vecX.clear ();
-    vecY.clear ();
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->clearData (dataName);
 }
+
+
+inline void Monitoring::addPoint (std::string dataName, double x, double y)
+{
+    DataMap::mapped_type& data = getData (dataName);
+    data.useErr = false;
+
+    data.x.push_back (x);
+    data.y.push_back (y);
+}
+
+inline void Monitoring::addPoint (std::string dataName, double x, double y, double err)
+{
+    DataMap::mapped_type& data = getData (dataName);
+    data.useErr = true;
+
+    data.x.push_back (x);
+    data.y.push_back (y);
+    data.err.push_back (err);
+}
+
 
 inline void Settings::addPoint (std::string dataName, double x, double y)
 {
-    std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName);
-
-    std::vector<double>& vecX = data.first;
-    std::vector<double>& vecY = data.second;
-
-    vecX.push_back (x);
-    vecY.push_back (y);
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->addPoint (dataName, x, y);
 }
 
 
-inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
+
+inline Gnuplot* Monitoring::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
 {
     Gnuplot* pPlot = getPlot (plotName);
-    std::pair<std::vector<double>,std::vector<double> >& data = getData (dataName);
+    DataMap::mapped_type& data = getData (dataName);
 
-    std::vector<double>& vecX = data.first;
-    std::vector<double>& vecY = data.second;
+    std::vector<double>& vecX = data.x;
+    std::vector<double>& vecY = data.y;
+    std::vector<double>& vecErr = data.err;
 
-    pPlot->set_style(style).set_smooth(smoothing).plot_xy(vecX,vecY,subName);
+    if (vecX.empty ())
+        return pPlot;
+
+    if (data.useErr)
+        pPlot->set_style(style).set_smooth(smoothing).plot_xy_err(vecX,vecY,vecErr,subName);
+    else
+        pPlot->set_style(style).set_smooth(smoothing).plot_xy(vecX,vecY,subName);
     pPlot->unset_smooth ();
 
     return pPlot;
 }
 
 
-void Settings::resetPlot (std::string plotName)
+
+inline Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
+{
+    if (!m_pMonitoring)
+        return NULL;
+    return m_pMonitoring->plot (plotName, subName, dataName, style, smoothing);
+}
+
+
+void Monitoring::resetPlot (std::string plotName)
 {
     Gnuplot* pPlot = getPlot (plotName);
     pPlot->reset_plot ();
 }
 
+void Settings::resetPlot (std::string plotName)
+{
+    if (!m_pMonitoring)
+        return;
+    m_pMonitoring->resetPlot (plotName);
+}
 
 
-inline Gnuplot* Settings::getPlot (std::string plotName)
+inline Gnuplot* Monitoring::getPlot (std::string plotName)
 {
     PlotMap::iterator itPlot = plots.find (plotName);
     if (itPlot == plots.end ())
@@ -848,16 +1017,16 @@ inline Gnuplot* Settings::getPlot (std::string plotName)
 }
 
 
-inline std::pair<std::vector<double>,std::vector<double> >& Settings::getData (std::string dataName)
+inline Monitoring::DataMap::mapped_type& Monitoring::getData (std::string dataName)
 {
-    DataXYMap::iterator itDataXY = dataXY.find (dataName);
-    if (itDataXY == dataXY.end ())
+    DataMap::iterator itData = data.find (dataName);
+    if (itData == data.end ())
     {
-        std::pair<DataXYMap::iterator, bool> result = dataXY.insert (std::make_pair (dataName, std::make_pair(std::vector<double>(),std::vector<double>())));
-        itDataXY = result.first;
+        std::pair<DataMap::iterator, bool> result = data.insert (std::make_pair (dataName, DataMap::mapped_type (false)));
+        itData = result.first;
     }
 
-    return itDataXY->second;
+    return itData->second;
 }
 
 
@@ -1255,10 +1424,10 @@ void ClassificationSettings::startTestCycle ()
             settings.resetPlot ("errors");
             settings.addPoint ("trainErrors", cycleCount, trainError);
             settings.addPoint ("testErrors", cycleCount, testError);
-            settings.plot ("errors", "training", "trainErrors", "points", "");
-            settings.plot ("errors", "training_", "trainErrors", "lines", "cspline");
-            settings.plot ("errors", "test", "testErrors", "points", "");
-            settings.plot ("errors", "test_", "testErrors", "lines", "cspline");
+//            settings.plot ("errors", "training_", "trainErrors", "points", "");
+            settings.plot ("errors", "training", "trainErrors", "lines", "cspline");
+//            settings.plot ("errors", "test_", "testErrors", "points", "");
+            settings.plot ("errors", "test", "testErrors", "lines", "cspline");
 
 
 
