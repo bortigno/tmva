@@ -220,9 +220,9 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
     resetPlot ("weights");
     for (int index = 0, indexEnd = m_layerSizes.size (); index < indexEnd; ++index)
     {
-        std::stringstream sstrWeight;
-        sstrWeight << "weight_" << index;
-        plot ("weights", sstrWeight.str (), sstrWeight.str (), "lines", "cspline");
+        std::stringstream sstrWeights;
+        sstrWeights << "weights_" << index;
+        plot ("weights", sstrWeights.str (), sstrWeights.str (), "lines", "cspline");
     }
     }
     ++m_countWeights;
@@ -255,9 +255,10 @@ Steepest::Steepest (double learningRate,
 
         double Ebase = fitnessFunction (passThrough, weights, gradients);
         double Emin = Ebase;
+        double E = Ebase;
 
-        plotWeights (weights);
-        plotGradients (gradients);
+        /* plotWeights (weights); */
+        /* plotGradients (gradients); */
 
 
         bool success = true;
@@ -267,7 +268,7 @@ Steepest::Steepest (double learningRate,
             if (currentRepetition >= m_repetitions)
                 break;
 
-            double alpha = gaussDouble (m_alpha, m_alpha/2.0);
+            double alpha = m_alpha; //gaussDouble (m_alpha, m_alpha/2.0);
 
             auto itLocW = begin (localWeights);
             auto itLocWEnd = end (localWeights);
@@ -281,7 +282,7 @@ Steepest::Steepest (double learningRate,
                 (*itPrevG) = (*itG);
             }
             gradients.assign (numWeights, 0.0);
-            double E = fitnessFunction (passThrough, localWeights, gradients);
+            E = fitnessFunction (passThrough, localWeights, gradients);
 
             itLocW = begin (localWeights);
             itLocWEnd = end (localWeights);
@@ -300,7 +301,7 @@ Steepest::Steepest (double learningRate,
                 std::cout << "X";
             ++currentRepetition;
         }
-        return Emin;
+        return E;
     }
 
 
@@ -1055,14 +1056,14 @@ void ClassificationSettings::startTestCycle ()
         m_output.clear ();
         m_targets.clear ();
         m_weights.clear ();
-        resetPlot ("roc");
         clearData ("datRoc");
-        resetPlot ("output");
         clearData ("datOutputSig");
         clearData ("datOutputBkg");
-        resetPlot ("amsSig");
         clearData ("datAms");
         clearData ("datSignificance");
+        resetPlot ("roc");
+        resetPlot ("output");
+        resetPlot ("amsSig");
     }
 
     void ClassificationSettings::endTestCycle () 
@@ -1255,24 +1256,75 @@ void ClassificationSettings::startTestCycle ()
 				     ItPat itPatternEnd, 
 				     OutIterator itWeight)
     {
-	// input and output properties
-	int numInput = (*itPatternBegin).inputSize ();
+        if (eInitStrategy == WeightInitializationStrategy::XAVIER)
+        {
+            // input and output properties
+            int numInput = (*itPatternBegin).inputSize ();
 
-	// compute variance and mean of input and output
-	//...
+            // compute variance and mean of input and output
+            //...
 	
 
-	// compute the weights
-	for (auto& layer: layers ())
-	{
-	    double nIn = numInput;
-	    for (size_t iWeight = 0, iWeightEnd = layer.numWeights (numInput); iWeight < iWeightEnd; ++iWeight)
-	    {
-		(*itWeight) = NN::gaussDouble (0.0, sqrt (2.0/nIn)); // factor 2.0 for ReLU
-		++itWeight;
-	    }
-	    numInput = layer.numNodes ();
-	}
+            // compute the weights
+            for (auto& layer: layers ())
+            {
+                double nIn = numInput;
+                for (size_t iWeight = 0, iWeightEnd = layer.numWeights (numInput); iWeight < iWeightEnd; ++iWeight)
+                {
+                    (*itWeight) = NN::gaussDouble (0.0, sqrt (2.0/nIn)); // factor 2.0 for ReLU
+                    ++itWeight;
+                }
+                numInput = layer.numNodes ();
+            }
+            return;
+        }
+
+        if (eInitStrategy == WeightInitializationStrategy::TEST)
+        {
+            // input and output properties
+            int numInput = (*itPatternBegin).inputSize ();
+
+            // compute variance and mean of input and output
+            //...
+	
+
+            // compute the weights
+            for (auto& layer: layers ())
+            {
+//                double nIn = numInput;
+                for (size_t iWeight = 0, iWeightEnd = layer.numWeights (numInput); iWeight < iWeightEnd; ++iWeight)
+                {
+                    (*itWeight) = NN::gaussDouble (0.0, 0.1);
+                    ++itWeight;
+                }
+                numInput = layer.numNodes ();
+            }
+            return;
+        }
+
+        if (eInitStrategy == WeightInitializationStrategy::LAYERSIZE)
+        {
+            // input and output properties
+            int numInput = (*itPatternBegin).inputSize ();
+
+            // compute variance and mean of input and output
+            //...
+	
+
+            // compute the weights
+            for (auto& layer: layers ())
+            {
+                double nIn = numInput;
+                for (size_t iWeight = 0, iWeightEnd = layer.numWeights (numInput); iWeight < iWeightEnd; ++iWeight)
+                {
+                    (*itWeight) = NN::gaussDouble (0.0, sqrt (layer.numWeights (nIn))); // factor 2.0 for ReLU
+                    ++itWeight;
+                }
+                numInput = layer.numNodes ();
+            }
+            return;
+        }
+
     }
 
 
@@ -1282,7 +1334,7 @@ void ClassificationSettings::startTestCycle ()
     template <typename WeightsType>
         void Net::dropOutWeightFactor (const DropContainer& dropContainer, WeightsType& weights, double factor)
     {
-        return;
+//        return;
 	// reduce weights because of dropped nodes
 	// if dropOut enabled
 	if (dropContainer.empty ())
@@ -1331,6 +1383,8 @@ void ClassificationSettings::startTestCycle ()
 		  const std::vector<Pattern>& testPattern, 
                   Minimizer& minimizer, Settings& settings)
     {
+        settings.clearData ("trainErrors");
+        settings.clearData ("testErrors");
         std::cout << "START TRAINING" << std::endl;
         size_t convergenceCount = 0;
         double minError = 1e10;
@@ -1349,7 +1403,7 @@ void ClassificationSettings::startTestCycle ()
             ++cycleCount;
 
 	    // shuffle training pattern
-            std::random_shuffle (begin (trainPattern), end (trainPattern));
+//            std::random_shuffle (begin (trainPattern), end (trainPattern)); // is done in the training cycle
 	    double dropFraction = settings.dropFraction ();
 
 	    // if dropOut enabled
@@ -1736,6 +1790,10 @@ void ClassificationSettings::startTestCycle ()
 		update (prevLayerData, currLayerData, settings.factorWeightDecay ()/sumWeights, settings.isL1 ());
 	    }
 	}
+        
+        double batchSize = std::distance (begin (batch), end (batch));
+        for (auto it = itGradientBegin; it != itGradientEnd; ++it)
+            (*it) /= batchSize;
 
 
 	sumError /= sumWeights;

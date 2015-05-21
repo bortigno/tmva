@@ -119,8 +119,8 @@ std::function<double(double)>  InvLinear = [](double value){ return 1.0; };
 std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
 std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
 
-std::function<double(double)> ReLU = [](double value){ const double margin = 0.0; return value > margin ? value-margin : 0; };
-std::function<double(double)> InvReLU = [](double value){ const double margin = 0.0; return value > margin ? 1.0 : 0; };
+std::function<double(double)> ReLU = [](double value){ const double margin = 0.1; return value > margin ? value-margin : 0; };
+std::function<double(double)> InvReLU = [](double value){ const double margin = 0.1; return value > margin ? 1.0 : 0; };
 
 std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
 std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
@@ -197,21 +197,31 @@ typedef std::vector<char> DropContainer;
 class Batch 
 {
 public:
-    
+    typedef typename std::vector<Pattern>::const_iterator const_iterator;
+
     Batch (typename std::vector<Pattern>::const_iterator itBegin, typename std::vector<Pattern>::const_iterator itEnd)
 	: m_itBegin (itBegin)
 	, m_itEnd (itEnd)
     {}
 
-    typename std::vector<Pattern>::const_iterator begin () const { return m_itBegin; }
-    typename std::vector<Pattern>::const_iterator end   () const { return m_itEnd; }
+    const_iterator begin () const { return m_itBegin; }
+    const_iterator end   () const { return m_itEnd; }
 
 private:
-    typename std::vector<Pattern>::const_iterator m_itBegin;
-    typename std::vector<Pattern>::const_iterator m_itEnd;
+    const_iterator m_itBegin;
+    const_iterator m_itEnd;
 };
 
 
+typename Batch::const_iterator begin (const Batch& batch)
+{
+    return batch.begin ();
+}
+
+typename Batch::const_iterator end (const Batch& batch)
+{
+    return batch.end ();
+}
 
 
 
@@ -804,7 +814,7 @@ enum class ModeErrorFunction
 
 enum class WeightInitializationStrategy
 {
-    XAVIER, TEST
+    XAVIER, TEST, LAYERSIZE
 };
 
 
