@@ -1344,16 +1344,17 @@ void ClassificationSettings::startTestCycle ()
 	auto itWeight = begin (weights);
 	auto itDrop = begin (dropContainer);
 	for (auto itLayer = begin (m_layers), itLayerEnd = end (m_layers)-1; itLayer != itLayerEnd; ++itLayer)
+//	for (auto itLayer = begin (m_layers), itLayerEnd = end (m_layers); itLayer != itLayerEnd; ++itLayer)
 	{
 	    auto& layer = *itLayer;
 	    auto& nextLayer = *(itLayer+1);
-	    // in the first and last layer, all the nodes are always on
-	    if (itLayer == begin (m_layers)) // is first layer
-	    {
-		itDrop += layer.numNodes ();
-		itWeight += layer.numNodes () * nextLayer.numNodes ();
-		continue;
-	    }
+	    /* // in the first and last layer, all the nodes are always on */
+	    /* if (itLayer == begin (m_layers)) // is first layer */
+	    /* { */
+	    /*     itDrop += layer.numNodes (); */
+	    /*     itWeight += layer.numNodes () * nextLayer.numNodes (); */
+	    /*     continue; */
+	    /* } */
 
 	    auto itLayerDrop = itDrop;
 	    for (size_t i = 0, iEnd = layer.numNodes (); i < iEnd; ++i)
@@ -1373,6 +1374,14 @@ void ClassificationSettings::startTestCycle ()
 		++itLayerDrop;
 	    }
 	}
+        std::cout << std::endl;
+        std::cout << "drop out fraction " << factor << std::endl;
+        for (char c : dropContainer)
+        {
+            std::cout << ((short)c);
+        }
+        std::cout << std::endl;
+        std::copy (dropContainer.begin (), dropContainer.end (), std::ostream_iterator<short>(std::cout, ""));
     }
 
 
@@ -1405,6 +1414,7 @@ void ClassificationSettings::startTestCycle ()
 	    // shuffle training pattern
 //            std::random_shuffle (begin (trainPattern), end (trainPattern)); // is done in the training cycle
 	    double dropFraction = settings.dropFraction ();
+            std::cout << "train cycle drop fraction = " << dropFraction << std::endl;
 
 	    // if dropOut enabled
             if (dropFraction > 0 && dropOutChangeCount % settings.dropRepetitions () == 0)
@@ -1430,7 +1440,8 @@ void ClassificationSettings::startTestCycle ()
 		    // shuffle 
 		    std::random_shuffle (end (dropContainer)-layer.numNodes (), end (dropContainer)); // shuffle enabled and disabled markers
 		}
-		dropOutWeightFactor (dropContainer, weights, 1.0/dropFraction);
+		if (dropOutChangeCount > 0)
+                    dropOutWeightFactor (dropContainer, weights, 1.0/dropFraction);
 	    }
 
 	    // execute training cycle

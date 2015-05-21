@@ -119,8 +119,8 @@ std::function<double(double)>  InvLinear = [](double value){ return 1.0; };
 std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
 std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
 
-std::function<double(double)> ReLU = [](double value){ const double margin = 0.1; return value > margin ? value-margin : 0; };
-std::function<double(double)> InvReLU = [](double value){ const double margin = 0.1; return value > margin ? 1.0 : 0; };
+std::function<double(double)> ReLU = [](double value){ const double margin = 0.0; return value > margin ? value-margin : 0; };
+std::function<double(double)> InvReLU = [](double value){ const double margin = 0.0; return value > margin ? 1.0 : 0; };
 
 std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
 std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
