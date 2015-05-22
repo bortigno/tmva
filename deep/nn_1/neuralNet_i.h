@@ -129,7 +129,11 @@ inline MinimizerMonitoring::MinimizerMonitoring (Monitoring* pMonitoring, std::v
 }
 
 
-inline Gnuplot* MinimizerMonitoring::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
+inline Gnuplot* MinimizerMonitoring::plot (std::string plotName, 
+					   std::string subName, 
+					   std::string dataName, 
+					   std::string style, 
+					   std::string smoothing)
 {
     if (!m_pMonitoring)
         return NULL;

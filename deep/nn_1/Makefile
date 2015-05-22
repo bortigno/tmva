@@ -1,7 +1,7 @@
 
 CC=g++
 #CC=clang++
-CFLAGS=-Wl,--no-as-needed -Wall -std=c++11 -O0 -ggdb -lpthread
+CFLAGS=-Wl,--no-as-needed -Wall -std=c++11 -O4 -ggdb -lpthread
 LDFLAGS=-ggdb -lpthread
 SOURCES=nn_main.cpp
 OBJECTS=$(SOURCES:.cpp=.o)

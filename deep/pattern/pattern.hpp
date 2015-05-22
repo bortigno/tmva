@@ -174,9 +174,9 @@ auto parseLine (std::ifstream& infile, size_t idxLabel) -> std::vector<T>
         if (idx == idxLabel)
         {
             if (token == "s")
-                value = 1.0;
+                value = 0.9;
             else 
-                value = -1.0;
+                value = 0.1;
         }
         else
         {
@@ -241,7 +241,8 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
         values.at (0) = 1.0; // replace the ID by the bias node (value = 1)
 //	for_each (begin (values), end (values), [](double& v){ v = v < -990 ? 0 : v; } );
 
-	auto beginValues = begin (values)+1; // +1 because of ID
+//	auto beginValues = begin (values)+1; // +1 because of ID
+	auto beginValues = begin (values); // we replaced the ID by one (== bias node)
 	auto endValues = begin (values) + idxWeight;
 	auto beginOutput = begin (values) + idxLabel; 
 	auto endOutput = beginOutput + 1;
