@@ -177,7 +177,7 @@ inline void MinimizerMonitoring::addPoint (std::string dataName, double x, doubl
 template <typename Gradients>
 inline void MinimizerMonitoring::plotGradients (const Gradients& gradients)
 {
-    if (m_countGrad % 100 == 0)
+    if (m_countGrad % 1000 == 0)
     {
     int index = 0;
     for (size_t size : m_layerSizes)
@@ -206,7 +206,7 @@ inline void MinimizerMonitoring::plotGradients (const Gradients& gradients)
 template <typename Weights>
 inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 {
-    if (m_countWeights % 100 == 0)
+    if (m_countWeights % 1000 == 0)
     {
     int index = 0;
     for (size_t size : m_layerSizes)
@@ -262,7 +262,7 @@ Steepest::Steepest (double learningRate,
         double E = Ebase;
 
         /* plotWeights (weights); */
-        /* plotGradients (gradients); */
+        plotGradients (gradients);
 
 
         bool success = true;
