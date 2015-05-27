@@ -669,19 +669,19 @@ void Chess ()
 
     NN::Steepest minimizer (1e-1, 0.3, 3, &monitoring, layerSizesForMonitoring);
     {
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 50, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0e-3, /*isL1*/false, 
-                                             /*dropFraction*/ 0.5, /*dropRepetitions*/ 10, /*scaleToNumEvents*/ 10000, &monitoring);
+                                             /*dropFraction*/ 0.3, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000, &monitoring);
 
     settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
     /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
 
-    NN::Steepest minimizer2 (1e-3, 0.1, 3, &monitoring, layerSizesForMonitoring);
+    NN::Steepest minimizer2 (1e-2, 0.1, 3, &monitoring, layerSizesForMonitoring);
     NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 20, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0.001, /*isL1*/true, 
-                                          /*dropFraction*/ 0.0, /*dropRepetitions*/ 10, /*scaleToNumEvents*/ 10000, &monitoring);
+                                          /*dropFraction*/ 0.0, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000, &monitoring);
     settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
     /*double E = */net.train (weights, trainPattern, testPattern, minimizer2, settings2);
