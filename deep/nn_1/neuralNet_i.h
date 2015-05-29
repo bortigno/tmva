@@ -1336,56 +1336,13 @@ void ClassificationSettings::startTestCycle ()
 
 
     template <typename WeightsType>
-        void Net::dropOutWeightFactor (const DropContainer& dropContainer, WeightsType& weights, double factor)
+        void Net::dropOutWeightFactor (WeightsType& weights, double factor)
     {
-//        return;
-	// reduce weights because of dropped nodes
-	// if dropOut enabled
-	if (dropContainer.empty ())
-	    return;
-
-	// fill the dropOut-container
-	auto itWeight = begin (weights);
-	auto itDrop = begin (dropContainer);
-	for (auto itLayer = begin (m_layers), itLayerEnd = end (m_layers)-1; itLayer != itLayerEnd; ++itLayer)
-//	for (auto itLayer = begin (m_layers), itLayerEnd = end (m_layers); itLayer != itLayerEnd; ++itLayer)
-	{
-	    auto& layer = *itLayer;
-	    auto& nextLayer = *(itLayer+1);
-	    /* // in the first and last layer, all the nodes are always on */
-	    /* if (itLayer == begin (m_layers)) // is first layer */
-	    /* { */
-	    /*     itDrop += layer.numNodes (); */
-	    /*     itWeight += layer.numNodes () * nextLayer.numNodes (); */
-	    /*     continue; */
-	    /* } */
-
-	    auto itLayerDrop = itDrop;
-	    for (size_t i = 0, iEnd = layer.numNodes (); i < iEnd; ++i)
-	    {
-		auto itNextDrop = itDrop + layer.numNodes ();
-	    
-		bool drop = (*itLayerDrop);
-		for (size_t j = 0, jEnd = nextLayer.numNodes (); j < jEnd; ++j)
-		{
-		    if (drop && (*itNextDrop))
-		    {
-			(*itWeight) *= factor;
-		    }
-		    ++itWeight;
-		    ++itNextDrop;
-		}
-		++itLayerDrop;
-	    }
-	}
-        std::cout << std::endl;
-        std::cout << "drop out fraction " << factor << std::endl;
-        for (char c : dropContainer)
-        {
-            std::cout << ((short)c);
-        }
-        std::cout << std::endl;
-        std::copy (dropContainer.begin (), dropContainer.end (), std::ostream_iterator<short>(std::cout, ""));
+        std::for_each (std::begin (weights), std::end (weights), [factor](double& w) 
+                           { 
+                               w *= factor;
+                           }
+                );
     }
 
 
@@ -1408,6 +1365,8 @@ void ClassificationSettings::startTestCycle ()
         size_t dropOutChangeCount = 0;
 
 	DropContainer dropContainer;
+	DropContainer dropContainerTest;
+        double dropFraction = settings.dropFraction ();
 
         // until convergence
         do
@@ -1423,8 +1382,8 @@ void ClassificationSettings::startTestCycle ()
 	    // if dropOut enabled
             if (dropFraction > 0 && dropOutChangeCount % settings.dropRepetitions () == 0)
 	    {
-		if (dropOutChangeCount > 0)
-		    dropOutWeightFactor (dropContainer, weights, dropFraction);
+		/* if (dropOutChangeCount > 0) */
+		/*     dropOutWeightFactor (dropContainer, weights, dropFraction); */
 
 		// fill the dropOut-container
 		dropContainer.clear ();
@@ -1432,20 +1391,23 @@ void ClassificationSettings::startTestCycle ()
 		{
 		    auto& layer = *itLayer;
 		    // in the first and last layer, all the nodes are always on
-		    if (itLayer == begin (m_layers) || itLayer == end (m_layers)-1) // is first layer or is last layer
-		    {
-			dropContainer.insert (end (dropContainer), layer.numNodes (), true);
-			continue;
-		    }
+//		    if (itLayer == begin (m_layers) || itLayer == end (m_layers)-1) // is first layer or is last layer
+		    /* if (itLayer == end (m_layers)-1) // is first layer or is last layer */
+		    /* { */
+		    /*     dropContainer.insert (end (dropContainer), layer.numNodes (), true); */
+		    /*     continue; */
+		    /* } */
 		    // how many nodes have to be dropped
 		    size_t numDrops = settings.dropFraction () * layer.numNodes ();
+                    if (numDrops >= layer.numNodes ()) // maintain at least one node
+                        numDrops = layer.numNodes () - 1;
 		    dropContainer.insert (end (dropContainer), layer.numNodes ()-numDrops, true); // add the markers for the nodes which are enabled
 		    dropContainer.insert (end (dropContainer), numDrops, false); // add the markers for the disabled nodes
 		    // shuffle 
 		    std::random_shuffle (end (dropContainer)-layer.numNodes (), end (dropContainer)); // shuffle enabled and disabled markers
 		}
-		if (dropOutChangeCount > 0)
-                    dropOutWeightFactor (dropContainer, weights, 1.0/dropFraction);
+		/* if (dropOutChangeCount > 0) */
+                /*     dropOutWeightFactor (dropContainer, weights, 1.0/dropFraction); */
 	    }
 
 	    // execute training cycle
@@ -1456,10 +1418,9 @@ void ClassificationSettings::startTestCycle ()
 	    // check if we execute a test
             if (testCycleCount % settings.testRepetitions () == 0)
             {
-		if (dropOutChangeCount > 0)
-		    dropOutWeightFactor (dropContainer, weights, dropFraction);
+                dropOutWeightFactor (weights, 1.0 - dropFraction);
 
-		dropContainer.clear (); // execute test on all the nodes
+//		dropContainer.clear (); // execute test on all the nodes
                 testError = 0;
                 double weightSum = 0;
                 settings.startTestCycle ();
@@ -1470,7 +1431,7 @@ void ClassificationSettings::startTestCycle ()
                     double weight = p.weight ();
                     Batch batch (it, it+1);
                     output.clear ();
-		    std::tuple<Settings&, Batch&, DropContainer&> passThrough (settings, batch, dropContainer);
+		    std::tuple<Settings&, Batch&, DropContainer&> passThrough (settings, batch, dropContainerTest);
                     double testPatternError = (*this) (passThrough, weights, ModeOutput::FETCH, output);
                     if (output.size () == 1)
 		    {
@@ -1483,6 +1444,8 @@ void ClassificationSettings::startTestCycle ()
                 testError /= weightSum;
 
 		settings.computeResult (*this, weights);
+
+                dropOutWeightFactor (weights, 1.0/(1.0 - dropFraction));
             }
             ++testCycleCount;
 	    ++dropOutChangeCount;
@@ -1513,8 +1476,6 @@ void ClassificationSettings::startTestCycle ()
 
 	    if (convergenceCount >= settings.convergenceSteps ())
 	    {
-		if (dropOutChangeCount > 0)
-		    dropOutWeightFactor (dropContainer, weights, dropFraction);
 		break;
 	    }
 
@@ -1523,6 +1484,7 @@ void ClassificationSettings::startTestCycle ()
         }
 	while (true);
 
+        dropOutWeightFactor (weights, 1.0 - dropFraction);
         std::cout << "END TRAINING" << std::endl;
         return testError;
     }

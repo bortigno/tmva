@@ -667,11 +667,11 @@ void Chess ()
     }
 
 
-    NN::Steepest minimizer (1e-1, 0.3, 3, &monitoring, layerSizesForMonitoring);
+    NN::Steepest minimizer (1e-1, 0.3, 1, &monitoring, layerSizesForMonitoring);
     {
 	NN::ClassificationSettings settings (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0e-3, /*isL1*/false, 
-                                             /*dropFraction*/ 0.3, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000, &monitoring);
+                                             /*dropFraction*/ 0.5, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000, &monitoring);
 
     settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);

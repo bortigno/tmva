@@ -839,7 +839,7 @@ public:
     
 
     template <typename WeightsType>
-        void dropOutWeightFactor (const DropContainer& dropContainer, WeightsType& weights, double factor);
+        void dropOutWeightFactor (WeightsType& weights, double factor);
 
     template <typename Minimizer>
     double train (std::vector<double>& weights, 
