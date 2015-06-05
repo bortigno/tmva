@@ -667,7 +667,8 @@ void Chess ()
     }
 
 
-    NN::Steepest minimizer (1e-1, 0.3, 1, &monitoring, layerSizesForMonitoring);
+    typedef NN::SteepestThreaded LocalMinimizer;
+    LocalMinimizer minimizer (1e-1, 0.3, 4, &monitoring, layerSizesForMonitoring);
     {
 	NN::ClassificationSettings settings (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0e-3, /*isL1*/false, 
@@ -678,7 +679,7 @@ void Chess ()
     /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
 
-    NN::Steepest minimizer2 (1e-2, 0.1, 3, &monitoring, layerSizesForMonitoring);
+    LocalMinimizer minimizer2 (1e-2, 0.1, 4, &monitoring, layerSizesForMonitoring);
     NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 20, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 0.001, /*isL1*/true, 
                                           /*dropFraction*/ 0.0, /*dropRepetitions*/ 1, /*scaleToNumEvents*/ 10000, &monitoring);

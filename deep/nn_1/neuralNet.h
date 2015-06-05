@@ -360,17 +360,13 @@ private:
 
 
 // test multithreaded training
-class SteepestThreaded
+class SteepestThreaded : public MinimizerMonitoring
 {
 public:
 
     size_t m_repetitions;
 
-    SteepestThreaded (double learningRate = 1e-4, double learningRatePrev = 1e-4, size_t repetitions = 10) 
-	: m_repetitions (repetitions)
-        , m_alpha (learningRate)
-        , m_beta (learningRatePrev)
-    {}
+    SteepestThreaded (double learningRate = 1e-4, double learningRatePrev = 1e-4, size_t repetitions = 10, Monitoring* pMonitoring = NULL, std::vector<size_t> layerSizes = std::vector<size_t> ()); 
 
 
     template <typename Function, typename Weights, typename Gradients, typename PassThrough>

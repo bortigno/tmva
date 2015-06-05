@@ -1,4 +1,6 @@
 
+#include <tuple>
+
 
 namespace NN
 {
@@ -310,6 +312,17 @@ Steepest::Steepest (double learningRate,
 
 
 
+    SteepestThreaded::SteepestThreaded (double learningRate, 
+                                        double momentum, 
+                                        size_t repetitions, 
+                                        Monitoring* pMonitoring, 
+                                        std::vector<size_t> layerSizes) 
+        : MinimizerMonitoring (pMonitoring, layerSizes)
+        , m_repetitions (repetitions)
+        , m_alpha (learningRate)
+        , m_beta (momentum)
+    {
+    }
 
 
     template <typename Function, typename Weights, typename Gradients, typename PassThrough>
@@ -332,13 +345,12 @@ Steepest::Steepest (double learningRate,
 
         fitnessFunction (passThrough, weights, gradients);
 
-        std::vector<std::future<double> > futures;
-        std::vector<std::pair<double,double> > factors;
+        std::vector<std::future<std::tuple<double, double, double> > > futures;
         for (size_t i = 0; i < m_repetitions; ++i)
         {
             std::vector<double> tmpWeights (weights);
-            double alpha = gaussDouble (m_alpha, m_beta);
-            double beta  = gaussDouble (m_alpha, m_beta);
+            double alpha = m_alpha*(i+1);
+            double beta  = m_beta;
             auto itGradient = begin (gradients);
             auto itPrevGradient = begin (m_prevGradients);
             std::for_each (begin (tmpWeights), end (tmpWeights), [alpha,beta,&itGradient,&itPrevGradient](double& w) 
@@ -353,30 +365,34 @@ Steepest::Steepest (double learningRate,
 	    // cannot be deduced correctly. Through the lambda function, the types are 
             // already deduced correctly for the lambda function and the async. The deduction for 
 	    // the template function is then done from within the lambda function. 
-	    futures.push_back (std::async (std::launch::async, [&fitnessFunction, &passThrough, tmpWeights]() mutable 
-					   {  
-					       return fitnessFunction (passThrough, tmpWeights); 
+	    futures.push_back (std::async (std::launch::async, [&fitnessFunction, &passThrough, tmpWeights, alpha, beta]() mutable 
+					   {
+                                               double Elocal = fitnessFunction (passThrough, tmpWeights);
+                                               std::tuple<double,double,double> ret (Elocal, alpha, beta);
+					       return ret;
 					   }) );
 
-            factors.push_back (std::make_pair (alpha,beta));
         }
 
         // select best
-        double bestAlpha = m_alpha, bestBeta = 0.0;
-        auto itE = begin (futures);
+        double bestAlpha = 0.0, bestBeta = 0.0;
         double bestE = 1e100;
-        for (auto& alphaBeta : factors)
+        for (auto& futureEAlphaBeta : futures)
         {
-            double E = (*itE).get ();
+            std::tuple<double,double,double> EAlphaBeta = futureEAlphaBeta.get ();
+            double E = std::get<0>(EAlphaBeta);
+            double alpha =std::get<1>(EAlphaBeta);
+            double beta = std::get<2>(EAlphaBeta);
             if (E < bestE)
             {
-                bestAlpha = alphaBeta.first;
-                bestBeta = alphaBeta.second;
+                bestAlpha = alpha;
+                bestBeta = beta;
                 bestE = E;
             }
-            ++itE;
         }
 
+        assert (bestE < 1e10);
+        
         // walk this way
         auto itGradient = begin (gradients);
         auto itPrevGradient = begin (m_prevGradients);
