@@ -30,9 +30,11 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
 
 #ifndef _GNUPLOT_PIPES_H_
 #define _GNUPLOT_PIPES_H_
+
 
 
 #include <iostream>
@@ -173,7 +175,7 @@ class Gnuplot
 		///
 		/// \return ---
 		// ----------------------------------------------------------------------------
-        static void set_terminal_std(const std::string &type);
+//        static void set_terminal_std(const std::string &type);
 
     	//-----------------------------------------------------------------------------
     	// constructors
@@ -888,19 +890,19 @@ bool Gnuplot::set_GNUPlotPath(const std::string &path)
 // define static member function: set standart terminal, used by showonscreen
 //  defaults: Windows - win, Linux - x11, Mac - aqua
 //
-void Gnuplot::set_terminal_std(const std::string &type)
-{
-#if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-    if (type.find("x11") != std::string::npos && getenv("DISPLAY") == NULL)
-    {
-        throw GnuplotException("Can't find DISPLAY variable");
-    }
-#endif
+// void Gnuplot::set_terminal_std(const std::string &type)
+// {
+// #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
+//     if (type.find("x11") != std::string::npos && getenv("DISPLAY") == NULL)
+//     {
+//         throw GnuplotException("Can't find DISPLAY variable");
+//     }
+// #endif
 
 
-    Gnuplot::terminal_std = type;
-    return;
-}
+//     Gnuplot::terminal_std = type;
+//     return;
+// }
 
 
 //------------------------------------------------------------------------------

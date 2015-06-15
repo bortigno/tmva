@@ -1,3 +1,8 @@
+#ifndef __NEURAL_NET__H
+#define __NEURAL_NET__H
+#pragma once
+
+
 #include <vector>
 #include <iostream>
 #include <algorithm>
@@ -10,7 +15,11 @@
 #include <thread>
 #include <future>
 //#include <boost/iterator/zip_iterator.hpp>
-#include "../gnuplotWrapper/gnuplot_i.hpp" //Gnuplot class handles POSIX-Pipe-communikation with Gnuplot
+#include <map>
+
+
+class Gnuplot;
+
 
 
 #include <fenv.h>
@@ -23,25 +32,18 @@ namespace NN
 {
 
     double gaussDouble (double mean, double sigma);
+    double studenttDouble (double distributionParameter);
+    int randomInt (int maxValue);
+    double uniformDouble (double minValue, double maxValue);
+    
+template <typename Container, typename T>
+    void uniform (Container& container, T maxValue);
+
+template <typename Container, typename T>
+    void gaussDistribution (Container& container, T mean, T sigma);
 
 
-// hilfsfunktion um auf einen tastenDruck zu warten
-void wait_for_key ()
-{
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__TOS_WIN__)  // every keypress registered, also arrow keys
-    std::cout << std::endl << "Press any key to continue..." << std::endl;
 
-    FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
-    _getch();
-#elif defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-    std::cout << std::endl << "Press ENTER to continue..." << std::endl;
-
-    std::cin.clear();
-    std::cin.ignore(std::cin.rdbuf()->in_avail());
-    std::cin.get();
-#endif
-    return;
-}
 
 
 /* template <typename Iterator> */
@@ -67,6 +69,10 @@ template <typename Iterator>
     double variance = 0.0;
 
     size_t n = std::distance (begin, end);
+    if (n == 0)
+        return std::make_pair (0.0,0.0);
+    if (n == 1)
+        return std::make_pair (*begin,0.0);
     for (Iterator it = begin; it != end; ++it)
     {
         double value = (*it);
@@ -104,45 +110,12 @@ enum class EnumFunction
     DOUBLEINVERTEDGAUSS = 'D'
 };
 
-std::function<double(double)> ZeroFnc = [](double value){ return 0; };
 
 
-std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
-std::function<double(double)> InvSigmoid = [](double value){ double s = Sigmoid (value); return s*(1.0-s); };
-
-std::function<double(double)> Tanh = [](double value){ return tanh (value); };
-std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
-
-std::function<double(double)> Linear = [](double value){ return value; };
-std::function<double(double)>  InvLinear = [](double value){ return 1.0; };
-
-std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
-std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
-
-std::function<double(double)> ReLU = [](double value){ const double margin = 0.0; return value > margin ? value-margin : 0; };
-std::function<double(double)> InvReLU = [](double value){ const double margin = 0.0; return value > margin ? 1.0 : 0; };
-
-std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
-std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
-
-std::function<double(double)> TanhShift = [](double value){ return tanh (value-0.3); };
-std::function<double(double)> InvTanhShift = [](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); };
-
-std::function<double(double)> SoftSign = [](double value){ return value / (1.0 + fabs (value)); };
-std::function<double(double)> InvSoftSign = [](double value){ return std::pow ((1.0 - fabs (value)),2.0); };
-
-std::function<double(double)> Gauss = [](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); };
-std::function<double(double)> InvGauss = [](double value){ const double s = 6.0; return -2.0 * value * s*s * Gauss (value); };
-
-std::function<double(double)> GaussComplement = [](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0));; };
-std::function<double(double)> InvGaussComplement = [](double value){ const double s = 6.0; return +2.0 * value * s*s * GaussComplement (value); };
-
-std::function<double(double)> DoubleInvertedGauss = [](double value)
-{ const double s = 8.0; const double shift = 0.1; return exp (-std::pow((value-shift)*s,2.0)) - exp (-std::pow((value+shift)*s,2.0)); };
-std::function<double(double)> InvDoubleInvertedGauss = [](double value)
-{ const double s = 8.0; const double shift = 0.1; return -2.0 * (value-shift) * s*s * DoubleInvertedGauss (value-shift) + 2.0 * (value+shift) * s*s * DoubleInvertedGauss (value+shift);  };
-
-
+enum class EnumRegularization
+{
+    NONE, L1, L2, L1MAX
+};
 
 
 class Monitoring
@@ -185,7 +158,6 @@ private:
 class Net;
 
 
-static void write (std::string fileName, const Net& net, const std::vector<double>& weights);
 
 
 
@@ -213,15 +185,6 @@ private:
 };
 
 
-typename Batch::const_iterator begin (const Batch& batch)
-{
-    return batch.begin ();
-}
-
-typename Batch::const_iterator end (const Batch& batch)
-{
-    return batch.end ();
-}
 
 
 
@@ -255,7 +218,7 @@ void update (ItSource itSource, ItSource itSourceEnd,
 
 
 
-template <bool isL1, typename ItSource, typename ItDelta, typename ItTargetGradient, typename ItGradient, typename ItWeight>
+template <EnumRegularization Regularization, typename ItSource, typename ItDelta, typename ItTargetGradient, typename ItGradient, typename ItWeight>
 void update (ItSource itSource, ItSource itSourceEnd, 
 	     ItDelta itTargetDeltaBegin, ItDelta itTargetDeltaEnd, 
 	     ItTargetGradient itTargetGradientBegin, 
@@ -641,9 +604,7 @@ template <typename LAYERDATA>
 
 
 template <typename LAYERDATA>
-    void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double weightDecay, bool isL1);
-
-
+    void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double weightDecay, EnumRegularization regularization);
 
 
 
@@ -651,17 +612,19 @@ class Settings
 {
 public:
     Settings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
-	      double _factorWeightDecay = 1e-5, bool isL1Regularization = false, double dropFraction = 0.0,
-	      size_t dropRepetitions = 7, Monitoring* pMonitoring = NULL);
-    
+	      double _factorWeightDecay = 1e-5, NN::EnumRegularization _regularization = NN::EnumRegularization::NONE, Monitoring* pMonitoring = NULL);
+
+    template <typename Iterator>
+        void setDropOut (Iterator begin, Iterator end, size_t dropRepetitions) { m_dropOut.assign (begin, end); m_dropRepetitions = dropRepetitions; }
+
+    size_t dropRepetitions () const { return m_dropRepetitions; }
+    const std::vector<double>& dropFractions () const { return m_dropOut; }
 
     size_t convergenceSteps () const { return m_convergenceSteps; }
     size_t batchSize () const { return m_batchSize; }
     size_t testRepetitions () const { return m_testRepetitions; }
     double factorWeightDecay () const { return m_factorWeightDecay; }
 
-    size_t dropRepetitions () const { return m_dropRepetitions; }
-    double dropFraction () const { return m_dropFraction; }
 
     Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
     void resetPlot (std::string plotName);
@@ -671,6 +634,8 @@ public:
     void addPoint (std::string dataName, double x, double y);
 
     virtual void testSample (double error, double output, double target, double weight) {}
+    virtual void startTrainCycle () {}
+    virtual void endTrainCycle (double /*error*/) {}
 
     
     virtual void startTestCycle () {}
@@ -681,7 +646,7 @@ public:
 
     void clearData (std::string dataName);
 
-    bool isL1 () const { return m_isL1Regularization; }
+    EnumRegularization regularization () const { return m_regularization; }
 
 public:
     size_t m_convergenceSteps;
@@ -694,21 +659,14 @@ public:
     size_t count_mb_E;
     size_t count_mb_dE;
 
-    bool m_isL1Regularization;
+    EnumRegularization m_regularization;
 
-    double m_dropFraction;
     double m_dropRepetitions;
+    std::vector<double> m_dropOut;
 
 private:
 
     Monitoring*   m_pMonitoring;
-
-/* private:     */
-/*     std::pair<std::vector<double>,std::vector<double> >& getData (std::string dataName); */
-/*     Gnuplot* getPlot (std::string plotName); */
-
-/*     PlotMap plots; */
-/*     DataXYMap dataXY; */
 
 };
 
@@ -740,10 +698,8 @@ class ClassificationSettings : public Settings
 {
 public:
     ClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
-			    double _factorWeightDecay = 1e-5, bool _isL1Regularization = false, 
-			    double _dropFraction = 0.0, size_t _dropRepetitions = 7,
-			    size_t _scaleToNumEvents = 0, Monitoring* pMonitoring = NULL)
-        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _isL1Regularization, _dropFraction, _dropRepetitions, pMonitoring)
+			    double _factorWeightDecay = 1e-5, EnumRegularization _regularization = EnumRegularization::NONE, size_t _scaleToNumEvents = 0, Monitoring* pMonitoring = NULL)
+        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _regularization, pMonitoring)
         , m_ams ()
         , m_sumOfSigWeights (0)
         , m_sumOfBkgWeights (0)
@@ -762,7 +718,6 @@ public:
     void testSample (double error, double output, double target, double weight);
 
     virtual void startTestCycle ();
-
     virtual void endTestCycle ();
 
 
@@ -804,13 +759,13 @@ enum class ModeOutput
 enum class ModeErrorFunction
 {
     SUMOFSQUARES = 'S',
-	CROSSENTROPY = 'C',
+    CROSSENTROPY = 'C',
     CROSSENTROPY_MUTUALEXCLUSIVE = 'M'
 };
 
 enum class WeightInitializationStrategy
 {
-    XAVIER, TEST, LAYERSIZE
+    XAVIER, TEST, LAYERSIZE, XAVIERUNIFORM
 };
 
 
@@ -834,8 +789,10 @@ public:
     void setErrorFunction (ModeErrorFunction eErrorFunction) { m_eErrorFunction = eErrorFunction; }
     
 
-    template <typename WeightsType>
-        void dropOutWeightFactor (WeightsType& weights, double factor);
+    template <typename WeightsType, typename DropProbabilities>
+        void dropOutWeightFactor (WeightsType& weights,
+                                  const DropProbabilities& drops, 
+                                  bool inverse = false);
 
     template <typename Minimizer>
     double train (std::vector<double>& weights, 
@@ -889,6 +846,14 @@ public:
     std::vector<Layer>& layers ()  { return m_layers; }
 
 
+
+    void clear () 
+    {
+        m_layers.clear ();
+	m_eErrorFunction = ModeErrorFunction::SUMOFSQUARES;
+    }
+
+
     template <typename ItPat, typename OutIterator>
     void initializeWeights (WeightInitializationStrategy eInitStrategy, 
 			    ItPat itPatternBegin, 
@@ -913,106 +878,11 @@ private:
 
 
 
-std::ostream& operator<< (std::ostream& ostr, Net const& net)
-{
-    ostr << "NET" << std::endl;
-    for (Layer const& layer : net.m_layers)
-    {
-	ostr << layer.write ();
-	ostr << std::endl;
-    }
-    ostr << std::endl;
-    return ostr;
-}
+std::ostream& operator<< (std::ostream& ostr, Net const& net);
 
-
-std::istream& read (std::istream& istr, Net& net)
-{
-    // net
-    std::string line, key;
-    if (!getline (istr, line)) // "NET"
-        return istr;
-
-    if (line != "===NET===")
-	return istr;
-
-    while (istr.good ())
-    {
-	if (!getline (istr, line))
-	    return istr;
-
-	std::istringstream ss_line (line);
-	std::getline(ss_line, key, '=');
- 
-	if (key == "ERRORFUNCTION")
-	{
-	    char errorFnc;
-	    ss_line >> errorFnc;
-	    net.setErrorFunction (ModeErrorFunction (errorFnc));
-	}
-	else if (line == "---LAYER---")
-	    net.addLayer (readLayer (istr));
-	else
-	    return istr;
-    }
-    return istr;
-}
-
-
-
-
-
-
-
-static void write (std::string fileName, const Net& net, const std::vector<double>& weights) 
-{
-    std::ofstream file (fileName, std::ios::trunc);	
-    net.write (file);
-    file << "===WEIGHTS===" << std::endl;
-    for (double w : weights)
-    {
-	file << w << " ";
-    }
-    file << std::endl;
-}
-
-
-std::tuple<Net, std::vector<double>> read (std::string fileName) 
-{
-    std::vector<double> weights;
-    Net net;
-
-    std::ifstream infile (fileName);
-
-    // net
-    if (infile.is_open () && infile.good ())
-    {
-	read (infile, net);
-    }
-
-
-    // weights
-    std::string line;
-    if (!getline (infile, line))
-        return std::make_tuple (net, weights);
-
-    std::stringstream ssline (line);
-
-    while (ssline)
-    {
-        double value;
-        std::string token;
-        if (!getline (ssline, token, ' ')) 
-            break;
-
-	std::stringstream tr;
-	tr << token;
-	tr >> value;
-
-        weights.push_back (value);
-    }
-    return std::make_tuple (net, weights);
-}
+std::istream& read (std::istream& istr, Net& net);
+void write (std::string fileName, const Net& net, const std::vector<double>& weights);
+std::tuple<Net, std::vector<double>> read (std::string fileName);
 
 
 
@@ -1020,4 +890,10 @@ std::tuple<Net, std::vector<double>> read (std::string fileName)
 }; // namespace NN
 
 
+
 #include "neuralNet_i.h"
+
+
+#endif
+
+

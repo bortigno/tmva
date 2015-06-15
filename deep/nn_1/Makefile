@@ -1,9 +1,9 @@
 
 CC=g++
 #CC=clang++
-CFLAGS=-Wl,--no-as-needed -Wall -std=c++11 -O0 -ggdb -lpthread
+CFLAGS=-Wl,--no-as-needed -Wall -std=c++11 -O4 -ggdb -lpthread
 LDFLAGS=-ggdb -lpthread
-SOURCES=nn_main.cpp
+SOURCES=nn_main.cpp neuralNet.cpp 
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=nn_mainExe
 LIBS = -lstdc++ -lm
