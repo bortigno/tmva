@@ -590,8 +590,8 @@ void Chess ()
     size_t outputSize = trainPattern.front ().output ().size ();
 
     net.addLayer (NN::Layer (100, NN::EnumFunction::SOFTSIGN)); 
-    // net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
-    // net.addLayer (NN::Layer (10, NN::EnumFunction::SOFTSIGN)); 
+    net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
+    net.addLayer (NN::Layer (20, NN::EnumFunction::SOFTSIGN)); 
 //    net.addLayer (NN::Layer (1, NN::EnumFunction::SOFTSIGN)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
@@ -626,7 +626,7 @@ void Chess ()
     typedef NN::Steepest LocalMinimizer;
     if (true)
     {
-        LocalMinimizer minimizer (1e-1, 0.3, 4, &monitoring, layerSizesForMonitoring);
+        LocalMinimizer minimizer (1e-3, 0.3, 4, &monitoring, layerSizesForMonitoring);
 	NN::ClassificationSettings settings (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
 				     /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE, /*scaleToNumEvents*/ 10000, &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);

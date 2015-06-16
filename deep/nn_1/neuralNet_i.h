@@ -356,7 +356,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             m_prevGradients.assign (weights.size (), 0);
 
 
-        fitnessFunction (passThrough, weights, gradients);
+//        fitnessFunction (passThrough, weights, gradients);
 
         std::vector<std::future<double> > futures;
         std::vector<std::pair<double,double> > factors;
@@ -607,7 +607,7 @@ std::ostream& operator<< (std::ostream& ostr, LayerData const& data);
 
 
 
-static Layer readLayer (std::istream& ss);
+//static Layer readLayer (std::istream& ss);
 
 
 
@@ -742,7 +742,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 	DropContainer dropContainer;
 	DropContainer dropContainerTest;
         const std::vector<double>& dropFractions = settings.dropFractions ();
-        bool isWeightsForDrop = true;
+        bool isWeightsForDrop = false;
         
         // until convergence
         do
@@ -771,6 +771,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 		    // shuffle 
 		    std::random_shuffle (end (dropContainer)-layer.numNodes (), end (dropContainer)); // shuffle enabled and disabled markers
 		}
+                isWeightsForDrop = true;
 	    }
 
 	    // execute training cycle
@@ -1054,46 +1055,62 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 	double sumError = 0.0;
 	double sumWeights = 0.0;	// -------------
-	for (const Pattern& pattern : batch)
-	{
-	    assert (_layers.back ().numNodes () == pattern.output ().size ());
-	    size_t totalNumWeights = 0;
-	    std::vector<LayerData> layerData;
-            layerData.reserve (_layers.size ()+1);
-	    ItWeight itWeight = itWeightBegin;
-	    ItGradient itGradient = itGradientBegin;
-	    typename Pattern::const_iterator itInputBegin = pattern.beginInput ();
-	    typename Pattern::const_iterator itInputEnd = pattern.endInput ();
-	    layerData.push_back (LayerData (itInputBegin, itInputEnd));
-	    size_t numNodesPrev = pattern.input ().size ();
-	    auto itActFncLayer = begin (activationFunctionsDropOut);
-	    auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
-	    for (auto& layer: _layers)
-	    {
-		const std::vector<std::function<double(double)> >& actFnc = usesDropOut ? (*itActFncLayer) : layer.activationFunctions ();
-		const std::vector<std::function<double(double)> >& invActFnc = usesDropOut ? (*itInvActFncLayer) : layer.inverseActivationFunctions ();
-		if (usesDropOut)
-		{
-		    ++itActFncLayer;
-		    ++itInvActFncLayer;
-		}
-		if (itGradientBegin == itGradientEnd)
-		    layerData.push_back (LayerData (layer.numNodes (), itWeight, 
-						    begin (actFnc),
-						    layer.modeOutputValues ()));
-		else
-		    layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
-						    begin (actFnc), begin (invActFnc),
-						    layer.modeOutputValues ()));
-		size_t _numWeights = layer.numWeights (numNodesPrev);
-		totalNumWeights += _numWeights;
-		itWeight += _numWeights;
-		itGradient += _numWeights;
-		numNodesPrev = layer.numNodes ();
+
+        // ----------- create layer data -----------------
+        const Pattern& pattern = *batch.begin ();
+        assert (_layers.back ().numNodes () == pattern.output ().size ());
+        size_t totalNumWeights = 0;
+        std::vector<LayerData> layerData;
+        layerData.reserve (_layers.size ()+1);
+        ItWeight itWeight = itWeightBegin;
+        ItGradient itGradient = itGradientBegin;
+        typename Pattern::const_iterator itInputBegin = pattern.beginInput ();
+        typename Pattern::const_iterator itInputEnd = pattern.endInput ();
+        layerData.push_back (LayerData (itInputBegin, itInputEnd));
+        size_t numNodesPrev = pattern.input ().size ();
+        auto itActFncLayer = begin (activationFunctionsDropOut);
+        auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
+        for (auto& layer: _layers)
+        {
+            const std::vector<std::function<double(double)> >& actFnc = usesDropOut ? (*itActFncLayer) : layer.activationFunctions ();
+            const std::vector<std::function<double(double)> >& invActFnc = usesDropOut ? (*itInvActFncLayer) : layer.inverseActivationFunctions ();
+            if (itGradientBegin == itGradientEnd)
+                layerData.push_back (LayerData (layer.numNodes (), itWeight, 
+                                                begin (actFnc),
+                                                layer.modeOutputValues ()));
+            else
+                layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
+                                                begin (actFnc), begin (invActFnc),
+                                                layer.modeOutputValues ()));
+            size_t _numWeights = layer.numWeights (numNodesPrev);
+            totalNumWeights += _numWeights;
+            itWeight += _numWeights;
+            itGradient += _numWeights;
+            numNodesPrev = layer.numNodes ();
 //                std::cout << layerData.back () << std::endl;
-	    }
+            if (usesDropOut)
+            {
+                ++itActFncLayer;
+                ++itInvActFncLayer;
+            }
+        }
 	    
 
+	for (const Pattern& pattern : batch)
+	{
+            bool isFirst = true;
+            for (auto& _layerData: layerData)
+            {
+                _layerData.clear ();
+                if (isFirst)
+                {
+                    typename Pattern::const_iterator itInputBegin = pattern.beginInput ();
+                    typename Pattern::const_iterator itInputEnd = pattern.endInput ();
+                    _layerData.setInput (itInputBegin, itInputEnd);
+                    isFirst = false;
+                }
+            }
+            
 	    // --------- forward -------------
 //            std::cout << "forward" << std::endl;
 	    bool doTraining (true);

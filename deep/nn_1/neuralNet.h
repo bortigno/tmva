@@ -486,6 +486,19 @@ public:
     {}
 
 
+    void setInput (const_iterator_type itInputBegin, const_iterator_type itInputEnd)
+    {
+        m_isInputLayer = true;
+        m_itInputBegin = itInputBegin;
+        m_itInputEnd = itInputEnd;
+    }
+
+    void clear ()
+    {
+        m_values.assign (m_values.size (), 0.0);
+        m_deltas.assign (m_deltas.size (), 0.0);
+    }
+
     const_iterator_type valuesBegin () const { return m_isInputLayer ? m_itInputBegin : begin (m_values); }
     const_iterator_type valuesEnd   () const { return m_isInputLayer ? m_itInputEnd   : end (m_values); }
     
@@ -589,7 +602,7 @@ private:
 
 
 
-static Layer readLayer (std::istream& ss);
+//static Layer readLayer (std::istream& ss);
 
 
 template <typename LAYERDATA>
