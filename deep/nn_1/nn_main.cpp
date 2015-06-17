@@ -626,9 +626,9 @@ void Chess ()
     typedef NN::Steepest LocalMinimizer;
     if (true)
     {
-        LocalMinimizer minimizer (1e-3, 0.3, 4, &monitoring, layerSizesForMonitoring);
+        LocalMinimizer minimizer (1e-2, 0.3, 15, &monitoring, layerSizesForMonitoring);
 	NN::ClassificationSettings settings (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
-				     /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE, /*scaleToNumEvents*/ 10000, &monitoring);
+				     /*factorWeightDecay*/ 1e-2, /*regularization*/NN::EnumRegularization::L2, /*scaleToNumEvents*/ 10000, &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
 
     settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);

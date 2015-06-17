@@ -118,6 +118,16 @@ enum class EnumRegularization
 };
 
 
+enum class ModeOutputValues
+{
+    DIRECT = 'd',
+    SIGMOID = 's',
+    SOFTMAX = 'S'
+};
+
+
+
+
 class Monitoring
 {
 public:
@@ -400,16 +410,10 @@ template <typename ItOutput, typename ItTruth, typename ItDelta, typename ItInvA
 
 
 template <typename ItWeight>
-    double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, double factorWeightDecay);
+    double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, double factorWeightDecay, EnumRegularization eRegularization);
 
 
 
-enum class ModeOutputValues
-{
-    DIRECT = 'd',
-    SIGMOID = 's',
-    SOFTMAX = 'S'
-};
 
 
 
@@ -852,7 +856,13 @@ public:
 
 
     template <typename Container, typename ItWeight>
-        double errorFunction (LayerData& layerData, Container truth, ItWeight itWeight, ItWeight itWeightEnd, double patternWeight, double factorWeightDecay) const;
+        double errorFunction (LayerData& layerData,
+                              Container truth,
+                              ItWeight itWeight,
+                              ItWeight itWeightEnd,
+                              double patternWeight,
+                              double factorWeightDecay,
+                              EnumRegularization eRegularization) const;
 
 
     const std::vector<Layer>& layers () const { return m_layers; }

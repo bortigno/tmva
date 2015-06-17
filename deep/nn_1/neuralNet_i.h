@@ -155,23 +155,23 @@ void update (ItSource itSource, ItSource itSourceEnd,
 
 
 template <EnumRegularization Regularization>
-    inline double computeRegularization (double weight, const double& weightDecay)
+    inline double computeRegularization (double weight, const double& factorWeightDecay)
 {
     return 0;
 }
 
 // L1 regularization
 template <>
-    inline double computeRegularization<EnumRegularization::L1> (double weight, const double& weightDecay)
+    inline double computeRegularization<EnumRegularization::L1> (double weight, const double& factorWeightDecay)
 {
-    return std::copysign (weightDecay, weight);
+    return std::copysign (factorWeightDecay, weight);
 }
 
 // L2 regularization
 template <>
-    inline double computeRegularization<EnumRegularization::L2> (double weight, const double& weightDecay)
+    inline double computeRegularization<EnumRegularization::L2> (double weight, const double& factorWeightDecay)
 {
-    return weightDecay * std::pow (weight, 2);
+    return factorWeightDecay * std::pow (weight, 2);
 }
 
 
@@ -311,6 +311,11 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             double alpha = gaussDouble (m_alpha, m_alpha/2.0);
 //            double alpha = m_alpha;
 
+            std::for_each (localWeights.begin (), localWeights.end (), [](double w)
+                           {
+                               assert (std::fabs(w) < 1000);
+                           });
+            
             auto itLocW = begin (localWeights);
             auto itLocWEnd = end (localWeights);
             auto itG = begin (gradients);
@@ -318,6 +323,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             for (; itLocW != itLocWEnd; ++itLocW, ++itG, ++itPrevG)
             {
                 double currGrad = (*itG);
+                assert (std::fabs (currGrad) < 10);
                 double prevGrad = (*itPrevG);
                 currGrad *= alpha;
                 
@@ -578,20 +584,37 @@ double softMaxCrossEntropy (ItOutput itProbabilityBegin, ItOutput itProbabilityE
 
 
 
-template <typename ItWeight>
-double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, double factorWeightDecay)
-{
 
-    // weight decay (regularization)
-    double w = 0;
-    double sumW = 0;
-    for (; itWeight != itWeightEnd; ++itWeight)
+
+template <typename ItWeight>
+    double weightDecay (double error, ItWeight itWeight, ItWeight itWeightEnd, double factorWeightDecay, EnumRegularization eRegularization)
+{
+    if (eRegularization == EnumRegularization::L1)
     {
-	double weight = (*itWeight);
-	w += weight*weight;
-        sumW += fabs (weight);
+        // weight decay (regularization)
+        double w = 0;
+        size_t n = 0;
+        for (; itWeight != itWeightEnd; ++itWeight, ++n)
+        {
+            double weight = (*itWeight);
+            w += std::fabs (weight);
+        }
+        return error + 0.5 * w * factorWeightDecay / n;
     }
-    return error + 0.5 * w * factorWeightDecay / sumW;
+    else if (eRegularization == EnumRegularization::L2)
+    {
+        // weight decay (regularization)
+        double w = 0;
+        size_t n = 0;
+        for (; itWeight != itWeightEnd; ++itWeight, ++n)
+        {
+            double weight = (*itWeight);
+            w += weight*weight;
+        }
+        return error + 0.5 * w * factorWeightDecay / n;
+    }
+    else
+        return error;
 }
 
 
@@ -642,22 +665,22 @@ void backward (LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
 
 
 template <typename LAYERDATA>
-void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double weightDecay, EnumRegularization regularization)
+void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double factorWeightDecay, EnumRegularization regularization)
 {
-    if (weightDecay != 0.0) // has weight regularization
+    if (factorWeightDecay != 0.0) // has weight regularization
 	if (regularization == EnumRegularization::L1)  // L1 regularization ( sum(|w|) )
 	{
 	    update<EnumRegularization::L1> (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
 			  currLayerData.deltasBegin (), currLayerData.deltasEnd (), 
 			  currLayerData.valueGradientsBegin (), currLayerData.gradientsBegin (), 
-			  currLayerData.weightsBegin (), weightDecay);
+			  currLayerData.weightsBegin (), factorWeightDecay);
 	}
 	else if (regularization == EnumRegularization::L2) // L2 regularization ( sum(w^2) )
 	{
 	    update<EnumRegularization::L2> (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
 			   currLayerData.deltasBegin (), currLayerData.deltasEnd (), 
 			   currLayerData.valueGradientsBegin (), currLayerData.gradientsBegin (), 
-			   currLayerData.weightsBegin (), weightDecay);
+			   currLayerData.weightsBegin (), factorWeightDecay);
 	}
 	else 
 	{
@@ -1143,7 +1166,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 	    itWeight = itWeightBegin;
 	    double error = errorFunction (layerData.back (), pattern.output (), 
 					  itWeight, itWeight + totalNumWeights, 
-					  pattern.weight (), settings.factorWeightDecay ());
+					  pattern.weight (), settings.factorWeightDecay (),
+                                          settings.regularization ());
 	    sumWeights += fabs (pattern.weight ());
 	    sumError += error;
 
@@ -1286,7 +1310,13 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 
 
     template <typename Container, typename ItWeight>
-        double Net::errorFunction (LayerData& layerData, Container truth, ItWeight itWeight, ItWeight itWeightEnd, double patternWeight, double factorWeightDecay) const
+        double Net::errorFunction (LayerData& layerData,
+                                   Container truth,
+                                   ItWeight itWeight,
+                                   ItWeight itWeightEnd,
+                                   double patternWeight,
+                                   double factorWeightDecay,
+                                   EnumRegularization eRegularization) const
     {
 	double error (0);
 	switch (m_eErrorFunction)
@@ -1322,8 +1352,10 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double we
 	    break;
 	}
 	}
-	if (factorWeightDecay != 0)
-	    error = weightDecay (error, itWeight, itWeightEnd, factorWeightDecay);
+	if (factorWeightDecay != 0 && eRegularization != EnumRegularization::NONE)
+        {
+            error = weightDecay (error, itWeight, itWeightEnd, factorWeightDecay, eRegularization);
+        }
 	return error;
     } 
 
