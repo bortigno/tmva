@@ -164,14 +164,14 @@ template <EnumRegularization Regularization>
 template <>
     inline double computeRegularization<EnumRegularization::L1> (double weight, const double& factorWeightDecay)
 {
-    return std::copysign (factorWeightDecay, weight);
+    return weight == 0.0 ? 0.0 : std::copysign (factorWeightDecay, weight);
 }
 
 // L2 regularization
 template <>
     inline double computeRegularization<EnumRegularization::L2> (double weight, const double& factorWeightDecay)
 {
-    return factorWeightDecay * std::pow (weight, 2);
+    return factorWeightDecay * weight;
 }
 
 
@@ -182,6 +182,7 @@ void update (ItSource itSource, ItSource itSourceEnd,
 	     ItGradient itGradient, 
 	     ItWeight itWeight, double weightDecay)
 {
+    // ! the factor weightDecay has to be already scaled by 1/n where n is the number of weights
     while (itSource != itSourceEnd)
     {
         auto itTargetDelta = itTargetDeltaBegin;
@@ -323,7 +324,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             for (; itLocW != itLocWEnd; ++itLocW, ++itG, ++itPrevG)
             {
                 double currGrad = (*itG);
-                assert (std::fabs (currGrad) < 10);
+                assert (std::fabs (currGrad) < 1000);
                 double prevGrad = (*itPrevG);
                 currGrad *= alpha;
                 
@@ -667,6 +668,7 @@ void backward (LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
 template <typename LAYERDATA>
 void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double factorWeightDecay, EnumRegularization regularization)
 {
+    // ! the "factorWeightDecay" has already to be scaled by 1/n where n is the number of weights
     if (factorWeightDecay != 0.0) // has weight regularization
 	if (regularization == EnumRegularization::L1)  // L1 regularization ( sum(|w|) )
 	{
@@ -1187,7 +1189,15 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 		LayerData& prevLayerData = layerData.at (idxLayer-1);
 
 		backward (prevLayerData, currLayerData);
-		update (prevLayerData, currLayerData, settings.factorWeightDecay ()/sumWeights, settings.regularization ());
+
+                // the factorWeightDecay has to be scaled by 1/n where n is the number of weights (synapses)
+                // because L1 and L2 regularization
+                //
+                //  http://neuralnetworksanddeeplearning.com/chap3.html#overfitting_and_regularization
+                //
+                // L1 : -factorWeightDecay*sgn(w)/numWeights
+                // L2 : -factorWeightDecay/numWeights
+		update (prevLayerData, currLayerData, settings.factorWeightDecay ()/totalNumWeights, settings.regularization ());
 	    }
 	}
         
