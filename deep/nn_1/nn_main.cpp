@@ -578,6 +578,7 @@ void Chess ()
     NN::Net net;
     std::vector<double> weights;
     std::vector<double> dropConfig;
+    std::vector<double> dropConfig2;
     
 #if false // read from saved file
     std::tie (net, weights) = read ("chess.net");
@@ -601,12 +602,13 @@ void Chess ()
 //    size_t numWeights = net.numWeights (inputSize);
 
 //    gaussDistribution (weights, 0.1, 1.0/sqrt(inputSize));
-    net.initializeWeights (NN::WeightInitializationStrategy::XAVIER, 
+    net.initializeWeights (NN::WeightInitializationStrategy::XAVIERUNIFORM, 
 			   trainPattern.begin (),
 			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
-    dropConfig = {0.3, 0.4, 0.4};
+    dropConfig = {0.2, 0.4, 0.3};
+    dropConfig2 = {0.1, 0.1, 0.1};
     double dropRepetitions = 2;
     
 #endif
@@ -626,8 +628,8 @@ void Chess ()
     typedef NN::Steepest LocalMinimizer;
     {
         LocalMinimizer minimizer (1e-1, 0.3, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
-                                             /*factorWeightDecay*/ 1e-1, /*regularization*/NN::EnumRegularization::L2, /*scaleToNumEvents*/ 10000, &monitoring);
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+                                             /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE, /*scaleToNumEvents*/ 10000, &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
 
         settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -635,9 +637,19 @@ void Chess ()
         /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
     {
-        LocalMinimizer minimizer2 (1e-2, 0.1, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 20, /*_testRepetitions*/ 7, 
-                                              /*factorWeightDecay*/ 1, /*regularization*/NN::EnumRegularization::L2,
+        LocalMinimizer minimizer2 (1e-2, 0.2, 1, &monitoring, layerSizesForMonitoring);
+        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 50, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+                                              /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
+                                              /*scaleToNumEvents*/ 10000, &monitoring);
+//        settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
+        settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
+//    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
+        /*double E = */net.train (weights, trainPattern, testPattern, minimizer2, settings2);
+    }
+    {
+        LocalMinimizer minimizer2 (1e-3, 0.1, 1, &monitoring, layerSizesForMonitoring);
+        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 2000, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
+                                              /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::L1,
                                               /*scaleToNumEvents*/ 10000, &monitoring);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);

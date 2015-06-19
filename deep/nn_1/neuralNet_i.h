@@ -312,19 +312,20 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             double alpha = gaussDouble (m_alpha, m_alpha/2.0);
 //            double alpha = m_alpha;
 
-            std::for_each (localWeights.begin (), localWeights.end (), [](double w)
-                           {
-                               assert (std::fabs(w) < 1000);
-                           });
+            /* std::for_each (localWeights.begin (), localWeights.end (), [](double w) */
+            /*                { */
+            /*                    assert (std::fabs(w) < 1000); */
+            /*                }); */
             
             auto itLocW = begin (localWeights);
             auto itLocWEnd = end (localWeights);
             auto itG = begin (gradients);
             auto itPrevG = begin (m_prevGradients);
+            double maxGrad = 0.0;
             for (; itLocW != itLocWEnd; ++itLocW, ++itG, ++itPrevG)
             {
                 double currGrad = (*itG);
-                assert (std::fabs (currGrad) < 1000);
+//                assert (std::fabs (currGrad) < 1000);
                 double prevGrad = (*itPrevG);
                 currGrad *= alpha;
                 
@@ -332,6 +333,15 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                 (*itG) = currGrad + prevGrad;
 
                 (*itLocW) += (*itG);
+                
+                if (std::fabs (currGrad) > maxGrad)
+                    maxGrad = currGrad;
+            }
+
+            if (maxGrad > 100)
+            {
+                m_alpha /= 2;
+                std::cout << "learning rate reduced to " << m_alpha << std::endl;
             }
 
             std::copy (std::begin (localWeights), std::end (localWeights), std::begin (weights));
@@ -1082,17 +1092,17 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	double sumWeights = 0.0;	// -------------
 
         // ----------- create layer data -----------------
-        const Pattern& pattern = *batch.begin ();
-        assert (_layers.back ().numNodes () == pattern.output ().size ());
+        const Pattern& firstPattern = *batch.begin ();
+        assert (_layers.back ().numNodes () == firstPattern.output ().size ());
         size_t totalNumWeights = 0;
         std::vector<LayerData> layerData;
         layerData.reserve (_layers.size ()+1);
         ItWeight itWeight = itWeightBegin;
         ItGradient itGradient = itGradientBegin;
-        typename Pattern::const_iterator itInputBegin = pattern.beginInput ();
-        typename Pattern::const_iterator itInputEnd = pattern.endInput ();
+        typename Pattern::const_iterator itInputBegin = firstPattern.beginInput ();
+        typename Pattern::const_iterator itInputEnd = firstPattern.endInput ();
         layerData.push_back (LayerData (itInputBegin, itInputEnd));
-        size_t numNodesPrev = pattern.input ().size ();
+        size_t numNodesPrev = firstPattern.input ().size ();
         auto itActFncLayer = begin (activationFunctionsDropOut);
         auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
         for (auto& layer: _layers)
@@ -1119,9 +1129,9 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
                 ++itInvActFncLayer;
             }
         }
-	    
+	assert (totalNumWeights > 0);
 
-	for (const Pattern& pattern : batch)
+	for (const Pattern& _pattern : batch)
 	{
             bool isFirst = true;
             for (auto& _layerData: layerData)
@@ -1129,8 +1139,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
                 _layerData.clear ();
                 if (isFirst)
                 {
-                    typename Pattern::const_iterator itInputBegin = pattern.beginInput ();
-                    typename Pattern::const_iterator itInputEnd = pattern.endInput ();
+                    itInputBegin = _pattern.beginInput ();
+                    itInputEnd = _pattern.endInput ();
                     _layerData.setInput (itInputBegin, itInputEnd);
                     isFirst = false;
                 }
@@ -1166,11 +1176,11 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	    // ------------- error computation -------------
 	    // compute E and the deltas of the computed output and the true output 
 	    itWeight = itWeightBegin;
-	    double error = errorFunction (layerData.back (), pattern.output (), 
+	    double error = errorFunction (layerData.back (), _pattern.output (), 
 					  itWeight, itWeight + totalNumWeights, 
-					  pattern.weight (), settings.factorWeightDecay (),
+					  _pattern.weight (), settings.factorWeightDecay (),
                                           settings.regularization ());
-	    sumWeights += fabs (pattern.weight ());
+	    sumWeights += fabs (_pattern.weight ());
 	    sumError += error;
 
 	    if (!doTraining) // no training
