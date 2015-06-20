@@ -114,8 +114,9 @@ void checkGradients ()
     size_t outputSize = 1;
 
 
+    net.setInputSize (inputSize);
     net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
-    net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
+//    net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
 //    net.addLayer (Layer (outputSize, EnumFunction::LINEAR)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
@@ -124,6 +125,33 @@ void checkGradients ()
     size_t numWeights = net.numWeights (inputSize);
     std::vector<double> weights (numWeights);
     //weights.at (0) = 1000213.2;
+
+    // test dropWeightFactor
+
+    NN::uniform (weights, 0.7);
+
+    std::cout << "number of weights = " << numWeights << std::endl;
+
+    std::vector<double> weightsCopy (weights);
+    std::vector<double> dropFractions = {0.3, 0.4, 0.7, 0.2};
+    net.dropOutWeightFactor (weightsCopy, dropFractions);
+    int idx = 0;
+    for (auto itWC = weightsCopy.begin (), itWCEnd = weightsCopy.end (), itW = weights.begin (); itWC != itWCEnd; ++itW, ++itWC)
+    {
+	std::cout << "index " << idx << "  :  w = " << *itW << " , wcopy = " << *itWC << std::endl;
+	assert (*itWC == 0 || *itWC != *itW);
+	++idx;
+    }
+    net.dropOutWeightFactor (weightsCopy, dropFractions, true);
+    idx = 0;
+    for (auto itWC = weightsCopy.begin (), itWCEnd = weightsCopy.end (), itW = weights.begin (); itWC != itWCEnd; ++itW, ++itWC)
+    {
+	std::cout << "index " << idx << "  :  w = " << *itW << " , wcopy = " << *itWC << std::endl;
+	assert (std::fabs (*itWC - *itW) < 1e-5);
+	++idx;
+    }
+
+    weights.assign (numWeights, 0.0);
 
     std::vector<Pattern> pattern;
     for (size_t iPat = 0, iPatEnd = 10; iPat < iPatEnd; ++iPat)
@@ -235,6 +263,7 @@ void testXOR ()
     size_t inputSize = 2;
     size_t outputSize = 1;
 
+    net.setInputSize (inputSize);
     net.addLayer (NN::Layer (4, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR)); 
 
@@ -291,6 +320,7 @@ void testClassification ()
     size_t inputSize = trainPattern.front ().input ().size ();
     size_t outputSize = trainPattern.front ().output ().size ();
 
+    net.setInputSize (inputSize);
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
@@ -348,6 +378,7 @@ void testWriteRead ()
     size_t inputSize = trainPattern.front ().input ().size ();
     size_t outputSize = trainPattern.front ().output ().size ();
 
+    net.setInputSize (inputSize);
     net.addLayer (NN::Layer (3, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR)); 
 
@@ -447,6 +478,7 @@ void Higgs ()
     size_t inputSize = trainPattern.front ().input ().size ();
     size_t outputSize = trainPattern.front ().output ().size ();
 
+    net.setInputSize (inputSize);
     net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (20, NN::EnumFunction::SYMMRELU)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::SYMMRELU)); 
@@ -587,9 +619,10 @@ void Chess ()
     // net.setErrorFunction (ModeErrorFunction::SUMOFSQUARES);
     
 #else
-//    size_t inputSize = trainPattern.front ().input ().size ();
+    size_t inputSize = trainPattern.front ().input ().size ();
     size_t outputSize = trainPattern.front ().output ().size ();
 
+    net.setInputSize (inputSize);
     net.addLayer (NN::Layer (100, NN::EnumFunction::SOFTSIGN)); 
     net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
     net.addLayer (NN::Layer (20, NN::EnumFunction::SOFTSIGN)); 
@@ -616,7 +649,6 @@ void Chess ()
     NN::Monitoring monitoring;
     std::vector<size_t> layerSizesForMonitoring;
 
-    size_t inputSize = trainPattern.front ().input ().size ();
     for (auto& layer : net.layers ())
     {
         layerSizesForMonitoring.push_back (layer.numWeights (inputSize));
