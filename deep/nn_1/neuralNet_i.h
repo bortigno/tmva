@@ -312,11 +312,6 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             double alpha = gaussDouble (m_alpha, m_alpha/2.0);
 //            double alpha = m_alpha;
 
-            /* std::for_each (localWeights.begin (), localWeights.end (), [](double w) */
-            /*                { */
-            /*                    assert (std::fabs(w) < 1000); */
-            /*                }); */
-            
             auto itLocW = begin (localWeights);
             auto itLocWEnd = end (localWeights);
             auto itG = begin (gradients);
@@ -325,7 +320,6 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             for (; itLocW != itLocWEnd; ++itLocW, ++itG, ++itPrevG)
             {
                 double currGrad = (*itG);
-//                assert (std::fabs (currGrad) < 1000);
                 double prevGrad = (*itPrevG);
                 currGrad *= alpha;
                 
@@ -338,13 +332,18 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                     maxGrad = currGrad;
             }
 
-            if (maxGrad > 100)
+            if (maxGrad > 10)
             {
                 m_alpha /= 2;
                 std::cout << "learning rate reduced to " << m_alpha << std::endl;
+                std::for_each (weights.begin (), weights.end (), [maxGrad](double& w)
+                               {
+                                   w /= maxGrad;
+                               });
+                m_prevGradients.clear ();
             }
-
-            std::copy (std::begin (localWeights), std::end (localWeights), std::begin (weights));
+            else
+                std::copy (std::begin (localWeights), std::end (localWeights), std::begin (weights));
 
             ++currentRepetition;
         }
@@ -732,7 +731,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         auto itWeightEnd = std::end (weights);
         auto itDrop = std::begin (drops);
         auto itDropEnd = std::end (drops);
-	size_t numNodes = sizeInput ();
+	size_t numNodes = inputSize ();
         for (const auto& layer : layers ())
         {
             if (itDrop == itDropEnd)
@@ -744,8 +743,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             {
                 p = 1.0/p;
             }
-	    size_t numWeights = layer.numWeights (numNodes);
-            for (size_t iWeight = 0; iWeight < numWeights; ++iWeight)
+	    size_t _numWeights = layer.numWeights (numNodes);
+            for (size_t iWeight = 0; iWeight < _numWeights; ++iWeight)
             {
                 if (itWeight == itWeightEnd)
                     break;
@@ -1107,7 +1106,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         typename Pattern::const_iterator itInputBegin = firstPattern.beginInput ();
         typename Pattern::const_iterator itInputEnd = firstPattern.endInput ();
         layerData.push_back (LayerData (itInputBegin, itInputEnd));
-        size_t numNodesPrev = sizeInput ();
+        size_t numNodesPrev = inputSize ();
         auto itActFncLayer = begin (activationFunctionsDropOut);
         auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
         for (auto& layer: _layers)

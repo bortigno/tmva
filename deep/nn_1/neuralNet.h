@@ -632,7 +632,7 @@ public:
 	      double _factorWeightDecay = 1e-5, NN::EnumRegularization _regularization = NN::EnumRegularization::NONE, Monitoring* pMonitoring = NULL);
 
     template <typename Iterator>
-        void setDropOut (Iterator begin, Iterator end, size_t dropRepetitions) { m_dropOut.assign (begin, end); m_dropRepetitions = dropRepetitions; }
+        void setDropOut (Iterator begin, Iterator end, size_t _dropRepetitions) { m_dropOut.assign (begin, end); m_dropRepetitions = _dropRepetitions; }
 
     size_t dropRepetitions () const { return m_dropRepetitions; }
     const std::vector<double>& dropFractions () const { return m_dropOut; }
@@ -807,7 +807,7 @@ public:
     void addLayer (Layer&& layer) { m_layers.push_back (layer); }
     void setErrorFunction (ModeErrorFunction eErrorFunction) { m_eErrorFunction = eErrorFunction; }
     
-    size_t sizeInput () const { return m_sizeInput; }
+    size_t inputSize () const { return m_sizeInput; }
 
     template <typename WeightsType, typename DropProbabilities>
         void dropOutWeightFactor (WeightsType& weights,
@@ -891,9 +891,9 @@ public:
 
 private:
 
-    std::vector<Layer> m_layers;
     ModeErrorFunction m_eErrorFunction;
     size_t m_sizeInput;
+    std::vector<Layer> m_layers;
 
     friend std::ostream& operator<< (std::ostream& ostr, Net const& net);
 };

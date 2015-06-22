@@ -640,7 +640,7 @@ void Chess ()
 			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
-    dropConfig = {0.2, 0.4, 0.3};
+    dropConfig = {0.3, 0.5, 0.3};
     dropConfig2 = {0.1, 0.1, 0.1};
     double dropRepetitions = 1;
     
@@ -660,7 +660,7 @@ void Chess ()
     typedef NN::Steepest LocalMinimizer;
     {
         LocalMinimizer minimizer (1e-1, 0.5, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 200, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE, /*scaleToNumEvents*/ 10000, &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
 
@@ -670,7 +670,7 @@ void Chess ()
     }
     {
         LocalMinimizer minimizer2 (1e-2, 0.9, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 20, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 100, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000, &monitoring);
 //        settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
@@ -690,7 +690,7 @@ void Chess ()
     }
     {
         LocalMinimizer minimizer2 (1e-3, 0.1, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 2000, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 200, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::L1,
                                               /*scaleToNumEvents*/ 10000, &monitoring);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
