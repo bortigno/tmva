@@ -715,7 +715,8 @@ class ClassificationSettings : public Settings
 {
 public:
     ClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
-			    double _factorWeightDecay = 1e-5, EnumRegularization _regularization = EnumRegularization::NONE, size_t _scaleToNumEvents = 0, Monitoring* pMonitoring = NULL)
+			    double _factorWeightDecay = 1e-5, EnumRegularization _regularization = EnumRegularization::NONE,
+                            size_t _scaleToNumEvents = 0, Monitoring* pMonitoring = NULL)
         : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _regularization, pMonitoring)
         , m_ams ()
         , m_sumOfSigWeights (0)
@@ -799,6 +800,14 @@ public:
     Net () 
 	: m_eErrorFunction (ModeErrorFunction::SUMOFSQUARES)
 	, m_sizeInput (0)
+        , m_layers ()
+    {
+    }
+
+    Net (const Net& other)
+        : m_eErrorFunction (other.m_eErrorFunction)
+        , m_sizeInput (other.m_sizeInput)
+        , m_layers (other.m_layers)
     {
     }
 

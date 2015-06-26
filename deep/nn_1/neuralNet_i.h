@@ -307,17 +307,19 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 
             gradients.assign (numWeights, 0.0);
             E = fitnessFunction (passThrough, localWeights, gradients);
-            plotGradients (gradients);
+//            E = fitnessFunction (passThrough, weights, gradients);
+//            plotGradients (gradients);
 
             double alpha = gaussDouble (m_alpha, m_alpha/2.0);
 //            double alpha = m_alpha;
 
-            auto itLocW = begin (localWeights);
-            auto itLocWEnd = end (localWeights);
+            /* auto itLocW = begin (localWeights); */
+            /* auto itLocWEnd = end (localWeights); */
             auto itG = begin (gradients);
+            auto itGEnd = end (gradients);
             auto itPrevG = begin (m_prevGradients);
             double maxGrad = 0.0;
-            for (; itLocW != itLocWEnd; ++itLocW, ++itG, ++itPrevG)
+            for (; itG != itGEnd; ++itG, ++itPrevG)
             {
                 double currGrad = (*itG);
                 double prevGrad = (*itPrevG);
@@ -326,13 +328,13 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                 (*itPrevG) = m_beta * (prevGrad + currGrad);
                 (*itG) = currGrad + prevGrad;
 
-                (*itLocW) += (*itG);
+//                (*itLocW) += (*itG);
                 
                 if (std::fabs (currGrad) > maxGrad)
                     maxGrad = currGrad;
             }
 
-            if (maxGrad > 10)
+            if (maxGrad > 1)
             {
                 m_alpha /= 2;
                 std::cout << "learning rate reduced to " << m_alpha << std::endl;
@@ -343,7 +345,21 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                 m_prevGradients.clear ();
             }
             else
-                std::copy (std::begin (localWeights), std::end (localWeights), std::begin (weights));
+            {
+                auto itW = std::begin (weights);
+                std::for_each (std::begin (gradients), std::end (gradients), [&itW](double& g)
+                               {
+                                   *itW += g;
+                                   ++itW;
+                               });
+//                std::copy (std::begin (localWeights), std::end (localWeights), std::begin (weights));
+                /* for (auto itL = std::begin (localWeights), itLEnd = std::end (localWeights), itW = std::begin (weights), itG = std::begin (gradients); */
+                /*      itL != itLEnd; ++itL, ++itW, ++itG) */
+                /* { */
+                /*     if (*itG > maxGrad/2.0) */
+                /*         *itW = *itL; */
+                /* } */
+            }
 
             ++currentRepetition;
         }
@@ -372,20 +388,22 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
             m_prevGradients.assign (weights.size (), 0);
 
 
-//        fitnessFunction (passThrough, weights, gradients);
+        fitnessFunction (passThrough, weights, gradients);
 
-        std::vector<std::future<double> > futures;
-        std::vector<std::pair<double,double> > factors;
+        std::vector<std::future<std::tuple<double,double,double> > > futures;
+//        std::vector<std::pair<double,double> > factors;
+//        std::cout << "start loop" << std::endl;
         for (size_t i = 0; i < m_repetitions; ++i)
         {
             std::vector<double> tmpWeights (weights);
-            double alpha = std::pow (m_alpha, (1.0 + i));
+            double alpha = m_alpha * (1.0 + i);
+            alpha = gaussDouble (alpha, alpha/2.0);
             double beta = m_beta;
             auto itGradient = begin (gradients);
             auto itPrevGradient = begin (m_prevGradients);
             std::for_each (begin (tmpWeights), end (tmpWeights), [alpha,beta,&itGradient,&itPrevGradient](double& w) 
                            { 
-                               w += alpha * (*itGradient) + beta * (*itPrevGradient);
+                               w += alpha * (*itGradient) + (*itPrevGradient);
                                ++itGradient; ++itPrevGradient;
                            }
                 );
@@ -394,29 +412,39 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 	    // if we call fitnessFunction directly in async, the templat parameters
 	    // cannot be deduced correctly. Through the lambda function, the types are 
             // already deduced correctly for the lambda function and the async. The deduction for 
-	    // the template function is then done from within the lambda function. 
-	    futures.push_back (std::async (std::launch::async, [&fitnessFunction, &passThrough, tmpWeights]() mutable 
-					   {  
-					       return fitnessFunction (passThrough, tmpWeights); 
+	    // the template function is then done from within the lambda function.
+//            std::cout << "async rep " << i << std::endl;
+	    futures.push_back (std::async (std::launch::async, [&fitnessFunction, &passThrough, tmpWeights, alpha, beta, i]() mutable 
+					   {
+//                                               std::cout << "    launched " << i << std::endl;
+                                               double tmpE = fitnessFunction (passThrough, tmpWeights);
+                                               std::tuple<double,double,double> ret (tmpE, alpha, beta);
+//                                               std::cout << "result " << tmpE << ", " << alpha << ", " << beta << std::endl;
+                                               return ret;
 					   }) );
 
-            factors.push_back (std::make_pair (alpha,beta));
+//            factors.push_back (std::make_pair (alpha,beta));
         }
-
+//        std::cout << "--- loop end" << std::endl;
+        
         // select best
-        double bestAlpha = m_alpha, bestBeta = 0.0;
-        auto itE = begin (futures);
+        double bestAlpha = m_alpha;
+        double bestBeta = 0.0;
         double bestE = 1e100;
-        for (auto& alphaBeta : factors)
+        for (auto& futureEAlphaBeta : futures)
         {
-            double E = (*itE).get ();
+//            std::cout << "get future" << std::endl;
+            auto EAlphaBeta = futureEAlphaBeta.get ();
+            double E = std::get <0>(EAlphaBeta);
+            double alpha = std::get <1>(EAlphaBeta);
+            double beta = std::get <2>(EAlphaBeta);
             if (E < bestE)
             {
-                bestAlpha = alphaBeta.first;
-                bestBeta = alphaBeta.second;
+//                std::cout << "best " << E << std::endl;
+                bestAlpha = alpha;
+                bestBeta = beta;
                 bestE = E;
             }
-            ++itE;
         }
 
         assert (bestE < 1e10);
@@ -425,10 +453,15 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
         auto itGradient = begin (gradients);
         auto itPrevGradient = begin (m_prevGradients);
         std::for_each (begin (weights), end (weights), [bestAlpha,bestBeta,&itGradient,&itPrevGradient](double& w) 
-                       { 
-                           double grad = bestAlpha * (*itGradient) + bestBeta * (*itPrevGradient);
-                           w += grad;
-                           (*itPrevGradient) = grad;
+                       {
+                           double currGrad = (*itGradient);
+                           double prevGrad = (*itPrevGradient);
+                           currGrad *= bestAlpha;
+                
+                           (*itPrevGradient) = bestBeta * (prevGrad + currGrad);
+                           currGrad = currGrad + prevGrad;
+
+                           w += currGrad;
                            ++itGradient; ++itPrevGradient;
                        }
             );
@@ -732,13 +765,23 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         auto itDrop = std::begin (drops);
         auto itDropEnd = std::end (drops);
 	size_t numNodes = inputSize ();
-        for (const auto& layer : layers ())
+        for (auto itLayer = std::begin (layers ()), itLayerEnd = std::end (layers ()); itLayer != itLayerEnd; ++itLayer)
         {
+            const Layer& layer = *itLayer;
             if (itDrop == itDropEnd)
                 break;
 
             double dropFraction = *itDrop;
             double p = 1.0 - dropFraction;
+
+            if (itLayer+1 != itLayerEnd && itDrop+1 != itDropEnd) // if not the last layer
+            {
+                double dropFractionNext  = *(itDrop+1);
+                double pNext = 1.0 - dropFractionNext;
+
+                p *= pNext;
+            }
+            
             if (inverse)
             {
                 p = 1.0/p;
@@ -918,23 +961,63 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	Iterator itPatternBatchBegin = itPatternBegin;
 	Iterator itPatternBatchEnd = itPatternBatchBegin;
 	std::random_shuffle (itPatternBegin, itPatternEnd);
-	while (numBatches > 0)
-	{
+
+        // create batches
+        std::vector<Batch> batches;
+        while (numBatches > 0)
+        {
 	    std::advance (itPatternBatchEnd, settings.batchSize ());
-            Batch batch (itPatternBatchBegin, itPatternBatchEnd);
-            std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
-	    error += minimizer ((*this), weights, settingsAndBatch);
+            batches.push_back (Batch (itPatternBatchBegin, itPatternBatchEnd));
 	    itPatternBatchBegin = itPatternBatchEnd;
 	    --numBatches;
-	}
-	if (itPatternBatchEnd != itPatternEnd)
-        {
-            Batch batch (itPatternBatchEnd, itPatternEnd);
-            std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
-	    error += minimizer ((*this), weights, settingsAndBatch);
         }
+
+        // add the last pattern to the last batch
+	if (itPatternBatchEnd != itPatternEnd)
+            batches.push_back (Batch (itPatternBatchEnd, itPatternEnd));
+
+
+        // -------------------- divide the batches into bunches for each thread --------------
+        size_t numThreads = std::thread::hardware_concurrency ();
+        size_t batchesPerThread = batches.size () / numThreads;
+        typedef std::vector<Batch>::iterator batch_iterator;
+        std::vector<std::pair<batch_iterator,batch_iterator>> batchVec;
+        batch_iterator itBatchBegin = std::begin (batches);
+        batch_iterator itBatchCurrEnd = std::begin (batches);
+        batch_iterator itBatchEnd = std::end (batches);
+        for (size_t iT = 0; iT < numThreads; ++iT)
+        {
+            if (iT == numThreads-1)
+                itBatchCurrEnd = itBatchEnd;
+            else
+                std::advance (itBatchCurrEnd, batchesPerThread);
+            batchVec.push_back (std::make_pair (itBatchBegin, itBatchCurrEnd));
+            itBatchBegin = itBatchCurrEnd;
+        }
+        
+        // -------------------- loop  over batches -------------------------------------------
+        std::vector<std::future<double>> futures;
+        for (auto& batchRange : batchVec)
+        {
+            futures.push_back (
+                std::async (std::launch::async, [&]() 
+					   {
+                                               double localError = 0.0;
+                                               for (auto it = batchRange.first, itEnd = batchRange.second; it != itEnd; ++it)
+                                               {
+                                                   Batch& batch = *it;
+                                                   std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
+                                                   localError += minimizer ((*this), weights, settingsAndBatch);
+                                               }
+                                               return localError;
+					   })
+                    );
+        }
+
+        for (auto& f : futures)
+            error += f.get ();
+        
 	error /= numBatches_stored;
-    
 	return error;
     }
 
@@ -1032,30 +1115,6 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         Batch& batch = std::get<1>(settingsAndBatch);
 	DropContainer& drop = std::get<2>(settingsAndBatch);
 
-        /* EnumRegularization eRegularization = settings.regularization (); */
-        /* if (eRegularization == EnumRegularization::L1MAX && */
-        /*     settings.factorWeightDecay () > 0.0) */
-        /* { */
-	/*     size_t numNodesPrev = (*batch.begin ()).input ().size (); */
-        /*     size_t _numWeights = numWeights (numNodesPrev); */
-        /*     auto itCurrWeight = itWeightBegin; */
-        /*     auto itCurrWeightEnd = itCurrWeight; */
-        /*     std::advance (itCurrWeightEnd, _numWeights); */
-        /*     double accum = std::accumulate (itCurrWeight, itCurrWeightEnd, (double)0.0, [](double currSum, const double& w) */
-        /*                                   { */
-        /*                                       return currSum + std::fabs (w); */
-        /*                                   }); */
-        /*     if (accum > settings.factorWeightDecay ()) */
-        /*     { */
-        /*         double factor = settings.factorWeightDecay ()/accum; */
-        /*         std::for_each (itCurrWeight, itCurrWeightEnd, [factor](double& w) */
-        /*                        { */
-        /*                            w *= factor; */
-        /*                        }); */
-        /*     } */
-        /* } */
-
-        
 	bool usesDropOut = !drop.empty ();
 
 	std::vector<std::vector<std::function<double(double)> > > activationFunctionsDropOut;
@@ -1135,6 +1194,9 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         }
 	assert (totalNumWeights > 0);
 
+
+
+        // ---------------------------------- loop over pattern -------------------------------------------------------
 	for (const Pattern& _pattern : batch)
 	{
             bool isFirst = true;
