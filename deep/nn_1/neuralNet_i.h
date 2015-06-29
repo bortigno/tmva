@@ -369,7 +369,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 
 
 
-
+/*
     template <typename Function, typename Weights, typename Gradients, typename PassThrough>
         double SteepestThreaded::fitWrapper (Function& function, PassThrough& passThrough, Weights weights)
     {
@@ -466,7 +466,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                        }
             );
         return bestE;
-    }
+    }*/
 
 
 
@@ -977,45 +977,57 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             batches.push_back (Batch (itPatternBatchEnd, itPatternEnd));
 
 
-        // -------------------- divide the batches into bunches for each thread --------------
-        size_t numThreads = std::thread::hardware_concurrency ();
-        size_t batchesPerThread = batches.size () / numThreads;
-        typedef std::vector<Batch>::iterator batch_iterator;
-        std::vector<std::pair<batch_iterator,batch_iterator>> batchVec;
-        batch_iterator itBatchBegin = std::begin (batches);
-        batch_iterator itBatchCurrEnd = std::begin (batches);
-        batch_iterator itBatchEnd = std::end (batches);
-        for (size_t iT = 0; iT < numThreads; ++iT)
+        if (settings.useMultithreading ())
         {
-            if (iT == numThreads-1)
-                itBatchCurrEnd = itBatchEnd;
-            else
-                std::advance (itBatchCurrEnd, batchesPerThread);
-            batchVec.push_back (std::make_pair (itBatchBegin, itBatchCurrEnd));
-            itBatchBegin = itBatchCurrEnd;
-        }
         
-        // -------------------- loop  over batches -------------------------------------------
-        std::vector<std::future<double>> futures;
-        for (auto& batchRange : batchVec)
-        {
-            futures.push_back (
-                std::async (std::launch::async, [&]() 
-					   {
-                                               double localError = 0.0;
-                                               for (auto it = batchRange.first, itEnd = batchRange.second; it != itEnd; ++it)
-                                               {
-                                                   Batch& batch = *it;
-                                                   std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
-                                                   localError += minimizer ((*this), weights, settingsAndBatch);
-                                               }
-                                               return localError;
-					   })
+            // -------------------- divide the batches into bunches for each thread --------------
+            size_t numThreads = std::thread::hardware_concurrency ();
+            size_t batchesPerThread = batches.size () / numThreads;
+            typedef std::vector<Batch>::iterator batch_iterator;
+            std::vector<std::pair<batch_iterator,batch_iterator>> batchVec;
+            batch_iterator itBatchBegin = std::begin (batches);
+            batch_iterator itBatchCurrEnd = std::begin (batches);
+            batch_iterator itBatchEnd = std::end (batches);
+            for (size_t iT = 0; iT < numThreads; ++iT)
+            {
+                if (iT == numThreads-1)
+                    itBatchCurrEnd = itBatchEnd;
+                else
+                    std::advance (itBatchCurrEnd, batchesPerThread);
+                batchVec.push_back (std::make_pair (itBatchBegin, itBatchCurrEnd));
+                itBatchBegin = itBatchCurrEnd;
+            }
+        
+            // -------------------- loop  over batches -------------------------------------------
+            std::vector<std::future<double>> futures;
+            for (auto& batchRange : batchVec)
+            {
+                futures.push_back (
+                    std::async (std::launch::async, [&]() 
+                                {
+                                    double localError = 0.0;
+                                    for (auto it = batchRange.first, itEnd = batchRange.second; it != itEnd; ++it)
+                                    {
+                                        Batch& batch = *it;
+                                        std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
+                                        localError += minimizer ((*this), weights, settingsAndBatch);
+                                    }
+                                    return localError;
+                                })
                     );
-        }
+            }
 
-        for (auto& f : futures)
-            error += f.get ();
+            for (auto& f : futures)
+                error += f.get ();
+        }
+        else
+        {
+            for (auto& batch : batches)
+            {
+                std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
+                error += minimizer ((*this), weights, settingsAndBatch);
+            }
+        }
         
 	error /= numBatches_stored;
 	return error;

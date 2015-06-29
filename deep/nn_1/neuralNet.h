@@ -332,28 +332,6 @@ private:
 
 
 
-// test multithreaded training
-class SteepestThreaded : public MinimizerMonitoring
-{
-public:
-
-    size_t m_repetitions;
-
-    SteepestThreaded (double learningRate = 1e-4, double learningRatePrev = 1e-4, size_t repetitions = 10, Monitoring* pMonitoring = NULL, std::vector<size_t> layerSizes = std::vector<size_t> ()); 
-
-
-    template <typename Function, typename Weights, typename Gradients, typename PassThrough>
-        double fitWrapper (Function& function, PassThrough& passThrough, Weights weights);
-
-
-    template <typename Function, typename Weights, typename PassThrough>
-        double operator() (Function& fitnessFunction, Weights& weights, PassThrough& passThrough);
-
-
-    double m_alpha;
-    double m_beta;
-    std::vector<double> m_prevGradients;
-};
 
 
 
@@ -629,7 +607,8 @@ class Settings
 {
 public:
     Settings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
-	      double _factorWeightDecay = 1e-5, NN::EnumRegularization _regularization = NN::EnumRegularization::NONE, Monitoring* pMonitoring = NULL);
+	      double _factorWeightDecay = 1e-5, NN::EnumRegularization _regularization = NN::EnumRegularization::NONE,
+              bool _multithreading = true, Monitoring* pMonitoring = NULL);
 
     template <typename Iterator>
         void setDropOut (Iterator begin, Iterator end, size_t _dropRepetitions) { m_dropOut.assign (begin, end); m_dropRepetitions = _dropRepetitions; }
@@ -665,6 +644,8 @@ public:
 
     EnumRegularization regularization () const { return m_regularization; }
 
+    bool useMultithreading () const { return m_useMultithreading; }
+    
 public:
     size_t m_convergenceSteps;
     size_t m_batchSize;
@@ -683,6 +664,7 @@ public:
 
 private:
 
+    bool m_useMultithreading;
     Monitoring*   m_pMonitoring;
 
 };
@@ -716,8 +698,8 @@ class ClassificationSettings : public Settings
 public:
     ClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
 			    double _factorWeightDecay = 1e-5, EnumRegularization _regularization = EnumRegularization::NONE,
-                            size_t _scaleToNumEvents = 0, Monitoring* pMonitoring = NULL)
-        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _regularization, pMonitoring)
+                            size_t _scaleToNumEvents = 0, bool _useMultithreading = true, Monitoring* pMonitoring = NULL)
+        : Settings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, _regularization, _useMultithreading, pMonitoring)
         , m_ams ()
         , m_sumOfSigWeights (0)
         , m_sumOfBkgWeights (0)

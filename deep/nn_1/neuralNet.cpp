@@ -312,7 +312,8 @@ static Layer readLayer (std::istream& ss)
 
     
 Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
-                    double _factorWeightDecay, EnumRegularization eRegularization, Monitoring* pMonitoring)
+                    double _factorWeightDecay, EnumRegularization eRegularization,
+                    bool _useMultithreading, Monitoring* pMonitoring)
     : m_convergenceSteps (_convergenceSteps)
     , m_batchSize (_batchSize)
     , m_testRepetitions (_testRepetitions)
@@ -322,6 +323,7 @@ Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRep
     , count_mb_E (0)
     , count_mb_dE (0)
     , m_regularization (eRegularization)
+    , m_useMultithreading (_useMultithreading)
     , m_pMonitoring (pMonitoring)
     {
     }
