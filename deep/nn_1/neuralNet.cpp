@@ -57,17 +57,6 @@ Steepest::Steepest (double learningRate,
 
 
 
-    SteepestThreaded::SteepestThreaded (double learningRate, 
-                                        double momentum, 
-                                        size_t repetitions, 
-                                        Monitoring* pMonitoring, 
-                                        std::vector<size_t> layerSizes) 
-        : MinimizerMonitoring (pMonitoring, layerSizes)
-        , m_repetitions (repetitions)
-        , m_alpha (learningRate)
-        , m_beta (momentum)
-    {
-    }
 
 
 

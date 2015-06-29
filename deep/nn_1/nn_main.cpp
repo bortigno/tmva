@@ -670,8 +670,8 @@ void Chess ()
     // net.addLayer (NN::Layer (100, NN::EnumFunction::SOFTSIGN)); 
     // net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
     // net.addLayer (NN::Layer (20, NN::EnumFunction::SOFTSIGN)); 
+    net.addLayer (NN::Layer (100, myActFnc)); 
     net.addLayer (NN::Layer (50, myActFnc)); 
-    net.addLayer (NN::Layer (20, myActFnc)); 
     net.addLayer (NN::Layer (10, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
@@ -703,14 +703,14 @@ void Chess ()
 
 
 
-//    typedef NN::SteepestThreaded LocalMinimizer;
+    bool mulithreading = false;
     typedef NN::Steepest LocalMinimizer;
     {
         LocalMinimizer minimizer (1e-1, 0.0, 1, &monitoring, layerSizesForMonitoring);
 	NN::ClassificationSettings settings (/*_convergenceSteps*/ 200, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ true, 
+                                             /* use multithreading */ mulithreading, 
                                              &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
 
@@ -723,7 +723,7 @@ void Chess ()
         NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ true, 
+                                             /* use multithreading */ mulithreading, 
                                               &monitoring);
         settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -735,7 +735,7 @@ void Chess ()
         NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 70, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
-                                              /* use multithreading */ true, 
+                                              /* use multithreading */ mulithreading, 
                                               &monitoring);
 //        settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -747,7 +747,7 @@ void Chess ()
         NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 200, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::L1,
                                               /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ true, 
+                                             /* use multithreading */ mulithreading, 
                                               &monitoring);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);

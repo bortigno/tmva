@@ -4,6 +4,8 @@
 
 
 #include <tuple>
+#include <chrono>
+
 
 
 namespace NN
@@ -368,105 +370,6 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 
 
 
-
-/*
-    template <typename Function, typename Weights, typename Gradients, typename PassThrough>
-        double SteepestThreaded::fitWrapper (Function& function, PassThrough& passThrough, Weights weights)
-    {
-	return fitnessFunction (passThrough, weights);
-    }
-
-
-
-    template <typename Function, typename Weights, typename PassThrough>
-        double SteepestThreaded::operator() (Function& fitnessFunction, Weights& weights, PassThrough& passThrough) 
-    {
-	size_t numWeights = weights.size ();
-	std::vector<double> gradients (numWeights, 0.0);
-	std::vector<double> localWeights (begin (weights), end (weights));
-        if (m_prevGradients.empty ())
-            m_prevGradients.assign (weights.size (), 0);
-
-
-        fitnessFunction (passThrough, weights, gradients);
-
-        std::vector<std::future<std::tuple<double,double,double> > > futures;
-//        std::vector<std::pair<double,double> > factors;
-//        std::cout << "start loop" << std::endl;
-        for (size_t i = 0; i < m_repetitions; ++i)
-        {
-            std::vector<double> tmpWeights (weights);
-            double alpha = m_alpha * (1.0 + i);
-            alpha = gaussDouble (alpha, alpha/2.0);
-            double beta = m_beta;
-            auto itGradient = begin (gradients);
-            auto itPrevGradient = begin (m_prevGradients);
-            std::for_each (begin (tmpWeights), end (tmpWeights), [alpha,beta,&itGradient,&itPrevGradient](double& w) 
-                           { 
-                               w += alpha * (*itGradient) + (*itPrevGradient);
-                               ++itGradient; ++itPrevGradient;
-                           }
-                );
-            
-	    // fitnessFunction is a function template which turns into a function at invocation
-	    // if we call fitnessFunction directly in async, the templat parameters
-	    // cannot be deduced correctly. Through the lambda function, the types are 
-            // already deduced correctly for the lambda function and the async. The deduction for 
-	    // the template function is then done from within the lambda function.
-//            std::cout << "async rep " << i << std::endl;
-	    futures.push_back (std::async (std::launch::async, [&fitnessFunction, &passThrough, tmpWeights, alpha, beta, i]() mutable 
-					   {
-//                                               std::cout << "    launched " << i << std::endl;
-                                               double tmpE = fitnessFunction (passThrough, tmpWeights);
-                                               std::tuple<double,double,double> ret (tmpE, alpha, beta);
-//                                               std::cout << "result " << tmpE << ", " << alpha << ", " << beta << std::endl;
-                                               return ret;
-					   }) );
-
-//            factors.push_back (std::make_pair (alpha,beta));
-        }
-//        std::cout << "--- loop end" << std::endl;
-        
-        // select best
-        double bestAlpha = m_alpha;
-        double bestBeta = 0.0;
-        double bestE = 1e100;
-        for (auto& futureEAlphaBeta : futures)
-        {
-//            std::cout << "get future" << std::endl;
-            auto EAlphaBeta = futureEAlphaBeta.get ();
-            double E = std::get <0>(EAlphaBeta);
-            double alpha = std::get <1>(EAlphaBeta);
-            double beta = std::get <2>(EAlphaBeta);
-            if (E < bestE)
-            {
-//                std::cout << "best " << E << std::endl;
-                bestAlpha = alpha;
-                bestBeta = beta;
-                bestE = E;
-            }
-        }
-
-        assert (bestE < 1e10);
-        
-        // walk this way
-        auto itGradient = begin (gradients);
-        auto itPrevGradient = begin (m_prevGradients);
-        std::for_each (begin (weights), end (weights), [bestAlpha,bestBeta,&itGradient,&itPrevGradient](double& w) 
-                       {
-                           double currGrad = (*itGradient);
-                           double prevGrad = (*itPrevGradient);
-                           currGrad *= bestAlpha;
-                
-                           (*itPrevGradient) = bestBeta * (prevGrad + currGrad);
-                           currGrad = currGrad + prevGrad;
-
-                           w += currGrad;
-                           ++itGradient; ++itPrevGradient;
-                       }
-            );
-        return bestE;
-    }*/
 
 
 
@@ -976,9 +879,11 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	if (itPatternBatchEnd != itPatternEnd)
             batches.push_back (Batch (itPatternBatchEnd, itPatternEnd));
 
-
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now ();
         if (settings.useMultithreading ())
         {
+            std::cout << "multithreading!" << std::endl;
         
             // -------------------- divide the batches into bunches for each thread --------------
             size_t numThreads = std::thread::hardware_concurrency ();
@@ -1022,6 +927,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         }
         else
         {
+            std::cout << "no multithreading" << std::endl;
             for (auto& batch : batches)
             {
                 std::tuple<Settings&, Batch&, DropContainer&> settingsAndBatch (settings, batch, dropContainer);
@@ -1030,6 +936,10 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         }
         
 	error /= numBatches_stored;
+
+        end = std::chrono::system_clock::now ();
+        std::chrono::duration<double> elapsed = end-start;
+        std::cout << "elapsed time = " << elapsed.count () << std::endl;
 	return error;
     }
 
