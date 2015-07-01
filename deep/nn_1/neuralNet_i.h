@@ -1374,6 +1374,53 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 
 
+    /* template <typename Minimizer> */
+    /*     double Net::preTrain (std::vector<double>& weights,  */
+    /*     	  std::vector<Pattern>& trainPattern,  */
+    /*     	  const std::vector<Pattern>& testPattern,  */
+    /*               Minimizer& minimizer, Settings& settings) */
+    /* { */
+    /*     auto itWeightGeneral = std::begin (weights); */
+    /*     size_t numNodes = inputSize (); */
+    /*     std::vector<Pattern> prePatternTrain (trainPattern.size ()); */
+    /*     std::vector<Pattern> prePatternTest (testPattern.size ()); */
+    /*     auto itPrePatternTrain = std::begin (trainPattern); */
+    /*     auto itPrePatternTrainEnd = std::end (trainPattern); */
+    /*     auto itPrePatternTest = std::begin (testPattern); */
+    /*     auto itPrePatternTestnEnd = std::end (testPattern); */
+    /*     for (auto& _layer in layers ()) */
+    /*     { */
+    /*         // compute number of weights (as a function of the number of incoming nodes) */
+    /*         size_t numWeights = _layer.numWeights (numNodes); */
+
+    /*         // ------------------ */
+    /*         NN::Net preNet; */
+
+    /*         // prepare pattern */
+    /*         std::transform (itPrePatternTrain, itPrePatternTrainEnd, */
+    /*                         itPrePatternTrain, // in-place transformation */
+    /*                         [](const Pattern& p) */
+    /*                         { */
+    /*                             Pattern pat (p.input (), p.input (), p.weight ()); */
+    /*                             return pat; */
+    /*                         }); */
+            
+    /*         size_t inputSize = trainPattern.front ().input ().size (); */
+    /*         size_t outputSize = trainPattern.front ().output ().size (); */
+
+    /*         net.setInputSize (inputSize); */
+            
+            
+    /*         //std::vector<double> localWeights (itWeightGeneral, itWeightGeneral + numWeights); // get the already initialized weights */
+    /*         std::vector<double> localWeights */
+    /*         // ------------------ */
+
+    /*         // fetch number of nodes */
+    /*         numNodes = _layer.numNodes (); */
+    /*     } */
+    /* } */
+
+
 
 
 
