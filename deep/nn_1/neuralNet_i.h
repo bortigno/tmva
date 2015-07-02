@@ -728,6 +728,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	DropContainer dropContainerTest;
         const std::vector<double>& dropFractions = settings.dropFractions ();
         bool isWeightsForDrop = false;
+
         
         // until convergence
         do
@@ -1077,17 +1078,14 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	double sumWeights = 0.0;	// -------------
 
         // ----------- create layer data -----------------
-        const Pattern& firstPattern = *batch.begin ();
-        assert (_layers.back ().numNodes () == firstPattern.output ().size ());
+        assert (_layers.back ().numNodes () == outputSize ());
         size_t totalNumWeights = 0;
         std::vector<LayerData> layerData;
         layerData.reserve (_layers.size ()+1);
         ItWeight itWeight = itWeightBegin;
         ItGradient itGradient = itGradientBegin;
-        typename Pattern::const_iterator itInputBegin = firstPattern.beginInput ();
-        typename Pattern::const_iterator itInputEnd = firstPattern.endInput ();
-        layerData.push_back (LayerData (itInputBegin, itInputEnd));
         size_t numNodesPrev = inputSize ();
+        layerData.push_back (LayerData (numNodesPrev));
         auto itActFncLayer = begin (activationFunctionsDropOut);
         auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
         for (auto& layer: _layers)
@@ -1119,6 +1117,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 
         // ---------------------------------- loop over pattern -------------------------------------------------------
+        typename Pattern::const_iterator itInputBegin;
+        typename Pattern::const_iterator itInputEnd;
 	for (const Pattern& _pattern : batch)
 	{
             bool isFirst = true;
@@ -1207,6 +1207,18 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	sumError /= sumWeights;
 	return sumError;
     }
+
+
+
+    /* template <typename Minimizer> */
+    /* double preTrain (std::vector<double>& weights,  */
+    /* 		     std::vector<Pattern>& trainPattern,  */
+    /* 		     const std::vector<Pattern>& testPattern,  */
+    /* 		     Minimizer& minimizer, Settings& settings) */
+    /* { */
+    /* } */
+
+
 
 
 

@@ -416,6 +416,7 @@ public:
     typedef typename function_container_type::iterator function_iterator_type;
     typedef typename function_container_type::const_iterator const_function_iterator_type;
 
+    LayerData (size_t inputSize);
     LayerData (const_iterator_type itInputBegin, const_iterator_type itInputEnd, ModeOutputValues eModeOutput = ModeOutputValues::DIRECT);
 
 
@@ -794,11 +795,13 @@ public:
     }
 
     void setInputSize (size_t sizeInput) { m_sizeInput = sizeInput; }
+    void setOutputSize (size_t sizeOutput) { m_sizeOutput = sizeOutput; }
     void addLayer (Layer& layer) { m_layers.push_back (layer); }
     void addLayer (Layer&& layer) { m_layers.push_back (layer); }
     void setErrorFunction (ModeErrorFunction eErrorFunction) { m_eErrorFunction = eErrorFunction; }
     
     size_t inputSize () const { return m_sizeInput; }
+    size_t outputSize () const { return m_sizeOutput; }
 
     template <typename WeightsType, typename DropProbabilities>
         void dropOutWeightFactor (WeightsType& weights,
@@ -884,6 +887,7 @@ private:
 
     ModeErrorFunction m_eErrorFunction;
     size_t m_sizeInput;
+    size_t m_sizeOutput;
     std::vector<Layer> m_layers;
 
     friend std::ostream& operator<< (std::ostream& ostr, Net const& net);

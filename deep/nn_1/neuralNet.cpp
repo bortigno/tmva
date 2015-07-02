@@ -73,6 +73,15 @@ typename Batch::const_iterator end (const Batch& batch)
 }
 
 
+    LayerData::LayerData (size_t inputSize)
+	: m_isInputLayer (true)
+	, m_hasWeights (false)
+	, m_hasGradients (false)
+	, m_eModeOutput (ModeOutputValues::DIRECT) 
+    {
+	m_size = inputSize;
+	m_deltas.assign (m_size, 0);
+    }
 
 
     LayerData::LayerData (const_iterator_type itInputBegin, const_iterator_type itInputEnd, ModeOutputValues eModeOutput)

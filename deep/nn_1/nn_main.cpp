@@ -114,6 +114,7 @@ void checkGradients ()
 
 
     net.setInputSize (inputSize);
+    net.setOutputSize (outputSize);
     net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
 //    net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
 //    net.addLayer (Layer (outputSize, EnumFunction::LINEAR)); 
@@ -264,6 +265,7 @@ void testXOR ()
     size_t outputSize = 1;
 
     net.setInputSize (inputSize);
+    net.setOutputSize (outputSize);
     net.addLayer (NN::Layer (4, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR)); 
 
@@ -321,6 +323,7 @@ void testClassification ()
     size_t outputSize = trainPattern.front ().output ().size ();
 
     net.setInputSize (inputSize);
+    net.setOutputSize (outputSize);
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
@@ -378,6 +381,7 @@ void testWriteRead ()
     size_t outputSize = trainPattern.front ().output ().size ();
 
     net.setInputSize (inputSize);
+    net.setOutputSize (outputSize);
     net.addLayer (NN::Layer (3, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR)); 
 
@@ -480,6 +484,7 @@ void Higgs ()
     size_t outputSize = trainPattern.front ().output ().size ();
 
     net.setInputSize (inputSize);
+    net.setOutputSize (outputSize);
     net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (30, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
@@ -666,12 +671,13 @@ void Chess ()
     size_t outputSize = trainPattern.front ().output ().size ();
 
     net.setInputSize (inputSize);
+    net.setOutputSize (outputSize);
     NN::EnumFunction myActFnc = NN::EnumFunction::SOFTSIGN;
     // net.addLayer (NN::Layer (100, NN::EnumFunction::SOFTSIGN)); 
     // net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
     // net.addLayer (NN::Layer (20, NN::EnumFunction::SOFTSIGN)); 
-    net.addLayer (NN::Layer (100, myActFnc)); 
-    net.addLayer (NN::Layer (50, myActFnc)); 
+    net.addLayer (NN::Layer (30, myActFnc)); 
+    net.addLayer (NN::Layer (20, myActFnc)); 
     net.addLayer (NN::Layer (10, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
@@ -703,11 +709,11 @@ void Chess ()
 
 
 
-    bool mulithreading = false;
+    bool mulithreading = true;
     typedef NN::Steepest LocalMinimizer;
     {
         LocalMinimizer minimizer (1e-1, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 200, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
                                              /* use multithreading */ mulithreading, 
