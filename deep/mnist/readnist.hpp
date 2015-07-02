@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include "../pattern/pattern.hpp"
 
 class Pattern;
 

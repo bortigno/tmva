@@ -3,7 +3,7 @@ CC=g++
 #CC=clang++
 CFLAGS=-Wl,--no-as-needed -Wall -std=c++11 -O4 -ggdb -pthread
 LDFLAGS=-ggdb -lpthread
-SOURCES=nn_main.cpp neuralNet.cpp 
+SOURCES=nn_main.cpp neuralNet.cpp ../mnist/readnist.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=nn_mainExe
 LIBS = -lstdc++ -lm

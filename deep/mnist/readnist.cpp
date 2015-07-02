@@ -1,5 +1,4 @@
 #include "readnist.hpp"
-#include "../nn_0/neuralNet.hpp"
 
 
 int reverseInt (int i)
