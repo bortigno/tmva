@@ -84,6 +84,7 @@ typename Batch::const_iterator end (const Batch& batch)
     }
 
 
+
     LayerData::LayerData (const_iterator_type itInputBegin, const_iterator_type itInputEnd, ModeOutputValues eModeOutput)
 	: m_isInputLayer (true)
 	, m_hasWeights (false)
@@ -677,11 +678,11 @@ void ClassificationSettings::startTestCycle ()
 
     
 
-    size_t Net::numWeights (size_t numInputNodes, size_t trainingStartLayer) const 
+    size_t Net::numWeights (size_t trainingStartLayer) const 
     {
 	size_t num (0);
 	size_t index (0);
-	size_t prevNodes (numInputNodes);
+	size_t prevNodes (inputSize ());
 	for (auto& layer : m_layers)
 	{
 	    if (index >= trainingStartLayer)

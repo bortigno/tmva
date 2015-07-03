@@ -673,27 +673,19 @@ void Chess ()
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
     NN::EnumFunction myActFnc = NN::EnumFunction::SOFTSIGN;
-    // net.addLayer (NN::Layer (100, NN::EnumFunction::SOFTSIGN)); 
-    // net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
-    // net.addLayer (NN::Layer (20, NN::EnumFunction::SOFTSIGN)); 
+    net.addLayer (NN::Layer (70, myActFnc)); 
     net.addLayer (NN::Layer (30, myActFnc)); 
-    net.addLayer (NN::Layer (20, myActFnc)); 
     net.addLayer (NN::Layer (10, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
-//    size_t numWeightsFirstLayer = net.layers ().front ().numWeights (inputSize);
-
-//    size_t numWeights = net.numWeights (inputSize);
-
-//    gaussDistribution (weights, 0.1, 1.0/sqrt(inputSize));
     net.initializeWeights (NN::WeightInitializationStrategy::XAVIERUNIFORM, 
 			   trainPattern.begin (),
 			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
-    dropConfig = {0.5, 0.5, 0.5};
-    dropConfig2 = {0.1, 0.1, 0.1};
+    dropConfig = {0.0, 0.5, 0.5, 0.5, 0.5};
+    dropConfig2 = {0.0, 0.1, 0.1, 0.1, 0.1};
     double dropRepetitions = 1;
     
 #endif
@@ -708,12 +700,15 @@ void Chess ()
     }
 
 
+    std::cout << "number of weights : " << net.numWeights () << std::endl;
+
+
 
     bool mulithreading = true;
     typedef NN::Steepest LocalMinimizer;
     {
-        LocalMinimizer minimizer (1e-1, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+        LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 500, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
                                              /* use multithreading */ mulithreading, 
@@ -725,7 +720,7 @@ void Chess ()
         /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
     {
-        LocalMinimizer minimizer2 (1e-2, 0.9, 1, &monitoring, layerSizesForMonitoring);
+        LocalMinimizer minimizer2 (1e-2, 0.5, 1, &monitoring, layerSizesForMonitoring);
         NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
@@ -775,11 +770,15 @@ void mnist ()
     feenableexcept (FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW); // exceptions bei underflow, overflow und divide by zero (damit man den fehler gleich findet)
 
 
-    std::string fileNameTrainImg ("/home/peter/code/MNIST/train-images-idx3-ubyte");
-    std::string fileNameTestImg ("/home/peter/code/MNIST/t10k-images-idx3-ubyte");
-    std::string fileNameTrainLabels ("/home/peter/code/MNIST/train-labels-idx1-ubyte");
-    std::string fileNameTestLabels ("/home/peter/code/MNIST/t10k-labels-idx1-ubyte");
+    // std::string fileNameTrainImg ("/home/peter/code/MNIST/train-images-idx3-ubyte");
+    // std::string fileNameTestImg ("/home/peter/code/MNIST/t10k-images-idx3-ubyte");
+    // std::string fileNameTrainLabels ("/home/peter/code/MNIST/train-labels-idx1-ubyte");
+    // std::string fileNameTestLabels ("/home/peter/code/MNIST/t10k-labels-idx1-ubyte");
 
+    std::string fileNameTrainImg    ("/home/peters/test/MNIST_handWrittenDigits/train-images-idx3-ubyte");
+    std::string fileNameTrainLabels ("/home/peters/test/MNIST_handWrittenDigits/train-labels-idx1-ubyte");
+    std::string fileNameTestImg     ("/home/peters/test/MNIST_handWrittenDigits/t10k-images-idx3-ubyte");
+    std::string fileNameTestLabels  ("/home/peters/test/MNIST_handWrittenDigits/t10k-labels-idx1-ubyte");
 
     std::vector<std::string> fieldNamesTrain; 
     std::vector<std::string> fieldNamesTest; 
@@ -827,8 +826,8 @@ void mnist ()
     // net.addLayer (NN::Layer (100, NN::EnumFunction::SOFTSIGN)); 
     // net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
     // net.addLayer (NN::Layer (20, NN::EnumFunction::SOFTSIGN)); 
-    net.addLayer (NN::Layer (30, myActFnc)); 
-    net.addLayer (NN::Layer (20, myActFnc)); 
+    net.addLayer (NN::Layer (1000, myActFnc)); 
+    net.addLayer (NN::Layer (100, myActFnc)); 
     net.addLayer (NN::Layer (10, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
@@ -843,8 +842,8 @@ void mnist ()
 			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
-    dropConfig = {0.5, 0.5, 0.5};
-    dropConfig2 = {0.1, 0.1, 0.1};
+    dropConfig = {0.0, 0.5, 0.5, 0.5, 0.5, 0.5};
+    dropConfig2 = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
     double dropRepetitions = 1;
     
 #endif
@@ -858,13 +857,13 @@ void mnist ()
         inputSize = layer.numNodes ();
     }
 
-
+    std::cout << "number of weights : " << net.numWeights () << std::endl;
 
     bool mulithreading = true;
     typedef NN::Steepest LocalMinimizer;
     {
         LocalMinimizer minimizer (1e-1, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 200, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
                                              /* use multithreading */ mulithreading, 
@@ -876,7 +875,7 @@ void mnist ()
         /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
     {
-        LocalMinimizer minimizer2 (1e-2, 0.9, 1, &monitoring, layerSizesForMonitoring);
+        LocalMinimizer minimizer2 (1e-2, 0.3, 1, &monitoring, layerSizesForMonitoring);
         NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
@@ -929,8 +928,8 @@ int main ()
 //   checkGradients ();
 //    testXOR ();
 //    Higgs ();
-//    Chess ();
-    mnist ();
+    Chess ();
+//    mnist ();
 //    testClassification ();
 //    testWriteRead ();
 

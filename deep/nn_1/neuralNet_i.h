@@ -73,9 +73,33 @@ static std::function<double(double)> InvDoubleInvertedGauss = [](double value)
 
 
     
+// apply weights using drop-out
+// itDrop correlates with itSource
+template <typename ItSource, typename ItWeight, typename ItTarget, typename ItDrop>
+    void applyWeights (ItSource itSourceBegin, ItSource itSourceEnd,
+                       ItWeight itWeight,
+                       ItTarget itTargetBegin, ItTarget itTargetEnd,
+                       ItDrop itDrop)
+{
+    for (auto itSource = itSourceBegin; itSource != itSourceEnd; ++itSource)
+    {
+        for (auto itTarget = itTargetBegin; itTarget != itTargetEnd; ++itTarget)
+        {
+            if (*itDrop)
+                (*itTarget) += (*itSource) * (*itWeight);
+            ++itWeight;
+        }
+        ++itDrop;        
+    }
+}
 
+
+
+// apply weights without drop-out
 template <typename ItSource, typename ItWeight, typename ItTarget>
-void applyWeights (ItSource itSourceBegin, ItSource itSourceEnd, ItWeight itWeight, ItTarget itTargetBegin, ItTarget itTargetEnd)
+    void applyWeights (ItSource itSourceBegin, ItSource itSourceEnd,
+                       ItWeight itWeight,
+                       ItTarget itTargetBegin, ItTarget itTargetEnd)
 {
     for (auto itSource = itSourceBegin; itSource != itSourceEnd; ++itSource)
     {
@@ -89,8 +113,11 @@ void applyWeights (ItSource itSourceBegin, ItSource itSourceEnd, ItWeight itWeig
 
 
 
+// apply weights backwards (for backprop)
 template <typename ItSource, typename ItWeight, typename ItPrev>
-void applyWeightsBackwards (ItSource itCurrBegin, ItSource itCurrEnd, ItWeight itWeight, ItPrev itPrevBegin, ItPrev itPrevEnd)
+void applyWeightsBackwards (ItSource itCurrBegin, ItSource itCurrEnd,
+                            ItWeight itWeight,
+                            ItPrev itPrevBegin, ItPrev itPrevEnd)
 {
     for (auto itPrev = itPrevBegin; itPrev != itPrevEnd; ++itPrev)
     {
@@ -99,6 +126,28 @@ void applyWeightsBackwards (ItSource itCurrBegin, ItSource itCurrEnd, ItWeight i
             (*itPrev) += (*itCurr) * (*itWeight);
             ++itWeight;
         }
+    }
+}
+
+
+
+// apply weights backwards (for backprop)
+// itDrop correlates with itPrev (to be in agreement with "applyWeights" where it correlates with itSource (same node as itTarget here in applybackwards)
+template <typename ItSource, typename ItWeight, typename ItPrev, typename ItDrop>
+void applyWeightsBackwards (ItSource itCurrBegin, ItSource itCurrEnd,
+                            ItWeight itWeight,
+                            ItPrev itPrevBegin, ItPrev itPrevEnd,
+                            ItDrop itDrop)
+{
+    for (auto itPrev = itPrevBegin; itPrev != itPrevEnd; ++itPrev)
+    {
+	for (auto itCurr = itCurrBegin; itCurr != itCurrEnd; ++itCurr)
+	{
+            if (*itDrop)
+                (*itPrev) += (*itCurr) * (*itWeight);
+            ++itWeight; 
+        }
+        ++itDrop;
     }
 }
 
@@ -287,6 +336,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 }
 
 
+#define USELOCALWEIGHTS 1
 
 
 
@@ -295,7 +345,10 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
     {
 	size_t numWeights = weights.size ();
 	std::vector<double> gradients (numWeights, 0.0);
+
+#ifdef USELOCALWEIGHTS
 	std::vector<double> localWeights (begin (weights), end (weights));
+#endif
         double E = 1e10;
         if (m_prevGradients.empty ())
             m_prevGradients.assign (weights.size (), 0);
@@ -308,15 +361,16 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                 break;
 
             gradients.assign (numWeights, 0.0);
+#ifdef USELOCALWEIGHTS
             E = fitnessFunction (passThrough, localWeights, gradients);
-//            E = fitnessFunction (passThrough, weights, gradients);
+#else            
+            E = fitnessFunction (passThrough, weights, gradients);
+#endif         
 //            plotGradients (gradients);
 
             double alpha = gaussDouble (m_alpha, m_alpha/2.0);
 //            double alpha = m_alpha;
 
-            /* auto itLocW = begin (localWeights); */
-            /* auto itLocWEnd = end (localWeights); */
             auto itG = begin (gradients);
             auto itGEnd = end (gradients);
             auto itPrevG = begin (m_prevGradients);
@@ -330,8 +384,6 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
                 (*itPrevG) = m_beta * (prevGrad + currGrad);
                 (*itG) = currGrad + prevGrad;
 
-//                (*itLocW) += (*itG);
-                
                 if (std::fabs (currGrad) > maxGrad)
                     maxGrad = currGrad;
             }
@@ -367,6 +419,8 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
         }
         return E;
     }
+
+
 
 
 
@@ -430,7 +484,7 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 
 
 template <typename ItOutput, typename ItTruth, typename ItDelta, typename ItInvActFnc>
-double sumOfSquares (ItOutput itOutputBegin, ItOutput itOutputEnd, ItTruth itTruthBegin, ItTruth itTruthEnd, ItDelta itDelta, ItDelta itDeltaEnd, ItInvActFnc itInvActFnc, double patternWeight) 
+double sumOfSquares (ItOutput itOutputBegin, ItOutput itOutputEnd, ItTruth itTruthBegin, ItTruth /*itTruthEnd*/, ItDelta itDelta, ItDelta itDeltaEnd, ItInvActFnc itInvActFnc, double patternWeight) 
 {
     double errorSum = 0.0;
 
@@ -439,7 +493,7 @@ double sumOfSquares (ItOutput itOutputBegin, ItOutput itOutputEnd, ItTruth itTru
     bool hasDeltas = (itDelta != itDeltaEnd);
     for (ItOutput itOutput = itOutputBegin; itOutput != itOutputEnd; ++itOutput, ++itTruth)
     {
-	assert (itTruth != itTruthEnd);
+//	assert (itTruth != itTruthEnd);
 	double output = (*itOutput);
 	double error = output - (*itTruth);
 	if (hasDeltas)
@@ -497,7 +551,7 @@ double crossEntropy (ItProbability itProbabilityBegin, ItProbability itProbabili
 
 
 template <typename ItOutput, typename ItTruth, typename ItDelta, typename ItInvActFnc>
-double softMaxCrossEntropy (ItOutput itProbabilityBegin, ItOutput itProbabilityEnd, ItTruth itTruthBegin, ItTruth itTruthEnd, ItDelta itDelta, ItDelta itDeltaEnd, ItInvActFnc /*itInvActFnc*/, double patternWeight) 
+double softMaxCrossEntropy (ItOutput itProbabilityBegin, ItOutput itProbabilityEnd, ItTruth itTruthBegin, ItTruth /*itTruthEnd*/, ItDelta itDelta, ItDelta itDeltaEnd, ItInvActFnc /*itInvActFnc*/, double patternWeight) 
 {
     double errorSum = 0.0;
 
@@ -506,7 +560,7 @@ double softMaxCrossEntropy (ItOutput itProbabilityBegin, ItOutput itProbabilityE
     ItTruth itTruth = itTruthBegin;
     for (auto itProbability = itProbabilityBegin; itProbability != itProbabilityEnd; ++itProbability, ++itTruth)
     {
-	assert (itTruth != itTruthEnd);
+//	assert (itTruth != itTruthEnd);
 	double probability = (*itProbability);
 	double truth = (*itTruth);
 	if (hasDeltas)
@@ -583,18 +637,38 @@ std::ostream& operator<< (std::ostream& ostr, LayerData const& data);
 template <typename LAYERDATA>
 void forward (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
 {
-    applyWeights (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
-		  currLayerData.weightsBegin (), 
-		  currLayerData.valuesBegin (), currLayerData.valuesEnd ());
+    if (prevLayerData.hasDropOut ())
+    {        
+        applyWeights (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
+                      currLayerData.weightsBegin (), 
+                      currLayerData.valuesBegin (), currLayerData.valuesEnd (),
+                      prevLayerData.dropOut ());
+    }
+    else
+    {
+        applyWeights (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
+                      currLayerData.weightsBegin (), 
+                      currLayerData.valuesBegin (), currLayerData.valuesEnd ());
+    }
     applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.functionBegin ());
 }
 
 template <typename LAYERDATA>
 void forward_training (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
 {
-    applyWeights (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
-		  currLayerData.weightsBegin (), 
-		  currLayerData.valuesBegin (), currLayerData.valuesEnd ());
+    if (prevLayerData.hasDropOut ())
+    {        
+        applyWeights (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
+                      currLayerData.weightsBegin (), 
+                      currLayerData.valuesBegin (), currLayerData.valuesEnd (),
+                      prevLayerData.dropOut ());
+    }
+    else
+    {
+        applyWeights (prevLayerData.valuesBegin (), prevLayerData.valuesEnd (), 
+                      currLayerData.weightsBegin (), 
+                      currLayerData.valuesBegin (), currLayerData.valuesEnd ());
+    }
     applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.functionBegin (), 
 		    currLayerData.inverseFunctionBegin (), currLayerData.valueGradientsBegin ());
 }
@@ -603,9 +677,19 @@ void forward_training (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
 template <typename LAYERDATA>
 void backward (LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
 {
-    applyWeightsBackwards (currLayerData.deltasBegin (), currLayerData.deltasEnd (), 
-			   currLayerData.weightsBegin (), 
-			   prevLayerData.deltasBegin (), prevLayerData.deltasEnd ());
+    if (prevLayerData.hasDropOut ())
+    {
+        applyWeightsBackwards (currLayerData.deltasBegin (), currLayerData.deltasEnd (), 
+                               currLayerData.weightsBegin (), 
+                               prevLayerData.deltasBegin (), prevLayerData.deltasEnd (),
+                               prevLayerData.dropOut ());
+    }
+    else
+    {
+        applyWeightsBackwards (currLayerData.deltasBegin (), currLayerData.deltasEnd (), 
+                               currLayerData.weightsBegin (), 
+                               prevLayerData.deltasBegin (), prevLayerData.deltasEnd ());
+    }
 }
 
 
@@ -744,12 +828,13 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 		dropContainer.clear ();
 		for (auto itLayer = begin (m_layers), itLayerEnd = end (m_layers); itLayer != itLayerEnd; ++itLayer, ++dropIndex)
 		{
-                    if (dropFractions.size () < dropIndex+1)
-                        break;
-                    
 		    auto& layer = *itLayer;
 		    // how many nodes have to be dropped
-		    size_t numDrops = dropFractions.at (dropIndex) * layer.numNodes ();
+                    double dropFraction = 0.0;
+                    if (dropFractions.size () > dropIndex)
+                        dropFraction = dropFractions.at (dropIndex);
+                    
+		    size_t numDrops = dropFraction * layer.numNodes ();
                     if (numDrops >= layer.numNodes ()) // maintain at least one node
                         numDrops = layer.numNodes () - 1;
 		    dropContainer.insert (end (dropContainer), layer.numNodes ()-numDrops, true); // add the markers for the nodes which are enabled
@@ -956,7 +1041,6 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	auto itWeight = begin (weights);
 	auto itInputBegin = begin (input);
 	auto itInputEnd = end (input);
-	DropContainer drop;
 	layerData.push_back (LayerData (itInputBegin, itInputEnd));
 	size_t numNodesPrev = input.size ();
 	for (auto& layer: m_layers)
@@ -1036,43 +1120,17 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
     {
         Settings& settings = std::get<0>(settingsAndBatch);
         Batch& batch = std::get<1>(settingsAndBatch);
-	DropContainer& drop = std::get<2>(settingsAndBatch);
+	DropContainer& dropContainer = std::get<2>(settingsAndBatch);
 
-	bool usesDropOut = !drop.empty ();
+	bool usesDropOut = !dropContainer.empty ();
 
-	std::vector<std::vector<std::function<double(double)> > > activationFunctionsDropOut;
-	std::vector<std::vector<std::function<double(double)> > > inverseActivationFunctionsDropOut;
-
+        LayerData::const_dropout_iterator itDropOut;
+        if (usesDropOut)
+            itDropOut = std::begin (dropContainer);
+        
 	if (_layers.empty ())
 	    throw std::string ("no layers in this net");
 
-	if (usesDropOut)
-	{
-	    auto itDrop = begin (drop);
-	    for (auto& layer: _layers)
-	    {
-		activationFunctionsDropOut.push_back (std::vector<std::function<double(double)> >());
-		inverseActivationFunctionsDropOut.push_back (std::vector<std::function<double(double)> >());
-		auto& actLine = activationFunctionsDropOut.back ();
-		auto& invActLine = inverseActivationFunctionsDropOut.back ();
-		auto& actFnc = layer.activationFunctions ();
-		auto& invActFnc = layer.inverseActivationFunctions ();
-		for (auto itAct = begin (actFnc), itActEnd = end (actFnc), itInv = begin (invActFnc); itAct != itActEnd; ++itAct, ++itInv)
-		{
-		    if (!*itDrop)
-		    {
-			actLine.push_back (ZeroFnc);
-			invActLine.push_back (ZeroFnc);
-		    }
-		    else
-		    {
-			actLine.push_back (*itAct);
-			invActLine.push_back (*itInv);
-		    }
-		    ++itDrop;
-		}
-	    }
-	}
 
 	double sumError = 0.0;
 	double sumWeights = 0.0;	// -------------
@@ -1086,31 +1144,34 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         ItGradient itGradient = itGradientBegin;
         size_t numNodesPrev = inputSize ();
         layerData.push_back (LayerData (numNodesPrev));
-        auto itActFncLayer = begin (activationFunctionsDropOut);
-        auto itInvActFncLayer = begin (inverseActivationFunctionsDropOut);
+        if (usesDropOut)
+        {
+            layerData.back ().setDropOut (itDropOut);
+            itDropOut += _layers.back ().numNodes ();
+        }
         for (auto& layer: _layers)
         {
-            const std::vector<std::function<double(double)> >& actFnc = usesDropOut ? (*itActFncLayer) : layer.activationFunctions ();
-            const std::vector<std::function<double(double)> >& invActFnc = usesDropOut ? (*itInvActFncLayer) : layer.inverseActivationFunctions ();
             if (itGradientBegin == itGradientEnd)
                 layerData.push_back (LayerData (layer.numNodes (), itWeight, 
-                                                begin (actFnc),
+                                                std::begin (layer.activationFunctions ()),
                                                 layer.modeOutputValues ()));
             else
                 layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
-                                                begin (actFnc), begin (invActFnc),
+                                                std::begin (layer.activationFunctions ()),
+                                                std::begin (layer.inverseActivationFunctions ()),
                                                 layer.modeOutputValues ()));
+
+            if (usesDropOut)
+            {
+                layerData.back ().setDropOut (itDropOut);
+                itDropOut += layer.numNodes ();
+            }
             size_t _numWeights = layer.numWeights (numNodesPrev);
             totalNumWeights += _numWeights;
             itWeight += _numWeights;
             itGradient += _numWeights;
             numNodesPrev = layer.numNodes ();
 //                std::cout << layerData.back () << std::endl;
-            if (usesDropOut)
-            {
-                ++itActFncLayer;
-                ++itInvActFncLayer;
-            }
         }
 	assert (totalNumWeights > 0);
 
@@ -1207,18 +1268,6 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	sumError /= sumWeights;
 	return sumError;
     }
-
-
-
-    /* template <typename Minimizer> */
-    /* double preTrain (std::vector<double>& weights,  */
-    /* 		     std::vector<Pattern>& trainPattern,  */
-    /* 		     const std::vector<Pattern>& testPattern,  */
-    /* 		     Minimizer& minimizer, Settings& settings) */
-    /* { */
-    /* } */
-
-
 
 
 
