@@ -695,6 +695,16 @@ void ClassificationSettings::startTestCycle ()
 
 
 
+    void Net::fillDropContainer (DropContainer& dropContainer, double dropFraction, size_t numNodes) const
+    {
+        size_t numDrops = dropFraction * numNodes;
+        if (numDrops >= numNodes) // maintain at least one node
+            numDrops = numNodes - 1;
+        dropContainer.insert (end (dropContainer), numNodes-numDrops, true); // add the markers for the nodes which are enabled
+        dropContainer.insert (end (dropContainer), numDrops, false); // add the markers for the disabled nodes
+        // shuffle 
+        std::random_shuffle (end (dropContainer)-numNodes, end (dropContainer)); // shuffle enabled and disabled markers
+    }
 
 
     std::ostream& Net::write (std::ostream& ostr) const

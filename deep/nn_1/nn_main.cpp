@@ -673,9 +673,9 @@ void Chess ()
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
     NN::EnumFunction myActFnc = NN::EnumFunction::SOFTSIGN;
-    net.addLayer (NN::Layer (70, myActFnc)); 
-    net.addLayer (NN::Layer (30, myActFnc)); 
-    net.addLayer (NN::Layer (10, myActFnc)); 
+    net.addLayer (NN::Layer (4, myActFnc)); 
+    net.addLayer (NN::Layer (3, myActFnc)); 
+    net.addLayer (NN::Layer (2, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
@@ -733,7 +733,7 @@ void Chess ()
     }
     {
         LocalMinimizer minimizer2 (1e-2, 0.3, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 70, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
                                               /* use multithreading */ mulithreading, 

@@ -896,6 +896,11 @@ public:
 
     std::ostream& write (std::ostream& ostr) const;
 
+protected:
+
+    void fillDropContainer (DropContainer& dropContainer, double dropFraction, size_t numNodes) const;
+    
+    
 private:
 
     ModeErrorFunction m_eErrorFunction;

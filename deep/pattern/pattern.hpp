@@ -299,7 +299,7 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 	    if (val < -900)
 		val = 0.0;
 	    else if (fabs (ma-mi) > 1e-5)
-		val = (val-mi)/(ma - mi);
+		val = (2.0*(val-mi)/(ma - mi))-1.0;
 	}
     } 
 

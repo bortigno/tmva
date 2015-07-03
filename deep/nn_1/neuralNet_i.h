@@ -752,16 +752,24 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         auto itDrop = std::begin (drops);
         auto itDropEnd = std::end (drops);
 	size_t numNodes = inputSize ();
-        for (auto itLayer = std::begin (layers ()), itLayerEnd = std::end (layers ()); itLayer != itLayerEnd; ++itLayer)
+        double dropFraction = *itDrop
+        // start at -1 for the loop for the input layer which is not in layers ()
+        for (size_t idxLayer = -1, idxLayerEnd = layers ().size (); idxLayer < idxLayerEnd; ++idxLayer, ++itDrop)
         {
-            const Layer& layer = *itLayer;
             if (itDrop == itDropEnd)
                 break;
+
+            if (idxLayer >= 0)
+            {
+                const Layer& layer = *itLayer;
+                numNodes = layer.numNodes ();
+            }
 
             double dropFraction = *itDrop;
             double p = 1.0 - dropFraction;
 
-            if (itLayer+1 != itLayerEnd && itDrop+1 != itDropEnd) // if not the last layer
+            if (idxLayer+1 < idxLayerEnd &&
+                itDrop+1 != itDropEnd) // if not the last layer
             {
                 double dropFractionNext  = *(itDrop+1);
                 double pNext = 1.0 - dropFractionNext;
@@ -782,12 +790,13 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
                 *itWeight *= p;
                 ++itWeight;
             }
-            numNodes = layer.numNodes ();
-            ++itDrop;
         }
     }
 
 
+
+        
+    
 
     template <typename Minimizer>
         double Net::train (std::vector<double>& weights, 
@@ -826,21 +835,21 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	    {
 		// fill the dropOut-container
 		dropContainer.clear ();
+                size_t numNodes = inputSize ();
+                double dropFraction = 0.0;
+                dropFraction = dropFractions.at (dropIndex);
+                ++dropIndex;
+                fillDropContainer (dropContainer, dropFraction, numNodes);
 		for (auto itLayer = begin (m_layers), itLayerEnd = end (m_layers); itLayer != itLayerEnd; ++itLayer, ++dropIndex)
 		{
 		    auto& layer = *itLayer;
+                    numNodes = layer.numNodes ();
 		    // how many nodes have to be dropped
-                    double dropFraction = 0.0;
+                    dropFraction = 0.0;
                     if (dropFractions.size () > dropIndex)
                         dropFraction = dropFractions.at (dropIndex);
                     
-		    size_t numDrops = dropFraction * layer.numNodes ();
-                    if (numDrops >= layer.numNodes ()) // maintain at least one node
-                        numDrops = layer.numNodes () - 1;
-		    dropContainer.insert (end (dropContainer), layer.numNodes ()-numDrops, true); // add the markers for the nodes which are enabled
-		    dropContainer.insert (end (dropContainer), numDrops, false); // add the markers for the disabled nodes
-		    // shuffle 
-		    std::random_shuffle (end (dropContainer)-layer.numNodes (), end (dropContainer)); // shuffle enabled and disabled markers
+                    fillDropContainer (dropContainer, dropFraction, numNodes);
 		}
                 isWeightsForDrop = true;
 	    }
