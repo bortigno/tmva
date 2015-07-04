@@ -673,9 +673,9 @@ void Chess ()
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
     NN::EnumFunction myActFnc = NN::EnumFunction::SOFTSIGN;
-    net.addLayer (NN::Layer (4, myActFnc)); 
-    net.addLayer (NN::Layer (3, myActFnc)); 
-    net.addLayer (NN::Layer (2, myActFnc)); 
+    net.addLayer (NN::Layer (40, myActFnc)); 
+    net.addLayer (NN::Layer (30, myActFnc)); 
+    net.addLayer (NN::Layer (10, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 

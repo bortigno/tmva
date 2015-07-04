@@ -751,37 +751,27 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         auto itWeightEnd = std::end (weights);
         auto itDrop = std::begin (drops);
         auto itDropEnd = std::end (drops);
-	size_t numNodes = inputSize ();
-        double dropFraction = *itDrop
-        // start at -1 for the loop for the input layer which is not in layers ()
-        for (size_t idxLayer = -1, idxLayerEnd = layers ().size (); idxLayer < idxLayerEnd; ++idxLayer, ++itDrop)
+	size_t numNodesPrev = inputSize ();
+        double dropFractionPrev = *itDrop;
+	++itDrop;
+
+        for (auto& layer : layers ())
         {
             if (itDrop == itDropEnd)
                 break;
 
-            if (idxLayer >= 0)
-            {
-                const Layer& layer = *itLayer;
-                numNodes = layer.numNodes ();
-            }
+	    size_t numNodes = layer.numNodes ();
 
             double dropFraction = *itDrop;
+            double pPrev = 1.0 - dropFractionPrev;
             double p = 1.0 - dropFraction;
+	    p *= pPrev;
 
-            if (idxLayer+1 < idxLayerEnd &&
-                itDrop+1 != itDropEnd) // if not the last layer
-            {
-                double dropFractionNext  = *(itDrop+1);
-                double pNext = 1.0 - dropFractionNext;
-
-                p *= pNext;
-            }
-            
             if (inverse)
             {
                 p = 1.0/p;
             }
-	    size_t _numWeights = layer.numWeights (numNodes);
+	    size_t _numWeights = layer.numWeights (numNodesPrev);
             for (size_t iWeight = 0; iWeight < _numWeights; ++iWeight)
             {
                 if (itWeight == itWeightEnd)
@@ -790,6 +780,9 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
                 *itWeight *= p;
                 ++itWeight;
             }
+	    numNodesPrev = numNodes;
+	    dropFractionPrev = dropFraction;
+	    ++itDrop;
         }
     }
 
