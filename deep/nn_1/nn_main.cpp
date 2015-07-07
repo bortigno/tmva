@@ -492,8 +492,6 @@ void Higgs ()
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
     net.initializeWeights (NN::WeightInitializationStrategy::XAVIERUNIFORM, 
-			   trainPattern.begin (),
-			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
     dropConfig = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
@@ -672,16 +670,14 @@ void Chess ()
 
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
-    NN::EnumFunction myActFnc = NN::EnumFunction::SOFTSIGN;
-    net.addLayer (NN::Layer (40, myActFnc)); 
-    net.addLayer (NN::Layer (30, myActFnc)); 
-    net.addLayer (NN::Layer (10, myActFnc)); 
+    NN::EnumFunction myActFnc = NN::EnumFunction::TANH;
+    net.addLayer (NN::Layer (5, myActFnc)); 
+    net.addLayer (NN::Layer (4, myActFnc)); 
+    net.addLayer (NN::Layer (3, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
     net.initializeWeights (NN::WeightInitializationStrategy::XAVIERUNIFORM, 
-			   trainPattern.begin (),
-			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
     dropConfig = {0.0, 0.5, 0.5, 0.5, 0.5};
@@ -707,8 +703,21 @@ void Chess ()
     bool mulithreading = true;
     typedef NN::Steepest LocalMinimizer;
     {
+        // pre-training
         LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 500, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+	NN::Settings settings (/*_convergenceSteps*/ 30, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
+                               /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
+                               /* use multithreading */ mulithreading, 
+                               &monitoring);
+
+//        std::vector<double> dropConfigPre = {0.5};
+//        settings.setDropOut (std::begin (dropConfigPre), std::end (dropConfigPre), dropRepetitions);
+        net.preTrain (weights, trainPattern, testPattern, minimizer, settings);
+    }
+
+    {
+        LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 500, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
                                              /* use multithreading */ mulithreading, 
@@ -838,8 +847,6 @@ void mnist ()
 
 //    gaussDistribution (weights, 0.1, 1.0/sqrt(inputSize));
     net.initializeWeights (NN::WeightInitializationStrategy::XAVIERUNIFORM, 
-			   trainPattern.begin (),
-			   trainPattern.end (), 
 			   std::back_inserter (weights));
 
     dropConfig = {0.0, 0.5, 0.5, 0.5, 0.5, 0.5};

@@ -1278,16 +1278,13 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 
 
-    template <typename ItPat, typename OutIterator>
-    void Net::initializeWeights (WeightInitializationStrategy eInitStrategy, 
-				     ItPat itPatternBegin, 
-                                 ItPat /*itPatternEnd*/, 
-				     OutIterator itWeight)
+    template <typename OutIterator>
+    void Net::initializeWeights (WeightInitializationStrategy eInitStrategy, OutIterator itWeight)
     {
         if (eInitStrategy == WeightInitializationStrategy::XAVIER)
         {
             // input and output properties
-            int numInput = (*itPatternBegin).inputSize ();
+            int numInput = inputSize ();
 
             // compute variance and mean of input and output
             //...
@@ -1310,7 +1307,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         if (eInitStrategy == WeightInitializationStrategy::XAVIERUNIFORM)
         {
             // input and output properties
-            int numInput = (*itPatternBegin).inputSize ();
+            int numInput = inputSize ();
 
             // compute variance and mean of input and output
             //...
@@ -1336,7 +1333,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         if (eInitStrategy == WeightInitializationStrategy::TEST)
         {
             // input and output properties
-            int numInput = (*itPatternBegin).inputSize ();
+            int numInput = inputSize ();
 
             // compute variance and mean of input and output
             //...
@@ -1359,7 +1356,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         if (eInitStrategy == WeightInitializationStrategy::LAYERSIZE)
         {
             // input and output properties
-            int numInput = (*itPatternBegin).inputSize ();
+            int numInput = inputSize ();
 
             // compute variance and mean of input and output
             //...
@@ -1442,51 +1439,117 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 
 
-    /* template <typename Minimizer> */
-    /*     double Net::preTrain (std::vector<double>& weights,  */
-    /*     	  std::vector<Pattern>& trainPattern,  */
-    /*     	  const std::vector<Pattern>& testPattern,  */
-    /*               Minimizer& minimizer, Settings& settings) */
-    /* { */
-    /*     auto itWeightGeneral = std::begin (weights); */
-    /*     size_t numNodes = inputSize (); */
-    /*     std::vector<Pattern> prePatternTrain (trainPattern.size ()); */
-    /*     std::vector<Pattern> prePatternTest (testPattern.size ()); */
-    /*     auto itPrePatternTrain = std::begin (trainPattern); */
-    /*     auto itPrePatternTrainEnd = std::end (trainPattern); */
-    /*     auto itPrePatternTest = std::begin (testPattern); */
-    /*     auto itPrePatternTestnEnd = std::end (testPattern); */
-    /*     for (auto& _layer in layers ()) */
-    /*     { */
-    /*         // compute number of weights (as a function of the number of incoming nodes) */
-    /*         size_t numWeights = _layer.numWeights (numNodes); */
+    template <typename Minimizer>
+        void Net::preTrain (std::vector<double>& weights,
+        	  std::vector<Pattern>& trainPattern,
+        	  const std::vector<Pattern>& testPattern,
+                  Minimizer& minimizer, Settings& settings)
+    {
+        auto itWeightGeneral = std::begin (weights);
+        std::vector<Pattern> prePatternTrain (trainPattern.size ());
+        std::vector<Pattern> prePatternTest (testPattern.size ());
 
-    /*         // ------------------ */
-    /*         NN::Net preNet; */
+        size_t _inputSize = inputSize ();
 
-    /*         // prepare pattern */
-    /*         std::transform (itPrePatternTrain, itPrePatternTrainEnd, */
-    /*                         itPrePatternTrain, // in-place transformation */
-    /*                         [](const Pattern& p) */
-    /*                         { */
-    /*                             Pattern pat (p.input (), p.input (), p.weight ()); */
-    /*                             return pat; */
-    /*                         }); */
+        // transform pattern using the created preNet
+        auto initializePrePattern = [&](const std::vector<Pattern>& pttrnInput, std::vector<Pattern>& pttrnOutput)
+        {
+            pttrnOutput.clear ();
+            std::transform (std::begin (pttrnInput), std::end (pttrnInput),
+                        std::back_inserter (pttrnOutput), 
+                        [](const Pattern& p)
+                        {
+                            Pattern pat (p.input (), p.input (), p.weight ());
+                            return pat;
+                        });
+        };
+
+        initializePrePattern (trainPattern, prePatternTrain);
+        initializePrePattern (testPattern, prePatternTest);
+        
+        
+        for (auto& _layer : layers ())
+        {
+            // compute number of weights (as a function of the number of incoming nodes)
+            // fetch number of nodes
+            size_t numNodes = _layer.numNodes ();
+            size_t numWeights = _layer.numWeights (_inputSize);
+
+            // ------------------
+            NN::Net preNet;
+            std::vector<double> preWeights;
+
+            // define the preNet (pretraining-net) for this layer
+            // outputSize == inputSize, because this is an autoencoder;
+            preNet.setInputSize (_inputSize);
+            preNet.addLayer (NN::Layer (numNodes, _layer.activationFunction ()));
+            preNet.addLayer (NN::Layer (_inputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::DIRECT)); 
+            preNet.setErrorFunction (NN::ModeErrorFunction::SUMOFSQUARES);
+            preNet.setOutputSize (_inputSize); // outputSize is the inputSize (autoencoder)
+
+            // initialize weights
+            preNet.initializeWeights (NN::WeightInitializationStrategy::XAVIERUNIFORM, 
+                                      std::back_inserter (preWeights));
+
+            // overwrite already existing weights from the "general" weights
+            std::copy (itWeightGeneral, itWeightGeneral+numWeights, preWeights.begin ());
             
-    /*         size_t inputSize = trainPattern.front ().input ().size (); */
-    /*         size_t outputSize = trainPattern.front ().output ().size (); */
 
-    /*         net.setInputSize (inputSize); */
-            
-            
-    /*         //std::vector<double> localWeights (itWeightGeneral, itWeightGeneral + numWeights); // get the already initialized weights */
-    /*         std::vector<double> localWeights */
-    /*         // ------------------ */
+            // train the "preNet"
+            preNet.train (preWeights, prePatternTrain, prePatternTest, minimizer, settings);
 
-    /*         // fetch number of nodes */
-    /*         numNodes = _layer.numNodes (); */
-    /*     } */
-    /* } */
+            // fetch the pre-trained weights (without the output part of the autoencoder)
+            std::copy (std::begin (preWeights), std::begin (preWeights) + numWeights, itWeightGeneral);
+
+            // advance the iterator on the incoming weights
+            itWeightGeneral += numWeights;
+
+            // remove the weights of the output layer of the preNet
+            preWeights.erase (preWeights.begin () + numWeights, preWeights.end ());
+
+            // remove the outputLayer of the preNet
+            preNet.removeLayer ();
+
+            
+            // transform pattern using the created preNet
+            auto proceedPattern = [&](std::vector<Pattern>& pttrn)
+            {
+                std::transform (std::begin (pttrn), std::end (pttrn),
+                                std::begin (pttrn), 
+                                [&preNet,&preWeights](const Pattern& p)
+                {
+                    std::vector<double> output = preNet.compute (p.input (), preWeights);
+                    Pattern pat (output, output, p.weight ());
+                    return pat;
+                });
+            };
+
+
+            proceedPattern (prePatternTrain);
+            proceedPattern (prePatternTest);
+
+            /* std::transform (std::begin (prePatternTrain), std::end (prePatternTrain), */
+            /*                 std::begin (prePatternTrain),  */
+            /*                 [&preNet](const Pattern& p) */
+            /*                 { */
+            /*                     std::vector<double> output = preNet.compute (p.input (), preWeights); */
+            /*                     Pattern pat (output, output, p.weight ()); */
+            /*                     return pat; */
+            /*                 }); */
+
+            /* std::transform (std::begin (prePatternTest), std::end (prePatternTest), */
+            /*                 std::begin (prePatternTest),  */
+            /*                 [&preNet](const Pattern& p) */
+            /*                 { */
+            /*                     std::vector<double> output = preNet.compute (p.input (), preWeights); */
+            /*                     Pattern pat (output, output, p.weight ()); */
+            /*                     return pat; */
+            /*                 }); */
+
+            // the new input size is the output size of the already reduced preNet
+            _inputSize = preNet.layers ().back ().numNodes ();
+        }
+    }
 
 
 
