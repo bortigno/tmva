@@ -631,9 +631,9 @@ void Chess ()
     std::vector<std::string> fieldNamesTrain; 
     std::vector<std::string> fieldNamesTest; 
     size_t skipTrain = 0;
-    size_t numberTrain = 10000;
-    size_t skipTest  =  10000;
-    size_t numberTest  =  10000;
+    size_t numberTrain = 10;
+    size_t skipTest  =  10;
+    size_t numberTest  =  10;
     
     double sumOfSigWeights_train (0);
     double sumOfBkgWeights_train (0);
@@ -702,12 +702,13 @@ void Chess ()
 
     bool mulithreading = true;
     typedef NN::Steepest LocalMinimizer;
+
     {
         // pre-training
         LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
-	NN::Settings settings (/*_convergenceSteps*/ 30, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
+	NN::Settings settings (/*_convergenceSteps*/ 1, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
                                /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
-                               /* use multithreading */ mulithreading, 
+                               /* use multithreading */ false, 
                                &monitoring);
 
 //        std::vector<double> dropConfigPre = {0.5};

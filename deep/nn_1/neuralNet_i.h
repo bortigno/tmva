@@ -33,43 +33,43 @@ void gaussDistribution (Container& container, T mean, T sigma)
 }
 
 
-static std::function<double(double)> ZeroFnc = [](double value){ return 0; };
+static std::shared_ptr<std::function<double(double)>> ZeroFnc = std::make_shared<std::function<double(double)>> ([](double value){ return 0; });
 
 
-static std::function<double(double)> Sigmoid = [](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); };
-static std::function<double(double)> InvSigmoid = [](double value){ double s = Sigmoid (value); return s*(1.0-s); };
+static std::shared_ptr<std::function<double(double)>> Sigmoid = std::make_shared<std::function<double(double)>> ([](double value){ value = std::max (-100.0, std::min (100.0,value)); return 1.0/(1.0 + std::exp (-value)); });
+static std::shared_ptr<std::function<double(double)>> InvSigmoid = std::make_shared<std::function<double(double)>> ([](double value){ double s = (*Sigmoid.get ()) (value); return s*(1.0-s); });
 
-static std::function<double(double)> Tanh = [](double value){ return tanh (value); };
-static std::function<double(double)> InvTanh = [](double value){ return 1.0 - std::pow (value, 2.0); };
+static std::shared_ptr<std::function<double(double)>> Tanh = std::make_shared<std::function<double(double)>> ([](double value){ return tanh (value); });
+static std::shared_ptr<std::function<double(double)>> InvTanh = std::make_shared<std::function<double(double)>> ([](double value){ return 1.0 - std::pow (value, 2.0); });
 
-static std::function<double(double)> Linear = [](double value){ return value; };
-static std::function<double(double)>  InvLinear = [](double value){ return 1.0; };
+static std::shared_ptr<std::function<double(double)>> Linear = std::make_shared<std::function<double(double)>> ([](double value){ return value; });
+static std::shared_ptr<std::function<double(double)>> InvLinear = std::make_shared<std::function<double(double)>> ([](double value){ return 1.0; });
 
-static std::function<double(double)> SymmReLU = [](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; };
-static std::function<double(double)> InvSymmReLU = [](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; };
+static std::shared_ptr<std::function<double(double)>> SymmReLU = std::make_shared<std::function<double(double)>> ([](double value){ const double margin = 0.3; return value > margin ? value-margin : value < -margin ? value+margin : 0; });
+static std::shared_ptr<std::function<double(double)>> InvSymmReLU = std::make_shared<std::function<double(double)>> ([](double value){ const double margin = 0.3; return value > margin ? 1.0 : value < -margin ? 1.0 : 0; });
 
-static std::function<double(double)> ReLU = [](double value){ const double margin = 0.0; return value > margin ? value-margin : 0; };
-static std::function<double(double)> InvReLU = [](double value){ const double margin = 0.0; return value > margin ? 1.0 : 0; };
+static std::shared_ptr<std::function<double(double)>> ReLU = std::make_shared<std::function<double(double)>> ([](double value){ const double margin = 0.0; return value > margin ? value-margin : 0; });
+static std::shared_ptr<std::function<double(double)>> InvReLU = std::make_shared<std::function<double(double)>> ([](double value){ const double margin = 0.0; return value > margin ? 1.0 : 0; });
 
-static std::function<double(double)> SoftPlus = [](double value){ return std::log (1.0+ std::exp (value)); };
-static std::function<double(double)> InvSoftPlus = [](double value){ return 1.0 / (1.0 + std::exp (-value)); };
+static std::shared_ptr<std::function<double(double)>> SoftPlus = std::make_shared<std::function<double(double)>> ([](double value){ return std::log (1.0+ std::exp (value)); });
+static std::shared_ptr<std::function<double(double)>> InvSoftPlus = std::make_shared<std::function<double(double)>> ([](double value){ return 1.0 / (1.0 + std::exp (-value)); });
 
-static std::function<double(double)> TanhShift = [](double value){ return tanh (value-0.3); };
-static std::function<double(double)> InvTanhShift = [](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); };
+static std::shared_ptr<std::function<double(double)>> TanhShift = std::make_shared<std::function<double(double)>> ([](double value){ return tanh (value-0.3); });
+static std::shared_ptr<std::function<double(double)>> InvTanhShift = std::make_shared<std::function<double(double)>> ([](double value){ return 0.3 + (1.0 - std::pow (value, 2.0)); });
 
-static std::function<double(double)> SoftSign = [](double value){ return value / (1.0 + fabs (value)); };
-static std::function<double(double)> InvSoftSign = [](double value){ return std::pow ((1.0 - fabs (value)),2.0); };
+static std::shared_ptr<std::function<double(double)>> SoftSign = std::make_shared<std::function<double(double)>> ([](double value){ return value / (1.0 + fabs (value)); });
+static std::shared_ptr<std::function<double(double)>> InvSoftSign = std::make_shared<std::function<double(double)>> ([](double value){ return std::pow ((1.0 - fabs (value)),2.0); });
 
-static std::function<double(double)> Gauss = [](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); };
-static std::function<double(double)> InvGauss = [](double value){ const double s = 6.0; return -2.0 * value * s*s * Gauss (value); };
+static std::shared_ptr<std::function<double(double)>> Gauss = std::make_shared<std::function<double(double)>> ([](double value){ const double s = 6.0; return exp (-std::pow(value*s,2.0)); });
+static std::shared_ptr<std::function<double(double)>> InvGauss = std::make_shared<std::function<double(double)>> ([](double value){ const double s = 6.0; return -2.0 * value * s*s * (*Gauss.get ()) (value); });
 
-static std::function<double(double)> GaussComplement = [](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0));; };
-static std::function<double(double)> InvGaussComplement = [](double value){ const double s = 6.0; return +2.0 * value * s*s * GaussComplement (value); };
+static std::shared_ptr<std::function<double(double)>> GaussComplement = std::make_shared<std::function<double(double)>> ([](double value){ const double s = 6.0; return 1.0 - exp (-std::pow(value*s,2.0)); });
+static std::shared_ptr<std::function<double(double)>> InvGaussComplement = std::make_shared<std::function<double(double)>> ([](double value){ const double s = 6.0; return +2.0 * value * s*s * (*GaussComplement.get ()) (value); });
 
-static std::function<double(double)> DoubleInvertedGauss = [](double value)
-{ const double s = 8.0; const double shift = 0.1; return exp (-std::pow((value-shift)*s,2.0)) - exp (-std::pow((value+shift)*s,2.0)); };
-static std::function<double(double)> InvDoubleInvertedGauss = [](double value)
-{ const double s = 8.0; const double shift = 0.1; return -2.0 * (value-shift) * s*s * DoubleInvertedGauss (value-shift) + 2.0 * (value+shift) * s*s * DoubleInvertedGauss (value+shift);  };
+static std::shared_ptr<std::function<double(double)>> DoubleInvertedGauss = std::make_shared<std::function<double(double)>> ([](double value)
+                                                                                                                             { const double s = 8.0; const double shift = 0.1; return exp (-std::pow((value-shift)*s,2.0)) - exp (-std::pow((value+shift)*s,2.0)); });
+static std::shared_ptr<std::function<double(double)>> InvDoubleInvertedGauss = std::make_shared<std::function<double(double)>> ([](double value)
+                                                                                                                                { const double s = 8.0; const double shift = 0.1; return -2.0 * (value-shift) * s*s * (*DoubleInvertedGauss.get ()) (value-shift) + 2.0 * (value+shift) * s*s * (*DoubleInvertedGauss.get ()) (value+shift);  });
 
 
     
@@ -155,29 +155,29 @@ void applyWeightsBackwards (ItSource itCurrBegin, ItSource itCurrEnd,
 
 
 
-template <typename ItValue, typename ItFunction>
-void applyFunctions (ItValue itValue, ItValue itValueEnd, ItFunction itFunction)
+template <typename ItValue, typename Fnc>
+void applyFunctions (ItValue itValue, ItValue itValueEnd, Fnc fnc)
 {
     while (itValue != itValueEnd)
     {
         auto& value = (*itValue);
-        value = (*itFunction) (value);
+        value = (*fnc.get ()) (value);
 
-        ++itValue; ++itFunction;
+        ++itValue; 
     }
 }
 
 
-template <typename ItValue, typename ItFunction, typename ItInverseFunction, typename ItGradient>
-void applyFunctions (ItValue itValue, ItValue itValueEnd, ItFunction itFunction, ItInverseFunction itInverseFunction, ItGradient itGradient)
+template <typename ItValue, typename Fnc, typename InvFnc, typename ItGradient>
+void applyFunctions (ItValue itValue, ItValue itValueEnd, Fnc fnc, InvFnc invFnc, ItGradient itGradient)
 {
     while (itValue != itValueEnd)
     {
         auto& value = (*itValue);
-        value = (*itFunction) (value);
-        (*itGradient) = (*itInverseFunction) (value);
+        value = (*fnc.get ()) (value);
+        (*itGradient) = (*invFnc.get ()) (value);
         
-        ++itValue; ++itFunction; ++itInverseFunction; ++itGradient;
+        ++itValue; ++itGradient;
     }
 }
 
@@ -258,18 +258,6 @@ inline MinimizerMonitoring::MinimizerMonitoring (Monitoring* pMonitoring, std::v
     , m_countGrad (0)
     , m_countWeights (0)
 {
-}
-
-
-inline Gnuplot* MinimizerMonitoring::plot (std::string plotName, 
-					   std::string subName, 
-					   std::string dataName, 
-					   std::string style, 
-					   std::string smoothing)
-{
-    if (!m_pMonitoring)
-        return NULL;
-    return m_pMonitoring->plot (plotName, subName, dataName, style, smoothing);
 }
 
 
@@ -483,8 +471,8 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 
 
 
-template <typename ItOutput, typename ItTruth, typename ItDelta, typename ItInvActFnc>
-double sumOfSquares (ItOutput itOutputBegin, ItOutput itOutputEnd, ItTruth itTruthBegin, ItTruth /*itTruthEnd*/, ItDelta itDelta, ItDelta itDeltaEnd, ItInvActFnc itInvActFnc, double patternWeight) 
+template <typename ItOutput, typename ItTruth, typename ItDelta, typename InvFnc>
+double sumOfSquares (ItOutput itOutputBegin, ItOutput itOutputEnd, ItTruth itTruthBegin, ItTruth /*itTruthEnd*/, ItDelta itDelta, ItDelta itDeltaEnd, InvFnc invFnc, double patternWeight) 
 {
     double errorSum = 0.0;
 
@@ -498,8 +486,8 @@ double sumOfSquares (ItOutput itOutputBegin, ItOutput itOutputEnd, ItTruth itTru
 	double error = output - (*itTruth);
 	if (hasDeltas)
 	{
-	    (*itDelta) = (*itInvActFnc)(output) * error * patternWeight;
-	    ++itDelta; ++itInvActFnc;
+	    (*itDelta) = (*invFnc.get ()) (output) * error * patternWeight;
+	    ++itDelta; 
 	}
 	errorSum += error*error  * patternWeight;
     }
@@ -650,7 +638,7 @@ void forward (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
                       currLayerData.weightsBegin (), 
                       currLayerData.valuesBegin (), currLayerData.valuesEnd ());
     }
-    applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.functionBegin ());
+    applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.activationFunction ());
 }
 
 template <typename LAYERDATA>
@@ -669,8 +657,8 @@ void forward_training (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
                       currLayerData.weightsBegin (), 
                       currLayerData.valuesBegin (), currLayerData.valuesEnd ());
     }
-    applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.functionBegin (), 
-		    currLayerData.inverseFunctionBegin (), currLayerData.valueGradientsBegin ());
+    applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.activationFunction (), 
+		    currLayerData.inverseActivationFunction (), currLayerData.valueGradientsBegin ());
 }
 
 
@@ -1027,7 +1015,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
                 error += minimizer ((*this), weights, settingsAndBatch);
             }
         }
-        
+
+        numBatches_stored = std::max (numBatches_stored, size_t(1));
 	error /= numBatches_stored;
 
         end = std::chrono::system_clock::now ();
@@ -1053,7 +1042,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	for (auto& layer: m_layers)
 	{
 	    layerData.push_back (LayerData (layer.numNodes (), itWeight, 
-						   begin (layer.activationFunctions ()),
+						   layer.activationFunction (),
 						   layer.modeOutputValues ()));
 	    size_t _numWeights = layer.numWeights (numNodesPrev);
 	    itWeight += _numWeights;
@@ -1160,12 +1149,12 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         {
             if (itGradientBegin == itGradientEnd)
                 layerData.push_back (LayerData (layer.numNodes (), itWeight, 
-                                                std::begin (layer.activationFunctions ()),
+                                                layer.activationFunction (),
                                                 layer.modeOutputValues ()));
             else
                 layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
-                                                std::begin (layer.activationFunctions ()),
-                                                std::begin (layer.inverseActivationFunctions ()),
+                                                layer.activationFunction (),
+                                                layer.inverseActivationFunction (),
                                                 layer.modeOutputValues ()));
 
             if (usesDropOut)
@@ -1398,7 +1387,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	{
 	    error = sumOfSquares (layerData.valuesBegin (), layerData.valuesEnd (), begin (truth), end (truth), 
 				  layerData.deltasBegin (), layerData.deltasEnd (), 
-				  layerData.inverseFunctionBegin (), 
+				  layerData.inverseActivationFunction (), 
 				  patternWeight);
 	    break;
 	}
@@ -1409,7 +1398,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	    error = crossEntropy (begin (probabilities), end (probabilities), 
 				  begin (truth), end (truth), 
 				  layerData.deltasBegin (), layerData.deltasEnd (), 
-				  layerData.inverseFunctionBegin (), 
+				  layerData.inverseActivationFunction (), 
 				  patternWeight);
 	    break;
 	}
@@ -1420,7 +1409,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	    error = softMaxCrossEntropy (begin (probabilities), end (probabilities), 
 					 begin (truth), end (truth), 
 					 layerData.deltasBegin (), layerData.deltasEnd (), 
-					 layerData.inverseFunctionBegin (), 
+					 layerData.inverseActivationFunction (), 
 					 patternWeight);
 	    break;
 	}
@@ -1467,14 +1456,20 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         initializePrePattern (trainPattern, prePatternTrain);
         initializePrePattern (testPattern, prePatternTest);
         
-        
+        int numLayers = layers ().size ();
         for (auto& _layer : layers ())
         {
+            --numLayers;
+            if (numLayers <= 0)
+                break;
+            
             // compute number of weights (as a function of the number of incoming nodes)
             // fetch number of nodes
             size_t numNodes = _layer.numNodes ();
             size_t numWeights = _layer.numWeights (_inputSize);
 
+            std::cout << "pretraining layer with " << numNodes << " nodes and " << numWeights << " weights " << std::endl;
+            
             // ------------------
             NN::Net preNet;
             std::vector<double> preWeights;
@@ -1482,7 +1477,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             // define the preNet (pretraining-net) for this layer
             // outputSize == inputSize, because this is an autoencoder;
             preNet.setInputSize (_inputSize);
-            preNet.addLayer (NN::Layer (numNodes, _layer.activationFunction ()));
+            preNet.addLayer (NN::Layer (numNodes, _layer.activationFunctionType ()));
             preNet.addLayer (NN::Layer (_inputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::DIRECT)); 
             preNet.setErrorFunction (NN::ModeErrorFunction::SUMOFSQUARES);
             preNet.setOutputSize (_inputSize); // outputSize is the inputSize (autoencoder)
@@ -1494,18 +1489,27 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             // overwrite already existing weights from the "general" weights
             std::copy (itWeightGeneral, itWeightGeneral+numWeights, preWeights.begin ());
             
-
+            std::cout << "--- pretrain ---" << std::endl;
+            
             // train the "preNet"
             preNet.train (preWeights, prePatternTrain, prePatternTest, minimizer, settings);
 
+            std::cout << "copy weights" << std::endl;
+            
             // fetch the pre-trained weights (without the output part of the autoencoder)
             std::copy (std::begin (preWeights), std::begin (preWeights) + numWeights, itWeightGeneral);
 
+            std::cout << "advance the iterator on the general weights" << std::endl;
+            
             // advance the iterator on the incoming weights
             itWeightGeneral += numWeights;
 
+            std::cout << "erase non-needed pre-training weights" << std::endl;
+            
             // remove the weights of the output layer of the preNet
             preWeights.erase (preWeights.begin () + numWeights, preWeights.end ());
+
+            std::cout << "remove the last layer" << std::endl;
 
             // remove the outputLayer of the preNet
             preNet.removeLayer ();
@@ -1514,40 +1518,31 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             // transform pattern using the created preNet
             auto proceedPattern = [&](std::vector<Pattern>& pttrn)
             {
+                std::cout << "pattern size = " << pttrn.size () << std::endl;
+                std::vector<Pattern> result;
                 std::transform (std::begin (pttrn), std::end (pttrn),
-                                std::begin (pttrn), 
+                                std::back_inserter (result),
                                 [&preNet,&preWeights](const Pattern& p)
                 {
                     std::vector<double> output = preNet.compute (p.input (), preWeights);
                     Pattern pat (output, output, p.weight ());
                     return pat;
                 });
+                result.swap (pttrn);
             };
 
-
+            std::cout << "proceed training pattern" << std::endl;
             proceedPattern (prePatternTrain);
+            std::cout << "proceed test pattern" << std::endl;
             proceedPattern (prePatternTest);
 
-            /* std::transform (std::begin (prePatternTrain), std::end (prePatternTrain), */
-            /*                 std::begin (prePatternTrain),  */
-            /*                 [&preNet](const Pattern& p) */
-            /*                 { */
-            /*                     std::vector<double> output = preNet.compute (p.input (), preWeights); */
-            /*                     Pattern pat (output, output, p.weight ()); */
-            /*                     return pat; */
-            /*                 }); */
-
-            /* std::transform (std::begin (prePatternTest), std::end (prePatternTest), */
-            /*                 std::begin (prePatternTest),  */
-            /*                 [&preNet](const Pattern& p) */
-            /*                 { */
-            /*                     std::vector<double> output = preNet.compute (p.input (), preWeights); */
-            /*                     Pattern pat (output, output, p.weight ()); */
-            /*                     return pat; */
-            /*                 }); */
-
+            std::cout << std::endl;
+            std::cout << "determine new input size" << std::endl;
+            
             // the new input size is the output size of the already reduced preNet
             _inputSize = preNet.layers ().back ().numNodes ();
+
+            std::cout << "new input size is " << _inputSize << std::endl;
         }
     }
 

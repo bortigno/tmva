@@ -21,6 +21,12 @@
 class Gnuplot;
 
 
+/* template<typename T, typename... Args> */
+/* std::unique_ptr<T> make_unique(Args&&... args) { */
+/*     return std::unique_ptr<T>(new T(std::forward<Args>(args)...)); */
+/* } */
+
+
 
 #include <fenv.h>
 
@@ -142,11 +148,12 @@ public:
         void clear () { x.clear (); y.clear (); err.clear (); }
     };
 
+    Monitoring ();
+    ~Monitoring ();
+    
 
-    typedef std::map<std::string,Gnuplot*> PlotMap;
+    typedef std::map<std::string,std::unique_ptr<Gnuplot>> PlotMap;
     typedef std::map<std::string,PlotData> DataMap;
-
-    virtual ~Monitoring ();
 
     Gnuplot* plot (std::string plotName, std::string subName, std::string dataName, std::string style = "points", std::string smoothing = "");
     void resetPlot (std::string plotName);
@@ -185,6 +192,12 @@ public:
 	: m_itBegin (itBegin)
 	, m_itEnd (itEnd)
     {}
+
+    /* Batch (const Batch&& other) */
+    /*     : m_itBegin (other.m_itBegin) */
+    /*     , m_itEnd (other.m_itEnd) */
+    /* { */
+    /* } */
 
     const_iterator begin () const { return m_itBegin; }
     const_iterator end   () const { return m_itEnd; }
@@ -428,12 +441,12 @@ public:
     LayerData (size_t size, 
 	       const_iterator_type itWeightBegin, 
 	       iterator_type itGradientBegin, 
-	       const_function_iterator_type itFunctionBegin, 
-	       const_function_iterator_type itInverseFunctionBegin,
+	       std::shared_ptr<std::function<double(double)>> activationFunction, 
+	       std::shared_ptr<std::function<double(double)>> inverseActivationFunction,
 	       ModeOutputValues eModeOutput = ModeOutputValues::DIRECT);
 
     LayerData (size_t size, const_iterator_type itWeightBegin, 
-	       const_function_iterator_type itFunctionBegin, 
+	       std::shared_ptr<std::function<double(double)>> activationFunction, 
 	       ModeOutputValues eModeOutput = ModeOutputValues::DIRECT);
 
     LayerData (const LayerData& other)
@@ -446,8 +459,8 @@ public:
     , m_hasDropOut (false)
     , m_itConstWeightBegin   (other.m_itConstWeightBegin)
     , m_itGradientBegin (other.m_itGradientBegin)
-    , m_itFunctionBegin (other.m_itFunctionBegin)
-    , m_itInverseFunctionBegin (other.m_itInverseFunctionBegin)
+    , m_activationFunction (other.m_activationFunction)
+    , m_inverseActivationFunction (other.m_inverseActivationFunction)
     , m_isInputLayer (other.m_isInputLayer)
     , m_hasWeights (other.m_hasWeights)
     , m_hasGradients (other.m_hasGradients)
@@ -464,13 +477,14 @@ public:
     , m_hasDropOut (false)
     , m_itConstWeightBegin   (other.m_itConstWeightBegin)
     , m_itGradientBegin (other.m_itGradientBegin)
-    , m_itFunctionBegin (other.m_itFunctionBegin)
-    , m_itInverseFunctionBegin (other.m_itInverseFunctionBegin)
+    , m_activationFunction (other.m_activationFunction)
+    , m_inverseActivationFunction (other.m_inverseActivationFunction)
     , m_isInputLayer (other.m_isInputLayer)
     , m_hasWeights (other.m_hasWeights)
     , m_hasGradients (other.m_hasGradients)
     , m_eModeOutput (other.m_eModeOutput) 
-    {}
+    {
+    }
 
 
     void setInput (const_iterator_type itInputBegin, const_iterator_type itInputEnd)
@@ -511,8 +525,8 @@ public:
     const_iterator_type gradientsBegin () const { assert (m_hasGradients); return m_itGradientBegin; }
     const_iterator_type weightsBegin   () const { assert (m_hasWeights); return m_itConstWeightBegin; }
 
-    const_function_iterator_type functionBegin () const { return m_itFunctionBegin; }
-    const_function_iterator_type inverseFunctionBegin () const { return m_itInverseFunctionBegin; }
+    std::shared_ptr<std::function<double(double)>> activationFunction () const { return m_activationFunction; }
+    std::shared_ptr<std::function<double(double)>> inverseActivationFunction () const { return m_inverseActivationFunction; }
 
     template <typename Iterator>
         void setDropOut (Iterator itDrop) { m_itDropOut = itDrop; m_hasDropOut = true; }
@@ -543,9 +557,8 @@ private:
     const_iterator_type m_itConstWeightBegin;
     iterator_type       m_itGradientBegin;
 
-    const_function_iterator_type m_itFunctionBegin;
-
-    const_function_iterator_type m_itInverseFunctionBegin;
+    std::shared_ptr<std::function<double(double)>> m_activationFunction;
+    std::shared_ptr<std::function<double(double)>> m_inverseActivationFunction;
 
     bool m_isInputLayer;
     bool m_hasWeights;
@@ -574,24 +587,24 @@ public:
     size_t numNodes () const { return m_numNodes; }
     size_t numWeights (size_t numInputNodes) const { return numInputNodes * numNodes (); } // fully connected
 
-    const std::vector<std::function<double(double)> >& activationFunctions  () const { return m_vecActivationFunctions; }
-    const std::vector<std::function<double(double)> >& inverseActivationFunctions  () const { return m_vecInverseActivationFunctions; }
+    std::shared_ptr<std::function<double(double)>> activationFunction  () const { return m_activationFunction; }
+    std::shared_ptr<std::function<double(double)>> inverseActivationFunction  () const { return m_inverseActivationFunction; }
 
-    EnumFunction activationFunction () const { return m_activationFunction; }
+    EnumFunction activationFunctionType () const { return m_activationFunctionType; }
 
     std::string write () const;
     
 private:
 
 
-    std::vector<std::function<double(double)> > m_vecActivationFunctions;
-    std::vector<std::function<double(double)> > m_vecInverseActivationFunctions;
+    std::shared_ptr<std::function<double(double)>> m_activationFunction;
+    std::shared_ptr<std::function<double(double)>> m_inverseActivationFunction;
 
-    EnumFunction m_activationFunction;
 
     size_t m_numNodes;
 
     ModeOutputValues m_eModeOutputValues;
+    EnumFunction m_activationFunctionType;
 
     friend class Net;
 };

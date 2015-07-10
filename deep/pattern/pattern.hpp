@@ -8,7 +8,6 @@
 #include <iterator>
 #include <sstream>
 
-#define NNTYPE double
 
 
 
@@ -17,8 +16,8 @@ class Pattern
 {
 public:
     
-    typedef typename std::vector<NNTYPE>::iterator iterator;
-    typedef typename std::vector<NNTYPE>::const_iterator const_iterator;
+    typedef typename std::vector<double>::iterator iterator;
+    typedef typename std::vector<double>::const_iterator const_iterator;
 
 
     Pattern ()
@@ -27,21 +26,21 @@ public:
     , m_output ()
     , m_weight (0)
     {
-//	std::cout << "Pattern()" << "  this=" << this << std::endl;)
+	std::cout << "Pattern()" << "  this=" << this << std::endl;
     }
 
     ~Pattern () 
     { 
-//	std::cout << "~Pattern()" << "  this=" << this << std::endl;
+	std::cout << "~Pattern()" << "  this=" << this << std::endl;
     }
 
-    Pattern (Pattern&& other) 
-    : m_ID (0)
-    , m_input (std::move (other.m_input))
-    , m_output (std::move (other.m_output))
-    , m_weight (other.m_weight)
+    Pattern (Pattern&& other)
+        : m_ID (other.m_ID)
+        , m_input (std::move (other.m_input))
+        , m_output (std::move (other.m_output))
+        , m_weight (other.m_weight)
     { 
-//    	std::cout << "Pattern&&" << "  this=" << this << "   other=" << (&other) << std::endl;
+    	std::cout << "Pattern&&" << "  this=" << this << "   other=" << (&other) << std::endl;
     }
 
     Pattern (const Pattern& other) 
@@ -50,23 +49,23 @@ public:
     , m_output (other.m_output)
     , m_weight (other.m_weight)
     { 
-//	std::cout << "Pattern&" << "   this=" << this << "   other=" << (&other) << std::endl;
+	std::cout << "Pattern&" << "   this=" << this << "   other=" << (&other) << std::endl;
     }
 
 
     Pattern& operator= (Pattern&& other) 
     {
-//	std::cout << "Pattern=&&" << "  this=" << this << "   other=" << (&other) << std::endl;
+	std::cout << "Pattern=&&" << "  this=" << this << "   other=" << (&other) << std::endl;
         m_ID = other.m_ID;
-    	m_input = std::move (other.m_input);
-    	m_output = std::move (other.m_output);
+    	m_input = other.m_input;
+    	m_output = other.m_output;
     	m_weight = other.m_weight;
     	return *this;
     }
 
     Pattern& operator= (const Pattern& other) 
     { 
-//	std::cout << "Pattern=&" << "  this=" << this << "   other=" << (&other) << std::endl;
+	std::cout << "Pattern=&" << "  this=" << this << "   other=" << (&other) << std::endl;
         m_ID = other.m_ID;
 	m_input = other.m_input;
 	m_output = other.m_output;
@@ -76,7 +75,7 @@ public:
 
 
     template <typename ItValue>
-    Pattern (ItValue inputBegin, ItValue inputEnd, ItValue outputBegin, ItValue outputEnd, NNTYPE weight = 1.0)
+    Pattern (ItValue inputBegin, ItValue inputEnd, ItValue outputBegin, ItValue outputEnd, double weight = 1.0)
     : m_ID (0)
     , m_input (inputBegin, inputEnd)
     , m_output (outputBegin, outputEnd)
@@ -87,7 +86,7 @@ public:
 
 
 
-    Pattern (std::initializer_list<double> input, std::initializer_list<double> output, NNTYPE weight = 1.0)
+    Pattern (std::initializer_list<double> input, std::initializer_list<double> output, double weight = 1.0)
     : m_ID (0)
     , m_input (std::begin (input), std::end (input))
     , m_output (std::begin (output), std::end (output))
@@ -98,7 +97,7 @@ public:
 
 
     template <typename InputContainer, typename OutputContainer>
-    Pattern (InputContainer& input, OutputContainer& output, NNTYPE weight = 1.0)
+    Pattern (InputContainer& input, OutputContainer& output, double weight = 1.0)
     : m_ID (0)
     , m_input (std::begin (input), std::end (input))
     , m_output (std::begin (output), std::end (output))
@@ -113,28 +112,28 @@ public:
     const_iterator beginOutput () const  { return m_output.begin (); }
     const_iterator endOutput   () const  { return m_output.end (); }
 
-    NNTYPE weight () const { return m_weight; }
-    void weight (NNTYPE w) { m_weight = w; }
+    double weight () const { return m_weight; }
+    void weight (double w) { m_weight = w; }
 
     size_t inputSize () const { return m_input.size (); }
     size_t outputSize () const { return m_output.size (); }
 
-    void addInput (NNTYPE value) { m_input.push_back (value); }
-    void addOutput (NNTYPE value) { m_output.push_back (value); }
+    void addInput (double value) { m_input.push_back (value); }
+    void addOutput (double value) { m_output.push_back (value); }
 
-    std::vector<NNTYPE>& input  () { return m_input; }
-    std::vector<NNTYPE>& output () { return m_output; }
-    const std::vector<NNTYPE>& input  () const { return m_input; }
-    const std::vector<NNTYPE>& output () const { return m_output; }
+    std::vector<double>& input  () { return m_input; }
+    std::vector<double>& output () { return m_output; }
+    const std::vector<double>& input  () const { return m_input; }
+    const std::vector<double>& output () const { return m_output; }
 
     void setID (size_t id) { m_ID = id; }
     size_t getID () const { return m_ID; }
 
 private:
     size_t m_ID;
-    std::vector<NNTYPE> m_input;
-    std::vector<NNTYPE> m_output;
-    NNTYPE m_weight;
+    std::vector<double> m_input;
+    std::vector<double> m_output;
+    double m_weight;
 
     friend std::ostream& operator<< (std::ostream& os, const Pattern& pattern);
 };
@@ -361,30 +360,30 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 //     double operator() (Function& errorFunction, Weights& weights, PassThrough& passThrough) 
 //     {
 
-// 	NNTYPE sigma0 = 1.0e-2;
-// 	NNTYPE lmbd = 1.0e-4;
-// 	NNTYPE lmbd_x = 0.0;
+// 	double sigma0 = 1.0e-2;
+// 	double lmbd = 1.0e-4;
+// 	double lmbd_x = 0.0;
 // 	size_t k = 1;
-// 	NNTYPE len_r = 0.0;
+// 	double len_r = 0.0;
 // 	bool success = true;
 
 // 	size_t numWeights = weights.size ();
 
-// 	std::vector<NNTYPE> gradients (numWeights, 0.0);
+// 	std::vector<double> gradients (numWeights, 0.0);
 
-// 	std::vector<NNTYPE> syn_r  (numWeights, 0.0);
-// 	std::vector<NNTYPE> syn_r1 (numWeights, 0.0);
-// 	std::vector<NNTYPE>::iterator it_r  = syn_r.begin ();
-// 	std::vector<NNTYPE>::iterator it_r1 = syn_r1.begin ();
-// 	std::vector<NNTYPE>::iterator it_rEnd  = syn_r.end ();
+// 	std::vector<double> syn_r  (numWeights, 0.0);
+// 	std::vector<double> syn_r1 (numWeights, 0.0);
+// 	std::vector<double>::iterator it_r  = syn_r.begin ();
+// 	std::vector<double>::iterator it_r1 = syn_r1.begin ();
+// 	std::vector<double>::iterator it_rEnd  = syn_r.end ();
     
 
-// 	NNTYPE E = errorFunction (passThrough, weights, gradients);
-// 	NNTYPE E_start = E;
+// 	double E = errorFunction (passThrough, weights, gradients);
+// 	double E_start = E;
 
-// 	std::vector<NNTYPE> vecP;
+// 	std::vector<double> vecP;
 // 	vecP.reserve (weights.size ());
-// 	for (NNTYPE g: gradients)
+// 	for (double g: gradients)
 // 	{
 // 	    vecP.push_back (-g);
 // 	    (*it_r) = -g;
@@ -397,7 +396,7 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 // 	{
 // 	    len_r = 0.0;
 // //        std::cout << "while" << std::endl;
-// 	    NNTYPE len_p2 = 0.0;
+// 	    double len_p2 = 0.0;
 
 // 	    for_each (begin (vecP), end (vecP), [&len_p2](double p)
 // 		      {
@@ -407,17 +406,17 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 //             if (len_p2 < sigma0)
 //                 return 0;
 
-// 	    NNTYPE len_p = sqrt (len_p2);
+// 	    double len_p = sqrt (len_p2);
 
-// 	    NNTYPE sigma = sigma0/len_p;
+// 	    double sigma = sigma0/len_p;
 // //	computeBatch (beginBatch, endBatch, (EnumMode)(e_E | e_dE | e_shift), 0.0, sigma);
 
-// 	    NNTYPE delta (0.0);
+// 	    double delta (0.0);
 
 // 	    std::vector<double>::iterator itP = begin (vecP);
 // 	    for_each (begin (gradients), end (gradients), [sigma, &delta, &itP](double g)
 // 		      {
-// 			  NNTYPE s = -g/sigma;
+// 			  double s = -g/sigma;
 // 			  delta += (*itP) * s;
 // 			  ++itP;
 // 		      } );
@@ -433,7 +432,7 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 // 	    }
 
 
-// 	    NNTYPE mu = 0.0;
+// 	    double mu = 0.0;
 // 	    it_r  = syn_r.begin ();
 
 // 	    it_r = begin (syn_r);
@@ -444,9 +443,9 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 // 		      } );
 
 
-// 	    NNTYPE alpha = mu/delta;
+// 	    double alpha = mu/delta;
 
-// 	    std::vector<NNTYPE> weights_plus_alpha_p (numWeights, 0.0);
+// 	    std::vector<double> weights_plus_alpha_p (numWeights, 0.0);
 // //            syn.end->value += syn.start->value * (syn.weight + alpha * syn.p);
 // 	    auto it_p = begin (vecP);
 // 	    auto it_wpap = begin (weights_plus_alpha_p);
@@ -455,10 +454,10 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 // 			  (*it_wpap) = w + alpha*(*it_p);
 // 			  ++it_wpap; ++it_p;
 // 		      });
-// 	    NNTYPE E_shifted = errorFunction (passThrough, weights_plus_alpha_p);
-// //	NNTYPE E_shifted = computeBatch (beginBatch, endBatch, (EnumMode)(e_E), alpha);
+// 	    double E_shifted = errorFunction (passThrough, weights_plus_alpha_p);
+// //	double E_shifted = computeBatch (beginBatch, endBatch, (EnumMode)(e_E), alpha);
 
-// 	    NNTYPE DELTA = 2*delta * (E-E_shifted)/(std::pow(mu,2.0));
+// 	    double DELTA = 2*delta * (E-E_shifted)/(std::pow(mu,2.0));
 // 	    assert (DELTA == DELTA); // check for nan 
 
 // //	std::cout << "    DELTA " << DELTA << std::endl;
@@ -511,13 +510,13 @@ inline std::vector<Pattern> readCSV (std::string filename, std::vector<std::stri
 // 		{
 // //		std::cout << "      k " << k << std::endl;
 // 		    len_r = 0.0;
-// 		    NNTYPE r1_r = 0.0;
+// 		    double r1_r = 0.0;
 // 		    for (it_r = syn_r.begin (), it_r1 = syn_r1.begin (); it_r != it_rEnd; ++it_r, ++it_r1)
 // 		    {
 // 			len_r += std::pow ((*it_r),2.0);
 // 			r1_r += (*it_r1) * (*it_r);
 // 		    }
-// 		    NNTYPE beta = (len_r - r1_r)/mu;
+// 		    double beta = (len_r - r1_r)/mu;
 // 		    it_r1 = syn_r1.begin ();
 		
 // 		    for (auto& p: vecP)
