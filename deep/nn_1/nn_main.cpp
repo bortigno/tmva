@@ -703,6 +703,7 @@ void Chess ()
     bool mulithreading = true;
     typedef NN::Steepest LocalMinimizer;
 
+    if (false)
     {
         // pre-training
         LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
