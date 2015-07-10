@@ -765,17 +765,12 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             double dropFraction = *itDrop;
             double pPrev = 1.0 - dropFractionPrev;
             double p = 1.0 - dropFraction;
+	    p *= pPrev;
 
-//	    p *= pPrev;
-	    p = pPrev;
-
-	    if (inverse)
-	    {
+            if (inverse)
+            {
                 p = 1.0/p;
-	    }
-	    else
-	    {
-	    }
+            }
 	    size_t _numWeights = layer.numWeights (numNodesPrev);
             for (size_t iWeight = 0; iWeight < _numWeights; ++iWeight)
             {
