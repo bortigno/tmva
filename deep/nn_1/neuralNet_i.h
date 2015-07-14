@@ -350,8 +350,11 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 	std::vector<double> localWeights (begin (weights), end (weights));
 #endif
         double E = 1e10;
-        if (m_prevGradients.empty ())
+        if (m_prevGradients.size () != numWeights)
+        {
+            m_prevGradients.clear ();
             m_prevGradients.assign (weights.size (), 0);
+        }
 
         bool success = true;
         size_t currentRepetition = 0;
@@ -1461,8 +1464,9 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
         initializePrePattern (trainPattern, prePatternTrain);
         initializePrePattern (testPattern, prePatternTest);
-        
-        
+
+        std::vector<double> originalDropFractions = settings.dropFractions ();
+
         for (auto& _layer : layers ())
         {
             // compute number of weights (as a function of the number of incoming nodes)
@@ -1472,6 +1476,11 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
             // ------------------
             NN::Net preNet;
+            if (!originalDropFractions.empty ())
+            {
+                originalDropFractions.erase (originalDropFractions.begin ());
+                settings.setDropOut (originalDropFractions.begin (), originalDropFractions.end (), settings.dropRepetitions ());
+            }
             std::vector<double> preWeights;
 
             // define the preNet (pretraining-net) for this layer
@@ -1505,17 +1514,18 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             // remove the outputLayer of the preNet
             preNet.removeLayer ();
 
+            // set the output size to the number of nodes in the new output layer (== last hidden layer)
+            preNet.setOutputSize (numNodes);
             
             // transform pattern using the created preNet
             auto proceedPattern = [&](std::vector<Pattern>& pttrn)
             {
-                std::transform (std::begin (pttrn), std::end (pttrn),
-                                std::begin (pttrn), 
-                                [&preNet,&preWeights](const Pattern& p)
+                std::for_each (std::begin (pttrn), std::end (pttrn),
+                                [&preNet,&preWeights](Pattern& p)
                 {
                     std::vector<double> output = preNet.compute (p.input (), preWeights);
                     Pattern pat (output, output, p.weight ());
-                    return pat;
+                    p = pat;
                 });
             };
 
@@ -1523,23 +1533,6 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             proceedPattern (prePatternTrain);
             proceedPattern (prePatternTest);
 
-            /* std::transform (std::begin (prePatternTrain), std::end (prePatternTrain), */
-            /*                 std::begin (prePatternTrain),  */
-            /*                 [&preNet](const Pattern& p) */
-            /*                 { */
-            /*                     std::vector<double> output = preNet.compute (p.input (), preWeights); */
-            /*                     Pattern pat (output, output, p.weight ()); */
-            /*                     return pat; */
-            /*                 }); */
-
-            /* std::transform (std::begin (prePatternTest), std::end (prePatternTest), */
-            /*                 std::begin (prePatternTest),  */
-            /*                 [&preNet](const Pattern& p) */
-            /*                 { */
-            /*                     std::vector<double> output = preNet.compute (p.input (), preWeights); */
-            /*                     Pattern pat (output, output, p.weight ()); */
-            /*                     return pat; */
-            /*                 }); */
 
             // the new input size is the output size of the already reduced preNet
             _inputSize = preNet.layers ().back ().numNodes ();
