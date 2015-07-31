@@ -41,11 +41,72 @@ std::string now ()
 }
 
 
+
+
+
+
+
+
+
+  std::vector<std::string> variableNames = {
+   "LifeTime"
+   ,"FlightDistance"
+   ,"FlightDistanceError"
+   ,"pt"
+   ,"IP"
+   ,"dira"
+   ,"DOCAone"
+   ,"DOCAtwo"
+   ,"DOCAthree"
+   ,"IP_p0p2"
+   ,"IP_p1p2"
+   ,"isolationa"
+   ,"isolationb"
+   ,"isolationc"
+   ,"isolationd"
+   ,"isolatione"
+   ,"isolationf"
+   ,"iso"
+   ,"CDF1"
+   ,"CDF2"
+   ,"CDF3"
+   ,"ISO_SumBDT"
+   ,"p0_IsoBDT"
+   ,"p1_IsoBDT"
+   ,"p2_IsoBDT"
+   ,"p0_track_Chi2Dof"
+   ,"p1_track_Chi2Dof" 
+//   ,"p2_track_Chi2Dof" // spoils agreement test
+   ,"p0_pt"
+   ,"p0_p"
+   ,"p0_eta"
+   ,"p0_IP"
+   ,"p0_IPSig"
+   ,"p1_pt"
+   ,"p1_p"
+   ,"p1_eta"
+   ,"p1_IP"
+   ,"p1_IPSig"
+   ,"p2_pt"
+   ,"p2_p"
+   ,"p2_eta"
+   ,"p2_IP"
+   ,"p2_IPSig"
+//   ,"SPDhits" // spoils agreement test
+  };
+
+
+
+
+
+
 void TMVAClassification()
 {
    TMVA::Tools::Instance();
 
-
+   std::string tmstr (now ());
+   TString tmstmp (tmstr.c_str ());
+   
   
    std::cout << "==> Start TMVAClassification" << std::endl;
    std::cout << "-------------------- open input file ---------------- " << std::endl;
@@ -55,7 +116,8 @@ void TMVAClassification()
    std::cout << "-------------------- get tree ---------------- " << std::endl;
    TTree *tree     = (TTree*)input->Get("data");
    
-   TString outfileName( "TMVA.root" );
+   TString outfileName( "TMVA__" );
+   outfileName += tmstmp + TString (".root");
 
    std::cout << "-------------------- open output file ---------------- " << std::endl;
    TFile* outputFile = TFile::Open( outfileName, "RECREATE" );
@@ -64,50 +126,13 @@ void TMVAClassification()
    TMVA::Factory *factory = new TMVA::Factory( "TMVAClassification", outputFile,
                                                "AnalysisType=Classification" );
    std::cout << "-------------------- add variables ---------------- " << std::endl;
-   factory->AddVariable("LifeTime", 'F');
-   factory->AddVariable("FlightDistance", 'F');
-   factory->AddVariable("FlightDistanceError", 'F');
-   factory->AddVariable("pt", 'F');
-   factory->AddVariable("IP", 'F');
-   factory->AddVariable("dira", 'F');
-   factory->AddVariable("DOCAone", 'F');
-   factory->AddVariable("DOCAtwo", 'F');
-   factory->AddVariable("DOCAthree", 'F');
-   factory->AddVariable("IP_p0p2", 'F');
-   factory->AddVariable("IP_p1p2", 'F');
-   factory->AddVariable("isolationa", 'F');
-   factory->AddVariable("isolationb", 'F');
-   factory->AddVariable("isolationc", 'F');
-   factory->AddVariable("isolationd", 'F');
-   factory->AddVariable("isolatione", 'F');
-   factory->AddVariable("isolationf", 'F');
-   factory->AddVariable("iso", 'F');
-   factory->AddVariable("CDF1", 'F');
-   factory->AddVariable("CDF2", 'F');
-   factory->AddVariable("CDF3", 'F');
-   factory->AddVariable("ISO_SumBDT", 'F');
-   factory->AddVariable("p0_IsoBDT", 'F');
-   factory->AddVariable("p1_IsoBDT", 'F');
-   factory->AddVariable("p2_IsoBDT", 'F');
-   factory->AddVariable("p0_track_Chi2Dof", 'F');
-   factory->AddVariable("p1_track_Chi2Dof", 'F');
-   factory->AddVariable("p2_track_Chi2Dof", 'F');
-   factory->AddVariable("p0_pt", 'F');
-   factory->AddVariable("p0_p", 'F');
-   factory->AddVariable("p0_eta", 'F');
-   factory->AddVariable("p0_IP", 'F');
-   factory->AddVariable("p0_IPSig", 'F');
-   factory->AddVariable("p1_pt", 'F');
-   factory->AddVariable("p1_p", 'F');
-   factory->AddVariable("p1_eta", 'F');
-   factory->AddVariable("p1_IP", 'F');
-   factory->AddVariable("p1_IPSig", 'F');
-   factory->AddVariable("p2_pt", 'F');
-   factory->AddVariable("p2_p", 'F');
-   factory->AddVariable("p2_eta", 'F');
-   factory->AddVariable("p2_IP", 'F');
-   factory->AddVariable("p2_IPSig", 'F');
-//   factory->AddVariable("SPDhits", 'F');
+
+
+   for (auto varname : variableNames)
+   {
+       factory->AddVariable (varname.c_str (), 'F');
+   }
+   
    
    std::cout << "-------------------- add trees ---------------- " << std::endl;
    factory->AddTree(tree, "Signal", 1.0, TCut("signal==1"), "TrainingTesting");
@@ -118,12 +143,9 @@ void TMVAClassification()
    
    std::cout << "-------------------- prepare ---------------- " << std::endl;
    factory->PrepareTrainingAndTestTree( mycuts, mycutb,
-                                        "nTrain_Signal=5000:nTrain_Background=5000:nTest_Signal=5000:nTest_Background=5000:SplitMode=Random:NormMode=NumEvents:!V" );
+                                        "nTrain_Signal=0:nTrain_Background=0:nTest_Signal=0:nTest_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
 
-   std::string tmstr (now ());
-   TString tmstmp (tmstr.c_str ());
-   
    // gradient boosting training
    factory->BookMethod(TMVA::Types::kBDT, TString ("GBDT_")+tmstmp,
                        "NTrees=40:BoostType=Grad:Shrinkage=0.01:MaxDepth=7:UseNvars=6:nCuts=20:MinNodeSize=10");
@@ -151,6 +173,7 @@ void TMVAClassification()
        factory->BookMethod( TMVA::Types::kNN, TString("NNgauss_")+tmstmp, nnOptions ); // NN
    }
 
+   if (true)
    {
        TString layoutString ("Layout=TANH|100,LINEAR");
 
@@ -173,6 +196,7 @@ void TMVAClassification()
    }
 
 
+   if (false)
    {
        TString layoutString ("Layout=TANH|100,TANH|50,LINEAR");
 
@@ -203,6 +227,8 @@ void TMVAClassification()
    //input->Close();
    outputFile->Close();
 
+   TMVA::TMVAGui (outfileName);
+   
    delete factory;
 }
 
@@ -213,51 +239,6 @@ void TMVAPredict(TString method_name)
 
   std::cout << "==> Start TMVAPredict" << std::endl;
   TMVA::Reader *reader = new TMVA::Reader( "!Color:!Silent" );  
-  std::vector<std::string> variableNames = {
-      "LifeTime",
-      "FlightDistance",
-      "FlightDistanceError",
-      "pt",
-      "IP",
-      "dira",
-      "DOCAone",      
-      "DOCAtwo",
-      "DOCAthree",
-      "IP_p0p2",
-      "IP_p1p2",
-      "isolationa",
-      "isolationb",
-      "isolationc",
-      "isolationd",
-      "isolatione",
-      "isolationf",
-      "iso",
-      "CDF1",
-      "CDF2",
-      "CDF3",
-      "ISO_SumBDT",
-      "p0_IsoBDT",
-      "p1_IsoBDT",
-      "p2_IsoBDT",
-      "p0_track_Chi2Dof",
-      "p1_track_Chi2Dof",
-      "p2_track_Chi2Dof",
-      "p0_pt",
-      "p0_p",
-      "p0_eta",
-      "p0_IP",
-      "p0_IPSig",
-      "p1_pt",
-      "p1_p",
-      "p1_eta",
-      "p1_IP",
-      "p1_IPSig",
-      "p2_pt",
-      "p2_p",
-      "p2_eta",
-      "p2_IP",
-      "p2_IPSig"};//,
-//      "SPDhits"};
 
 
 //  Float_t variables[3];
@@ -297,7 +278,7 @@ void TMVAPredict(TString method_name)
   {
       std::stringstream outfilename;
       outfilename << inputName << "_prediction__" << method_name.Data () << ".csv";
-      std::cout << outfilename.str () << std::endl; */
+      std::cout << outfilename.str () << std::endl; 
       /* return; */
       
       std::stringstream infilename;
@@ -385,6 +366,10 @@ void TMVAPredict(TString method_name)
       input->Close();
   }
   delete reader;
+
+  TString cmd (".! python tests.py ");
+  cmd += method_name;
+  gROOT->ProcessLine (cmd);
 }
 
 
