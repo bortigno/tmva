@@ -523,7 +523,7 @@ void Higgs ()
         std::cout << "-------------- pretraining -------------------------" << std::endl;
         // pre-training
         LocalMinimizer minimizer (1e-4, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	NN::Settings settings (/*_convergenceSteps*/ 50, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+	NN::Settings settings (/*_convergenceSteps*/ 10, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                /*factorWeightDecay*/ 1e-4, /*regularization*/NN::EnumRegularization::L2,
                                /* use multithreading */ multithreading, 
                                &monitoring);

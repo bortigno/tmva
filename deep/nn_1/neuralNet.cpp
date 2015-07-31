@@ -9,68 +9,68 @@ namespace NN
 
 
 
-double gaussDouble (double mean, double sigma)
-{
-    static std::default_random_engine generator;
-    std::normal_distribution<double> distribution (mean, sigma);
-    return distribution (generator);
-}
+    double gaussDouble (double mean, double sigma)
+    {
+        static std::default_random_engine generator;
+        std::normal_distribution<double> distribution (mean, sigma);
+        return distribution (generator);
+    }
 
 
-double uniformDouble (double minValue, double maxValue)
-{
-    static std::default_random_engine generator;
-    std::uniform_real_distribution<double> distribution(minValue, maxValue);
-    return distribution(generator);
-}
-
-
-    
-int randomInt (int maxValue)
-{
-    static std::default_random_engine generator;
-    std::uniform_int_distribution<int> distribution(0,maxValue-1);
-    return distribution(generator);
-}
-
-
-double studenttDouble (double distributionParameter)
-{
-    static std::default_random_engine generator;
-    std::student_t_distribution<double> distribution (distributionParameter);
-    return distribution (generator);
-}
-
-
-
-Steepest::Steepest (double learningRate, 
-                    double momentum, 
-                    size_t repetitions, 
-                    Monitoring* pMonitoring, 
-                    std::vector<size_t> layerSizes) 
-    : MinimizerMonitoring (pMonitoring, layerSizes)
-    , m_repetitions (repetitions)
-    , m_alpha (learningRate)
-    , m_beta (momentum)
-{
-}
-
-
-
-
+    double uniformDouble (double minValue, double maxValue)
+    {
+        static std::default_random_engine generator;
+        std::uniform_real_distribution<double> distribution(minValue, maxValue);
+        return distribution(generator);
+    }
 
 
     
+    int randomInt (int maxValue)
+    {
+        static std::default_random_engine generator;
+        std::uniform_int_distribution<int> distribution(0,maxValue-1);
+        return distribution(generator);
+    }
 
-typename Batch::const_iterator begin (const Batch& batch)
-{
-    return batch.begin ();
-}
 
-typename Batch::const_iterator end (const Batch& batch)
-{
-    return batch.end ();
-}
+    double studenttDouble (double distributionParameter)
+    {
+        static std::default_random_engine generator;
+        std::student_t_distribution<double> distribution (distributionParameter);
+        return distribution (generator);
+    }
+
+
+
+    Steepest::Steepest (double learningRate, 
+                        double momentum, 
+                        size_t repetitions, 
+                        Monitoring* pMonitoring, 
+                        std::vector<size_t> layerSizes) 
+        : MinimizerMonitoring (pMonitoring, layerSizes)
+        , m_repetitions (repetitions)
+        , m_alpha (learningRate)
+        , m_beta (momentum)
+    {
+    }
+
+
+
+
+
+
+    
+
+    typename Batch::const_iterator begin (const Batch& batch)
+    {
+        return batch.begin ();
+    }
+
+    typename Batch::const_iterator end (const Batch& batch)
+    {
+        return batch.end ();
+    }
 
 
     LayerData::LayerData (size_t inputSize)
@@ -101,11 +101,11 @@ typename Batch::const_iterator end (const Batch& batch)
 
 
     LayerData::LayerData (size_t _size, 
-	       const_iterator_type itWeightBegin, 
-	       iterator_type itGradientBegin, 
-	       const_function_iterator_type itFunctionBegin, 
-	       const_function_iterator_type itInverseFunctionBegin,
-	       ModeOutputValues eModeOutput)
+                          const_iterator_type itWeightBegin, 
+                          iterator_type itGradientBegin, 
+                          const_function_iterator_type itFunctionBegin, 
+                          const_function_iterator_type itInverseFunctionBegin,
+                          ModeOutputValues eModeOutput)
 	: m_size (_size)
 	, m_itConstWeightBegin   (itWeightBegin)
 	, m_itGradientBegin (itGradientBegin)
@@ -125,8 +125,8 @@ typename Batch::const_iterator end (const Batch& batch)
 
 
     LayerData::LayerData (size_t _size, const_iterator_type itWeightBegin, 
-	       const_function_iterator_type itFunctionBegin, 
-	       ModeOutputValues eModeOutput)
+                          const_function_iterator_type itFunctionBegin, 
+                          ModeOutputValues eModeOutput)
 	: m_size (_size)
 	, m_itConstWeightBegin   (itWeightBegin)
 	, m_itFunctionBegin (itFunctionBegin)
@@ -258,201 +258,204 @@ typename Batch::const_iterator end (const Batch& batch)
     }
 
 
-static Layer readLayer (std::istream& ss)
-{
-    std::string key, value, line;
-
-    size_t numNodes (0);
-    EnumFunction actFnc (EnumFunction::LINEAR);
-    ModeOutputValues modeOut (ModeOutputValues::DIRECT);
-    std::string layerType;
-    std::string endLayerString ("---LAYER-END---");
-    while(std::getline(ss, line))
+    static Layer readLayer (std::istream& ss)
     {
-	if (line.compare(0, endLayerString.length (), endLayerString) == 0)
-	    break;
+        std::string key, value, line;
 
-	// Create an istringstream instance to parse the key and the value
-	std::istringstream ss_line (line);
-	std::getline(ss_line, key, '=');
+        size_t numNodes (0);
+        EnumFunction actFnc (EnumFunction::LINEAR);
+        ModeOutputValues modeOut (ModeOutputValues::DIRECT);
+        std::string layerType;
+        std::string endLayerString ("---LAYER-END---");
+        while(std::getline(ss, line))
+        {
+            if (line.compare(0, endLayerString.length (), endLayerString) == 0)
+                break;
+
+            // Create an istringstream instance to parse the key and the value
+            std::istringstream ss_line (line);
+            std::getline(ss_line, key, '=');
  
-	if (key == "LAYER")
-	{
-	    ss_line >> layerType;
-	}
-	else if (key == "NODES") 
-	{
-	    ss_line >> numNodes;
-	}
-	else if (key == "ACTFNC") 
-	{
-	    char actFncVal;
-	    ss_line >> actFncVal;
-	    actFnc = EnumFunction (actFncVal);
-	}
-	else if (key == "OUTMODE") 
-	{
-	    char modeOutputValues;
-	    ss_line >> modeOutputValues;
-	    modeOut = ModeOutputValues (modeOutputValues);
-	}
+            if (key == "LAYER")
+            {
+                ss_line >> layerType;
+            }
+            else if (key == "NODES") 
+            {
+                ss_line >> numNodes;
+            }
+            else if (key == "ACTFNC") 
+            {
+                char actFncVal;
+                ss_line >> actFncVal;
+                actFnc = EnumFunction (actFncVal);
+            }
+            else if (key == "OUTMODE") 
+            {
+                char modeOutputValues;
+                ss_line >> modeOutputValues;
+                modeOut = ModeOutputValues (modeOutputValues);
+            }
+        }
+        if (layerType == "FULL")
+        {
+            return Layer (numNodes, actFnc, modeOut);
+        }
+        return Layer (0, EnumFunction::LINEAR, ModeOutputValues::DIRECT);
     }
-    if (layerType == "FULL")
+
+
+    
+    
+
+
+    
+    Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
+                        double _factorWeightDecay, EnumRegularization eRegularization,
+                        bool _useMultithreading, Monitoring* pMonitoring)
+        : m_convergenceSteps (_convergenceSteps)
+        , m_batchSize (_batchSize)
+        , m_testRepetitions (_testRepetitions)
+        , m_factorWeightDecay (_factorWeightDecay)
+        , count_E (0)
+        , count_dE (0)
+        , count_mb_E (0)
+        , count_mb_dE (0)
+        , m_regularization (eRegularization)
+        , m_convergenceCount (0)
+        , m_maxConvergenceCount (0)
+        , m_minError (1e10)
+        , m_useMultithreading (_useMultithreading)
+        , m_pMonitoring (pMonitoring)
     {
-	return Layer (numNodes, actFnc, modeOut);
     }
-    return Layer (0, EnumFunction::LINEAR, ModeOutputValues::DIRECT);
-}
-
-
     
-    
-
-
-    
-Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
-                    double _factorWeightDecay, EnumRegularization eRegularization,
-                    bool _useMultithreading, Monitoring* pMonitoring)
-    : m_convergenceSteps (_convergenceSteps)
-    , m_batchSize (_batchSize)
-    , m_testRepetitions (_testRepetitions)
-    , m_factorWeightDecay (_factorWeightDecay)
-    , count_E (0)
-    , count_dE (0)
-    , count_mb_E (0)
-    , count_mb_dE (0)
-    , m_regularization (eRegularization)
-    , m_useMultithreading (_useMultithreading)
-    , m_pMonitoring (pMonitoring)
+    Monitoring::~Monitoring () 
     {
+        for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it)
+        {
+            delete it->second;
+        }
     }
-    
-Monitoring::~Monitoring () 
-{
-    for (PlotMap::iterator it = plots.begin (), itEnd = plots.end (); it != itEnd; ++it)
+
+
+
+
+    void Monitoring::clearData (std::string dataName)
     {
-        delete it->second;
+        DataMap::mapped_type& data = getData (dataName);
+        data.clear ();
     }
-}
+
+
+    void Settings::clearData (std::string dataName)
+    {
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->clearData (dataName);
+    }
+
+
+    void Monitoring::addPoint (std::string dataName, double x, double y)
+    {
+        DataMap::mapped_type& data = getData (dataName);
+        data.useErr = false;
+
+        data.x.push_back (x);
+        data.y.push_back (y);
+    }
+
+    void Monitoring::addPoint (std::string dataName, double x, double y, double err)
+    {
+        DataMap::mapped_type& data = getData (dataName);
+        data.useErr = true;
+
+        data.x.push_back (x);
+        data.y.push_back (y);
+        data.err.push_back (err);
+    }
+
+
+    void Settings::addPoint (std::string dataName, double x, double y)
+    {
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->addPoint (dataName, x, y);
+    }
 
 
 
+    Gnuplot* Monitoring::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
+    {
+        Gnuplot* pPlot = getPlot (plotName);
+        DataMap::mapped_type& data = getData (dataName);
 
-void Monitoring::clearData (std::string dataName)
-{
-    DataMap::mapped_type& data = getData (dataName);
-    data.clear ();
-}
+        std::vector<double>& vecX = data.x;
+        std::vector<double>& vecY = data.y;
+        std::vector<double>& vecErr = data.err;
 
+        if (vecX.empty ())
+            return pPlot;
 
-void Settings::clearData (std::string dataName)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->clearData (dataName);
-}
+        if (data.useErr)
+            pPlot->set_style(style).set_smooth(smoothing).plot_xy_err(vecX,vecY,vecErr,subName);
+        else
+            pPlot->set_style(style).set_smooth(smoothing).plot_xy(vecX,vecY,subName);
+        pPlot->unset_smooth ();
 
-
-void Monitoring::addPoint (std::string dataName, double x, double y)
-{
-    DataMap::mapped_type& data = getData (dataName);
-    data.useErr = false;
-
-    data.x.push_back (x);
-    data.y.push_back (y);
-}
-
-void Monitoring::addPoint (std::string dataName, double x, double y, double err)
-{
-    DataMap::mapped_type& data = getData (dataName);
-    data.useErr = true;
-
-    data.x.push_back (x);
-    data.y.push_back (y);
-    data.err.push_back (err);
-}
-
-
-void Settings::addPoint (std::string dataName, double x, double y)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->addPoint (dataName, x, y);
-}
-
-
-
-Gnuplot* Monitoring::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
-{
-    Gnuplot* pPlot = getPlot (plotName);
-    DataMap::mapped_type& data = getData (dataName);
-
-    std::vector<double>& vecX = data.x;
-    std::vector<double>& vecY = data.y;
-    std::vector<double>& vecErr = data.err;
-
-    if (vecX.empty ())
         return pPlot;
-
-    if (data.useErr)
-        pPlot->set_style(style).set_smooth(smoothing).plot_xy_err(vecX,vecY,vecErr,subName);
-    else
-        pPlot->set_style(style).set_smooth(smoothing).plot_xy(vecX,vecY,subName);
-    pPlot->unset_smooth ();
-
-    return pPlot;
-}
-
-
-
-Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
-{
-    if (!m_pMonitoring)
-        return NULL;
-    return m_pMonitoring->plot (plotName, subName, dataName, style, smoothing);
-}
-
-
-void Monitoring::resetPlot (std::string plotName)
-{
-    Gnuplot* pPlot = getPlot (plotName);
-    pPlot->reset_plot ();
-}
-
-void Settings::resetPlot (std::string plotName)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->resetPlot (plotName);
-}
-
-
-inline Gnuplot* Monitoring::getPlot (std::string plotName)
-{
-    PlotMap::iterator itPlot = plots.find (plotName);
-    if (itPlot == plots.end ())
-    {
-        std::cout << "create new gnuplot" << std::endl;
-        std::pair<PlotMap::iterator, bool> result = plots.insert (std::make_pair (plotName, new Gnuplot));
-        itPlot = result.first;
     }
 
-    Gnuplot* pPlot = itPlot->second;
-    return pPlot;
-}
 
 
-inline Monitoring::DataMap::mapped_type& Monitoring::getData (std::string dataName)
-{
-    DataMap::iterator itData = data.find (dataName);
-    if (itData == data.end ())
+    Gnuplot* Settings::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
     {
-        std::pair<DataMap::iterator, bool> result = data.insert (std::make_pair (dataName, DataMap::mapped_type (false)));
-        itData = result.first;
+        if (!m_pMonitoring)
+            return NULL;
+        return m_pMonitoring->plot (plotName, subName, dataName, style, smoothing);
     }
 
-    return itData->second;
-}
+
+    void Monitoring::resetPlot (std::string plotName)
+    {
+        Gnuplot* pPlot = getPlot (plotName);
+        pPlot->reset_plot ();
+    }
+
+    void Settings::resetPlot (std::string plotName)
+    {
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->resetPlot (plotName);
+    }
+
+
+    inline Gnuplot* Monitoring::getPlot (std::string plotName)
+    {
+        PlotMap::iterator itPlot = plots.find (plotName);
+        if (itPlot == plots.end ())
+        {
+            std::cout << "create new gnuplot" << std::endl;
+            std::pair<PlotMap::iterator, bool> result = plots.insert (std::make_pair (plotName, new Gnuplot));
+            itPlot = result.first;
+        }
+
+        Gnuplot* pPlot = itPlot->second;
+        return pPlot;
+    }
+
+
+    inline Monitoring::DataMap::mapped_type& Monitoring::getData (std::string dataName)
+    {
+        DataMap::iterator itData = data.find (dataName);
+        if (itData == data.end ())
+        {
+            std::pair<DataMap::iterator, bool> result = data.insert (std::make_pair (dataName, DataMap::mapped_type (false)));
+            itData = result.first;
+        }
+
+        return itData->second;
+    }
 
 
 
@@ -467,7 +470,7 @@ inline Monitoring::DataMap::mapped_type& Monitoring::getData (std::string dataNa
 
 
 
-void ClassificationSettings::testSample (double error, double output, double target, double weight)
+    void ClassificationSettings::testSample (double error, double output, double target, double weight)
     {
         m_output.push_back (output);
         m_targets.push_back (target);
@@ -475,7 +478,7 @@ void ClassificationSettings::testSample (double error, double output, double tar
     }
 
 
-void ClassificationSettings::startTestCycle () 
+    void ClassificationSettings::startTestCycle () 
     {
         m_output.clear ();
         m_targets.clear ();
@@ -663,8 +666,40 @@ void ClassificationSettings::startTestCycle ()
 
 
 
-    void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights) { m_sumOfSigWeights = sumOfSigWeights; m_sumOfBkgWeights = sumOfBkgWeights; }
-    void ClassificationSettings::setResultComputation (std::string _fileNameNetConfig, std::string _fileNameResult, std::vector<Pattern>* _resultPatternContainer)
+    bool Settings::hasConverged (double testError)
+    {
+        std::cout << "check convergence; minError " << m_minError << "  current " << testError
+                  << "  current convergence count " << m_convergenceCount << std::endl;
+        if (testError < m_minError)
+        {
+            m_convergenceCount = 0;
+            m_minError = testError;
+        }
+        else
+        {
+            ++m_convergenceCount;
+            m_maxConvergenceCount = std::max (m_convergenceCount, m_maxConvergenceCount);
+        }
+
+
+        if (m_convergenceCount >= convergenceSteps () || testError <= 0)
+            return true;
+
+        return false;
+    }
+
+
+    
+
+    void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights)
+    {
+        m_sumOfSigWeights = sumOfSigWeights; m_sumOfBkgWeights = sumOfBkgWeights;
+    }
+    
+    void ClassificationSettings::setResultComputation (
+        std::string _fileNameNetConfig,
+        std::string _fileNameResult,
+        std::vector<Pattern>* _resultPatternContainer)
     {
 	m_pResultPatternContainer = _resultPatternContainer;
 	m_fileNameResult = _fileNameResult;
@@ -721,83 +756,83 @@ void ClassificationSettings::startTestCycle ()
 
 
 
-void MinimizerMonitoring::resetPlot (std::string plotName)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->resetPlot (plotName);
-}
-
-
-void MinimizerMonitoring::clearData (std::string dataName)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->clearData (dataName);
-}
-
-
-
-void MinimizerMonitoring::addPoint (std::string dataName, double x, double y)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->addPoint (dataName, x, y);
-}
-
-void MinimizerMonitoring::addPoint (std::string dataName, double x, double y, double err)
-{
-    if (!m_pMonitoring)
-        return;
-    m_pMonitoring->addPoint (dataName, x, y, err);
-}
-
-
-
-std::ostream& operator<< (std::ostream& ostr, Net const& net)
-{
-    ostr << "NET" << std::endl;
-    for (Layer const& layer : net.m_layers)
+    void MinimizerMonitoring::resetPlot (std::string plotName)
     {
-	ostr << layer.write ();
-	ostr << std::endl;
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->resetPlot (plotName);
     }
-    ostr << std::endl;
-    return ostr;
-}
 
 
-std::istream& read (std::istream& istr, Net& net)
-{
-    // net
-    std::string line, key;
-    if (!getline (istr, line)) // "NET"
-        return istr;
-
-    if (line != "===NET===")
-	return istr;
-
-    while (istr.good ())
+    void MinimizerMonitoring::clearData (std::string dataName)
     {
-	if (!getline (istr, line))
-	    return istr;
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->clearData (dataName);
+    }
 
-	std::istringstream ss_line (line);
-	std::getline(ss_line, key, '=');
+
+
+    void MinimizerMonitoring::addPoint (std::string dataName, double x, double y)
+    {
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->addPoint (dataName, x, y);
+    }
+
+    void MinimizerMonitoring::addPoint (std::string dataName, double x, double y, double err)
+    {
+        if (!m_pMonitoring)
+            return;
+        m_pMonitoring->addPoint (dataName, x, y, err);
+    }
+
+
+
+    std::ostream& operator<< (std::ostream& ostr, Net const& net)
+    {
+        ostr << "NET" << std::endl;
+        for (Layer const& layer : net.m_layers)
+        {
+            ostr << layer.write ();
+            ostr << std::endl;
+        }
+        ostr << std::endl;
+        return ostr;
+    }
+
+
+    std::istream& read (std::istream& istr, Net& net)
+    {
+        // net
+        std::string line, key;
+        if (!getline (istr, line)) // "NET"
+            return istr;
+
+        if (line != "===NET===")
+            return istr;
+
+        while (istr.good ())
+        {
+            if (!getline (istr, line))
+                return istr;
+
+            std::istringstream ss_line (line);
+            std::getline(ss_line, key, '=');
  
-	if (key == "ERRORFUNCTION")
-	{
-	    char errorFnc;
-	    ss_line >> errorFnc;
-	    net.setErrorFunction (ModeErrorFunction (errorFnc));
-	}
-	else if (line == "---LAYER---")
-	    net.addLayer (readLayer (istr));
-	else
-	    return istr;
+            if (key == "ERRORFUNCTION")
+            {
+                char errorFnc;
+                ss_line >> errorFnc;
+                net.setErrorFunction (ModeErrorFunction (errorFnc));
+            }
+            else if (line == "---LAYER---")
+                net.addLayer (readLayer (istr));
+            else
+                return istr;
+        }
+        return istr;
     }
-    return istr;
-}
 
 
 
@@ -805,55 +840,55 @@ std::istream& read (std::istream& istr, Net& net)
 
 
 
-void write (std::string fileName, const Net& net, const std::vector<double>& weights) 
-{
-    std::ofstream file (fileName, std::ios::trunc);	
-    net.write (file);
-    file << "===WEIGHTS===" << std::endl;
-    for (double w : weights)
+    void write (std::string fileName, const Net& net, const std::vector<double>& weights) 
     {
-	file << w << " ";
+        std::ofstream file (fileName, std::ios::trunc);	
+        net.write (file);
+        file << "===WEIGHTS===" << std::endl;
+        for (double w : weights)
+        {
+            file << w << " ";
+        }
+        file << std::endl;
     }
-    file << std::endl;
-}
 
 
-std::tuple<Net, std::vector<double>> read (std::string fileName) 
-{
-    std::vector<double> weights;
-    Net net;
-
-    std::ifstream infile (fileName);
-
-    // net
-    if (infile.is_open () && infile.good ())
+    std::tuple<Net, std::vector<double>> read (std::string fileName) 
     {
-	read (infile, net);
-    }
+        std::vector<double> weights;
+        Net net;
+
+        std::ifstream infile (fileName);
+
+        // net
+        if (infile.is_open () && infile.good ())
+        {
+            read (infile, net);
+        }
 
 
-    // weights
-    std::string line;
-    if (!getline (infile, line))
+        // weights
+        std::string line;
+        if (!getline (infile, line))
+            return std::make_tuple (net, weights);
+
+        std::stringstream ssline (line);
+
+        while (ssline)
+        {
+            double value;
+            std::string token;
+            if (!getline (ssline, token, ' ')) 
+                break;
+
+            std::stringstream tr;
+            tr << token;
+            tr >> value;
+
+            weights.push_back (value);
+        }
         return std::make_tuple (net, weights);
-
-    std::stringstream ssline (line);
-
-    while (ssline)
-    {
-        double value;
-        std::string token;
-        if (!getline (ssline, token, ' ')) 
-            break;
-
-	std::stringstream tr;
-	tr << token;
-	tr >> value;
-
-        weights.push_back (value);
     }
-    return std::make_tuple (net, weights);
-}
 
 
     

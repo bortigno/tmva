@@ -800,12 +800,10 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 		  const std::vector<Pattern>& testPattern, 
                   Minimizer& minimizer, Settings& settings)
     {
+        settings.startTrainCycle ();
         settings.clearData ("trainErrors");
         settings.clearData ("testErrors");
         std::cout << "START TRAINING" << std::endl;
-        size_t convergenceCount = 0;
-        size_t maxConvergenceCount = 0;
-        double minError = 1e10;
 
         size_t cycleCount = 0;
         size_t testCycleCount = 0;
@@ -856,6 +854,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	    
 
 	    // check if we execute a test
+            bool hasConverged = false;
             if (testCycleCount % settings.testRepetitions () == 0)
             {
                 if (isWeightsForDrop)
@@ -888,7 +887,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 		settings.computeResult (*this, weights);
 
-                if (!isWeightsForDrop)
+                hasConverged = settings.hasConverged (testError);
+                if (!hasConverged && !isWeightsForDrop)
                 {
                     dropOutWeightFactor (weights, dropFractions, true); // inverse
                     isWeightsForDrop = true;
@@ -909,34 +909,14 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             settings.plot ("errors", "test", "testErrors", "lines", "cspline");
 
 
-            std::cout << "check convergence; minError " << minError << "  current " << testError << "  current convergence count " << convergenceCount << std::endl;
-            if (testError < minError)
-            {
-                convergenceCount = 0;
-                minError = testError;
-            }
-            else
-            {
-                ++convergenceCount;
-                maxConvergenceCount = std::max (convergenceCount, maxConvergenceCount);
-            }
-
-
-	    if (convergenceCount >= settings.convergenceSteps () || testError <= 0)
-	    {
-                if (isWeightsForDrop)
-                {
-                    dropOutWeightFactor (weights, dropFractions);
-                    isWeightsForDrop = false;
-                }
-		break;
-	    }
-
-
+            if (hasConverged)
+                break;
+            
             std::cout << "testError : " << testError << "   trainError : " << trainError << std::endl;
         }
 	while (true);
 
+        settings.endTrainCycle (testError);
         std::cout << "END TRAINING" << std::endl;
         return testError;
     }
@@ -1497,6 +1477,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
             // overwrite already existing weights from the "general" weights
             std::copy (itWeightGeneral, itWeightGeneral+numWeights, preWeights.begin ());
+            std::copy (itWeightGeneral, itWeightGeneral+numWeights, preWeights.begin ()+numWeights); // set identical weights for the temporary output layer
             
 
             // train the "preNet"
@@ -1520,18 +1501,21 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             // transform pattern using the created preNet
             auto proceedPattern = [&](std::vector<Pattern>& pttrn)
             {
+                std::vector<Pattern> newPttrn;
                 std::for_each (std::begin (pttrn), std::end (pttrn),
-                                [&preNet,&preWeights](Pattern& p)
+                               [&preNet,&preWeights,&newPttrn](Pattern& p)
                 {
                     std::vector<double> output = preNet.compute (p.input (), preWeights);
                     Pattern pat (output, output, p.weight ());
-                    p = pat;
+                    newPttrn.push_back (pat);
+//                    p = pat;
                 });
+                return newPttrn;
             };
 
 
-            proceedPattern (prePatternTrain);
-            proceedPattern (prePatternTest);
+            prePatternTrain = proceedPattern (prePatternTrain);
+            prePatternTest = proceedPattern (prePatternTest);
 
 
             // the new input size is the output size of the already reduced preNet
