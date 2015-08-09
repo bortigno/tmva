@@ -338,8 +338,11 @@ inline void MinimizerMonitoring::plotWeights (const Weights& weights)
 	std::vector<double> localWeights (begin (weights), end (weights));
 #endif
         double E = 1e10;
-        if (m_prevGradients.empty ())
+        if (m_prevGradients.size () != numWeights)
+        {
+            m_prevGradients.clear ();
             m_prevGradients.assign (weights.size (), 0);
+        }
 
         bool success = true;
         size_t currentRepetition = 0;
@@ -753,12 +756,10 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             double dropFraction = *itDrop;
             double pPrev = 1.0 - dropFractionPrev;
             double p = 1.0 - dropFraction;
+	    p *= pPrev;
 
-//	    p *= pPrev;
-	    p = pPrev;
-
-	    if (inverse)
-	    {
+            if (inverse)
+            {
                 p = 1.0/p;
 	    }
 	    size_t _numWeights = layer.numWeights (numNodesPrev);
@@ -787,12 +788,10 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 		  const std::vector<Pattern>& testPattern, 
                   Minimizer& minimizer, Settings& settings)
     {
+        settings.startTrainCycle ();
         settings.clearData ("trainErrors");
         settings.clearData ("testErrors");
         std::cout << "START TRAINING" << std::endl;
-        size_t convergenceCount = 0;
-        size_t maxConvergenceCount = 0;
-        double minError = 1e10;
 
         size_t cycleCount = 0;
         size_t testCycleCount = 0;
@@ -843,6 +842,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	    
 
 	    // check if we execute a test
+            bool hasConverged = false;
             if (testCycleCount % settings.testRepetitions () == 0)
             {
                 if (isWeightsForDrop)
@@ -875,7 +875,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 		settings.computeResult (*this, weights);
 
-                if (!isWeightsForDrop)
+                hasConverged = settings.hasConverged (testError);
+                if (!hasConverged && !isWeightsForDrop)
                 {
                     dropOutWeightFactor (weights, dropFractions, true); // inverse
                     isWeightsForDrop = true;
@@ -896,34 +897,14 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             settings.plot ("errors", "test", "testErrors", "lines", "cspline");
 
 
-            std::cout << "check convergence; minError " << minError << "  current " << testError << "  current convergence count " << convergenceCount << std::endl;
-            if (testError < minError)
-            {
-                convergenceCount = 0;
-                minError = testError;
-            }
-            else
-            {
-                ++convergenceCount;
-                maxConvergenceCount = std::max (convergenceCount, maxConvergenceCount);
-            }
-
-
-	    if (convergenceCount >= settings.convergenceSteps () || testError <= 0)
-	    {
-                if (isWeightsForDrop)
-                {
-                    dropOutWeightFactor (weights, dropFractions);
-                    isWeightsForDrop = false;
-                }
-		break;
-	    }
-
-
+            if (hasConverged)
+                break;
+            
             std::cout << "testError : " << testError << "   trainError : " << trainError << std::endl;
         }
 	while (true);
 
+        settings.endTrainCycle (testError);
         std::cout << "END TRAINING" << std::endl;
         return testError;
     }
@@ -1452,23 +1433,23 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
         initializePrePattern (trainPattern, prePatternTrain);
         initializePrePattern (testPattern, prePatternTest);
-        
-        int numLayers = layers ().size ();
+
+        std::vector<double> originalDropFractions = settings.dropFractions ();
+
         for (auto& _layer : layers ())
         {
-            --numLayers;
-            if (numLayers <= 0)
-                break;
-            
             // compute number of weights (as a function of the number of incoming nodes)
             // fetch number of nodes
             size_t numNodes = _layer.numNodes ();
             size_t numWeights = _layer.numWeights (_inputSize);
 
-            std::cout << "pretraining layer with " << numNodes << " nodes and " << numWeights << " weights " << std::endl;
-            
             // ------------------
             NN::Net preNet;
+            if (!originalDropFractions.empty ())
+            {
+                originalDropFractions.erase (originalDropFractions.begin ());
+                settings.setDropOut (originalDropFractions.begin (), originalDropFractions.end (), settings.dropRepetitions ());
+            }
             std::vector<double> preWeights;
 
             // define the preNet (pretraining-net) for this layer
@@ -1485,61 +1466,59 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
             // overwrite already existing weights from the "general" weights
             std::copy (itWeightGeneral, itWeightGeneral+numWeights, preWeights.begin ());
+            std::copy (itWeightGeneral, itWeightGeneral+numWeights, preWeights.begin ()+numWeights); // set identical weights for the temporary output layer
             
-            std::cout << "--- pretrain ---" << std::endl;
-            
+
             // train the "preNet"
             preNet.train (preWeights, prePatternTrain, prePatternTest, minimizer, settings);
 
-            std::cout << "copy weights" << std::endl;
+	    //            std::cout << "copy weights" << std::endl;
             
             // fetch the pre-trained weights (without the output part of the autoencoder)
             std::copy (std::begin (preWeights), std::begin (preWeights) + numWeights, itWeightGeneral);
 
-            std::cout << "advance the iterator on the general weights" << std::endl;
+	    //            std::cout << "advance the iterator on the general weights" << std::endl;
             
             // advance the iterator on the incoming weights
             itWeightGeneral += numWeights;
 
-            std::cout << "erase non-needed pre-training weights" << std::endl;
+	    //            std::cout << "erase non-needed pre-training weights" << std::endl;
             
             // remove the weights of the output layer of the preNet
             preWeights.erase (preWeights.begin () + numWeights, preWeights.end ());
 
-            std::cout << "remove the last layer" << std::endl;
+	    //            std::cout << "remove the last layer" << std::endl;
 
             // remove the outputLayer of the preNet
             preNet.removeLayer ();
 
+            // set the output size to the number of nodes in the new output layer (== last hidden layer)
+            preNet.setOutputSize (numNodes);
             
             // transform pattern using the created preNet
             auto proceedPattern = [&](std::vector<Pattern>& pttrn)
             {
-                std::cout << "pattern size = " << pttrn.size () << std::endl;
-                std::vector<Pattern> result;
-                std::transform (std::begin (pttrn), std::end (pttrn),
-                                std::back_inserter (result),
-                                [&preNet,&preWeights](const Pattern& p)
+                std::vector<Pattern> newPttrn;
+                std::for_each (std::begin (pttrn), std::end (pttrn),
+                               [&preNet,&preWeights,&newPttrn](Pattern& p)
                 {
                     std::vector<double> output = preNet.compute (p.input (), preWeights);
                     Pattern pat (output, output, p.weight ());
-                    return pat;
+                    newPttrn.push_back (pat);
+//                    p = pat;
                 });
-                result.swap (pttrn);
+                return newPttrn;
             };
 
-            std::cout << "proceed training pattern" << std::endl;
-            proceedPattern (prePatternTrain);
-            std::cout << "proceed test pattern" << std::endl;
-            proceedPattern (prePatternTest);
 
-            std::cout << std::endl;
-            std::cout << "determine new input size" << std::endl;
-            
+            prePatternTrain = proceedPattern (prePatternTrain);
+            prePatternTest = proceedPattern (prePatternTest);
+
+
             // the new input size is the output size of the already reduced preNet
             _inputSize = preNet.layers ().back ().numNodes ();
 
-            std::cout << "new input size is " << _inputSize << std::endl;
+	    //            std::cout << "new input size is " << _inputSize << std::endl;
         }
     }
 

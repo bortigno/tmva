@@ -1,7 +1,7 @@
 
 CC=g++
 #CC=clang++
-CFLAGS=-Wl,--no-as-needed -Wall -std=c++1y -O0 -ggdb -pthread
+CFLAGS=-Wl,--no-as-needed -Wall -std=c++1y -O4 -ggdb -pthread
 LDFLAGS=-ggdb -lpthread
 SOURCES=nn_main.cpp neuralNet.cpp ../mnist/readnist.cpp
 OBJECTS=$(SOURCES:.cpp=.o)

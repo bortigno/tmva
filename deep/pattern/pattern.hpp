@@ -26,12 +26,12 @@ public:
     , m_output ()
     , m_weight (0)
     {
-	std::cout << "Pattern()" << "  this=" << this << std::endl;
+      //	std::cout << "Pattern()" << "  this=" << this << std::endl;
     }
 
     ~Pattern () 
     { 
-	std::cout << "~Pattern()" << "  this=" << this << std::endl;
+      //	std::cout << "~Pattern()" << "  this=" << this << std::endl;
     }
 
     Pattern (Pattern&& other)
@@ -40,7 +40,7 @@ public:
         , m_output (std::move (other.m_output))
         , m_weight (other.m_weight)
     { 
-    	std::cout << "Pattern&&" << "  this=" << this << "   other=" << (&other) << std::endl;
+      //    	std::cout << "Pattern&&" << "  this=" << this << "   other=" << (&other) << std::endl;
     }
 
     Pattern (const Pattern& other) 
@@ -49,13 +49,13 @@ public:
     , m_output (other.m_output)
     , m_weight (other.m_weight)
     { 
-	std::cout << "Pattern&" << "   this=" << this << "   other=" << (&other) << std::endl;
+      //	std::cout << "Pattern&" << "   this=" << this << "   other=" << (&other) << std::endl;
     }
 
 
     Pattern& operator= (Pattern&& other) 
     {
-	std::cout << "Pattern=&&" << "  this=" << this << "   other=" << (&other) << std::endl;
+      //	std::cout << "Pattern=&&" << "  this=" << this << "   other=" << (&other) << std::endl;
         m_ID = other.m_ID;
     	m_input = other.m_input;
     	m_output = other.m_output;
@@ -65,7 +65,7 @@ public:
 
     Pattern& operator= (const Pattern& other) 
     { 
-	std::cout << "Pattern=&" << "  this=" << this << "   other=" << (&other) << std::endl;
+      //	std::cout << "Pattern=&" << "  this=" << this << "   other=" << (&other) << std::endl;
         m_ID = other.m_ID;
 	m_input = other.m_input;
 	m_output = other.m_output;

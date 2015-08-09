@@ -657,12 +657,21 @@ public:
     void addPoint (std::string dataName, double x, double y);
 
     virtual void testSample (double error, double output, double target, double weight) {}
-    virtual void startTrainCycle () {}
+    virtual void startTrainCycle ()
+    {
+        m_convergenceCount = 0;
+        m_maxConvergenceCount= 0;
+        m_minError = 1e10;
+    }
     virtual void endTrainCycle (double /*error*/) {}
 
     
     virtual void startTestCycle () {}
-    virtual void endTestCycle () {}
+    virtual void endTestCycle ()
+    {
+    }
+    
+    virtual bool hasConverged (double testError);
     virtual void drawSample (const std::vector<double>& input, const std::vector<double>& output, const std::vector<double>& target, double patternWeight) {}
 
     virtual void computeResult (const Net& net, std::vector<double>& weights) {}
@@ -689,6 +698,10 @@ public:
     double m_dropRepetitions;
     std::vector<double> m_dropOut;
 
+    size_t m_convergenceCount;
+    size_t m_maxConvergenceCount;
+    double m_minError;
+    
 private:
 
     bool m_useMultithreading;

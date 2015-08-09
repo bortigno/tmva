@@ -311,21 +311,22 @@ namespace NN
         , count_mb_E (0)
         , count_mb_dE (0)
         , m_regularization (eRegularization)
+        , m_convergenceCount (0)
+        , m_maxConvergenceCount (0)
+        , m_minError (1e10)
         , m_useMultithreading (_useMultithreading)
         , m_pMonitoring (pMonitoring)
     {
     }
     
+    Monitoring::~Monitoring () 
+    {
+    }
 
 
     Monitoring::Monitoring ()
     {}
 
-    Monitoring::~Monitoring ()
-    {}
-
-
-    
 
     void Monitoring::clearData (std::string dataName)
     {
@@ -373,7 +374,7 @@ namespace NN
 
     Gnuplot* Monitoring::plot (std::string plotName, std::string subName, std::string dataName, std::string style, std::string smoothing)
     {
-        std::cout << "plot ----------------------------------------------------_" << std::endl;
+      //        std::cout << "plot ----------------------------------------------------_" << std::endl;
         Gnuplot* pPlot = getPlot (plotName);
         if (!pPlot)
             return nullptr;
@@ -408,7 +409,7 @@ namespace NN
 
     void Monitoring::resetPlot (std::string plotName)
     {
-        std::cout << "reset plot ----------------------------------------------------_" << std::endl;
+      //        std::cout << "reset plot ----------------------------------------------------_" << std::endl;
         Gnuplot* pPlot = getPlot (plotName);
         if (pPlot)
         {
@@ -429,13 +430,13 @@ namespace NN
         PlotMap::iterator itPlot = plots.find (plotName);
         if (itPlot == plots.end ())
         {
-            std::cout << "create new gnuplot ------------------------------------------------------------ " << std::endl;
+	  //            std::cout << "create new gnuplot ------------------------------------------------------------ " << std::endl;
             std::pair<PlotMap::iterator, bool> result = plots.insert (std::make_pair (plotName, std::make_unique<Gnuplot>()));
             itPlot = result.first;
         }
 
         Gnuplot* pPlot = itPlot->second.get ();
-        std::cout << "getPlot " << pPlot << " ----------------------------------------- " << std::endl;
+	//        std::cout << "getPlot " << pPlot << " ----------------------------------------- " << std::endl;
         return pPlot;
     }
 
@@ -661,8 +662,40 @@ namespace NN
 
 
 
-    void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights) { m_sumOfSigWeights = sumOfSigWeights; m_sumOfBkgWeights = sumOfBkgWeights; }
-    void ClassificationSettings::setResultComputation (std::string _fileNameNetConfig, std::string _fileNameResult, std::vector<Pattern>* _resultPatternContainer)
+    bool Settings::hasConverged (double testError)
+    {
+        std::cout << "check convergence; minError " << m_minError << "  current " << testError
+                  << "  current convergence count " << m_convergenceCount << std::endl;
+        if (testError < m_minError)
+        {
+            m_convergenceCount = 0;
+            m_minError = testError;
+        }
+        else
+        {
+            ++m_convergenceCount;
+            m_maxConvergenceCount = std::max (m_convergenceCount, m_maxConvergenceCount);
+        }
+
+
+        if (m_convergenceCount >= convergenceSteps () || testError <= 0)
+            return true;
+
+        return false;
+    }
+
+
+    
+
+    void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights)
+    {
+        m_sumOfSigWeights = sumOfSigWeights; m_sumOfBkgWeights = sumOfBkgWeights;
+    }
+    
+    void ClassificationSettings::setResultComputation (
+        std::string _fileNameNetConfig,
+        std::string _fileNameResult,
+        std::vector<Pattern>* _resultPatternContainer)
     {
 	m_pResultPatternContainer = _resultPatternContainer;
 	m_fileNameResult = _fileNameResult;
