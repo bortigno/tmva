@@ -76,7 +76,7 @@ std::string now ()
    ,"p2_IsoBDT"
    ,"p0_track_Chi2Dof"
    ,"p1_track_Chi2Dof" 
-//   ,"p2_track_Chi2Dof" // spoils agreement test
+   ,"p2_track_Chi2Dof" // spoils agreement test
    ,"p0_pt"
    ,"p0_p"
    ,"p0_eta"
@@ -92,8 +92,85 @@ std::string now ()
    ,"p2_eta"
    ,"p2_IP"
    ,"p2_IPSig"
-//   ,"SPDhits" // spoils agreement test
+   ,"SPDhits" // spoils agreement test
   };
+
+
+
+
+
+
+/* void createCDF (TTree* input) */
+/* { */
+/*   std::cout << "==> create CDF" << std::endl; */
+
+/*   std::vector<Float_t> variables (variableNames.size ()); */
+/*   auto itVar = begin (variables); */
+  
+/*   std::vector<std::string> inputNames = {"training"}; */
+
+  
+/*   for (auto inputName : inputNames) */
+/*   { */
+/*       std::stringstream outfilename; */
+/*       outfilename << inputName << "_cdf__" << method_name.Data () << ".csv"; */
+/*       std::cout << outfilename.str () << std::endl; */
+/*       /\* return; *\/ */
+      
+/*       std::stringstream infilename; */
+/*       infilename << pathToData.Data () << inputName << ".root"; */
+          
+
+/*       TFile *input(0); */
+/*       std::cout << "infilename = " << infilename.str ().c_str () << std::endl; */
+/*       input = TFile::Open (infilename.str ().c_str ()); */
+/*       TTree* tree  = (TTree*)input->Get("data"); */
+  
+      
+/*       // variables for prediction */
+/*       itVar = begin (variables); */
+/*       for (auto inputName : variableNames) */
+/*       { */
+/*           Float_t* pVar = &(*itVar); */
+/*           tree->SetBranchAddress(inputName.c_str(), pVar); */
+/*           ++itVar; */
+/*       } */
+
+/*       Long64_t ievtEnd = tree->GetEntries (); */
+/*       std::vector<double> sumSmaller (0,ievtEnd); */
+/*       double sum; */
+/*       for (Long64_t ievt=0; ievt < ievtEnd; ievt++) */
+/*       { */
+/*           tree->GetEntry (ievt); */
+/*           // predict */
+/*           std::vector<Float_t> currVariables (variableNames); */
+
+/*           for (Long64_t ievtCurr=0; ievtCurr < ievt; ievtCurr++) */
+/*           { */
+/*               tree->GetEntry (ievtCurr); */
+/*               for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables); itCurr < itCurrEnd; ++itCurr, ++itEvt) */
+/*               { */
+/*                   sum += 1.0; */
+/*                   if (*itEvt < *itCurr) */
+/*                   { */
+/*                       sumSmaller.at (ievtCurr) += 1.0; */
+/*                   } */
+/*                   else */
+/*                       break; */
+                      
+/*               } */
+/*           } */
+/*       } */
+
+/*       for_each (begin ( */
+
+      
+/*       input->Close(); */
+/*   } */
+    
+/* } */
+
+
 
 
 
@@ -140,6 +217,11 @@ void TMVAClassification()
 
    TCut mycuts = ""; // for example: TCut mycuts = "abs(var1)<0.5 && abs(var2-0.5)<1";
    TCut mycutb = ""; // for example: TCut mycutb = "abs(var1)<0.5";
+
+   /* // Set individual event weights (the variables must exist in the original TTree) */
+   /* factory->SetSignalWeightExpression( "weight" ); */
+   /* factory->SetBackgroundWeightExpression( "weight" ); */
+
    
    std::cout << "-------------------- prepare ---------------- " << std::endl;
    factory->PrepareTrainingAndTestTree( mycuts, mycutb,
@@ -241,7 +323,6 @@ void TMVAPredict(TString method_name)
   TMVA::Reader *reader = new TMVA::Reader( "!Color:!Silent" );  
 
 
-//  Float_t variables[3];
   std::vector<Float_t> variables (variableNames.size ());
   auto itVar = begin (variables);
   for (auto varName : variableNames)
