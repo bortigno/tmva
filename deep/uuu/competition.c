@@ -21,7 +21,8 @@
 //#endif
 
 
-TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+//TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+TString pathToData ("/home/peter/code/kaggle/flavor/");
 
 
 
@@ -200,75 +201,77 @@ void autoencoder ( TString myMethodList = "" )
 
 
 
-/* void createCDF (TTree* input) */
-/* { */
-/*   std::cout << "==> create CDF" << std::endl; */
+void createCDF (TTree* input)
+{
+  std::cout << "==> create CDF" << std::endl;
 
-/*   std::vector<Float_t> variables (variableNames.size ()); */
-/*   auto itVar = begin (variables); */
+  std::vector<Float_t> variables (variableNames.size ());
+  auto itVar = begin (variables);
   
-/*   std::vector<std::string> inputNames = {"training"}; */
+  std::vector<std::string> inputNames = {"training"};
 
   
-/*   for (auto inputName : inputNames) */
-/*   { */
-/*       std::stringstream outfilename; */
-/*       outfilename << inputName << "_cdf__" << method_name.Data () << ".csv"; */
-/*       std::cout << outfilename.str () << std::endl; */
-/*       /\* return; *\/ */
+  for (auto inputName : inputNames)
+  {
+      std::stringstream outfilename;
+      outfilename << inputName << "_cdf__" << method_name.Data () << ".csv";
+      std::cout << outfilename.str () << std::endl;
+      /* return; */
       
-/*       std::stringstream infilename; */
-/*       infilename << pathToData.Data () << inputName << ".root"; */
+      std::stringstream infilename;
+      infilename << pathToData.Data () << inputName << ".root";
           
 
-/*       TFile *input(0); */
-/*       std::cout << "infilename = " << infilename.str ().c_str () << std::endl; */
-/*       input = TFile::Open (infilename.str ().c_str ()); */
-/*       TTree* tree  = (TTree*)input->Get("data"); */
+      TFile *input(0);
+      std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
+      input = TFile::Open (infilename.str ().c_str ());
+      TTree* tree  = (TTree*)input->Get("data");
   
       
-/*       // variables for prediction */
-/*       itVar = begin (variables); */
-/*       for (auto inputName : variableNames) */
-/*       { */
-/*           Float_t* pVar = &(*itVar); */
-/*           tree->SetBranchAddress(inputName.c_str(), pVar); */
-/*           ++itVar; */
-/*       } */
+      // variables for prediction
+      itVar = begin (variables);
+      for (auto inputName : variableNames)
+      {
+          Float_t* pVar = &(*itVar);
+          tree->SetBranchAddress(inputName.c_str(), pVar);
+          ++itVar;
+      }
 
-/*       Long64_t ievtEnd = tree->GetEntries (); */
-/*       std::vector<double> sumSmaller (0,ievtEnd); */
-/*       double sum; */
-/*       for (Long64_t ievt=0; ievt < ievtEnd; ievt++) */
-/*       { */
-/*           tree->GetEntry (ievt); */
-/*           // predict */
-/*           std::vector<Float_t> currVariables (variableNames); */
+      Long64_t ievtEnd = tree->GetEntries ();
+      std::vector<double> sumSmaller (0,ievtEnd);
+      double sum;
+      for (Long64_t ievt=0; ievt < ievtEnd; ievt++)
+      {
+          tree->GetEntry (ievt);
+          // predict
+          std::vector<Float_t> currVariables (variableNames);
 
-/*           for (Long64_t ievtCurr=0; ievtCurr < ievt; ievtCurr++) */
-/*           { */
-/*               tree->GetEntry (ievtCurr); */
-/*               for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables); itCurr < itCurrEnd; ++itCurr, ++itEvt) */
-/*               { */
-/*                   sum += 1.0; */
-/*                   if (*itEvt < *itCurr) */
-/*                   { */
-/*                       sumSmaller.at (ievtCurr) += 1.0; */
-/*                   } */
-/*                   else */
-/*                       break; */
+          for (Long64_t ievtCurr=0; ievtCurr < ievt; ievtCurr++)
+          {
+              tree->GetEntry (ievtCurr);
+              for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables); itCurr < itCurrEnd; ++itCurr, ++itEvt)
+              {
+                  sum += 1.0;
+                  if (*itEvt < *itCurr)
+                  {
+                      sumSmaller.at (ievtCurr) += 1.0;
+                  }
+                  else
+                      break;
                       
-/*               } */
-/*           } */
-/*       } */
+              }
+          }
+      }
 
-/*       for_each (begin ( */
+      for_each (begin (sumSmaller), end (sumSmaller), [sum](double& v) {
+	  v /= sum;
+	});
 
       
-/*       input->Close(); */
-/*   } */
+      input->Close();
+  }
     
-/* } */
+}
 
 
 
