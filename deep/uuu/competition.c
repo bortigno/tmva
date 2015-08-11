@@ -99,6 +99,106 @@ std::string now ()
 
 
 
+void autoencoder ( TString myMethodList = "" ) 
+{
+
+   std::string tmstr (now ());
+   TString tmstmp (tmstr.c_str ());
+   
+  
+   std::cout << "==> Start Autoencoder " << std::endl;
+   std::cout << "-------------------- open input file ---------------- " << std::endl;
+   TString fname = pathToData + TString ("training.root");
+   TFile *input = TFile::Open( fname );
+
+   std::cout << "-------------------- get tree ---------------- " << std::endl;
+   TTree *tree     = (TTree*)input->Get("data");
+   
+   TString outfileName( "TMVAAutoEnc__" );
+   outfileName += tmstmp + TString (".root");
+
+   std::cout << "-------------------- open output file ---------------- " << std::endl;
+   TFile* outputFile = TFile::Open( outfileName, "RECREATE" );
+
+   std::cout << "-------------------- prepare factory ---------------- " << std::endl;
+   TMVA::Factory *factory = new TMVA::Factory( "TMVAAutoencoder", outputFile,
+                                               "AnalysisType=Regression:Color:DrawProgressBar" );
+   std::cout << "-------------------- add variables ---------------- " << std::endl;
+
+
+   for (auto varname : variableNames)
+   {
+       factory->AddVariable (varname.c_str (), 'F');
+       factory->AddTarget   (varname.c_str (), 'F');
+   }
+
+   factory->AddVariable ("signal", 'F');
+
+
+   std::cout << "-------------------- add tree ---------------- " << std::endl;
+   // global event weights per tree (see below for setting event-wise weights)
+   Double_t regWeight  = 1.0;   
+   factory->AddRegressionTree (tree, regWeight);
+
+   
+   std::cout << "-------------------- prepare ---------------- " << std::endl;
+   TCut mycut = ""; // for example: TCut mycut = "abs(var1)<0.5 && abs(var2-0.5)<1";
+   factory->PrepareTrainingAndTestTree( mycut, 
+                                        "nTrain_Regression=0:nTest_Regression=0:SplitMode=Random:NormMode=NumEvents:!V" );
+
+
+   /* // This would set individual event weights (the variables defined in the  */
+   /* // expression need to exist in the original TTree) */
+   /* factory->SetWeightExpression( "var1", "Regression" ); */
+
+
+   if (true)
+   {
+//       TString layoutString ("Layout=TANH|(N+100)*2,LINEAR");
+//       TString layoutString ("Layout=SOFTSIGN|100,SOFTSIGN|50,SOFTSIGN|20,LINEAR");
+//       TString layoutString ("Layout=RELU|300,RELU|100,RELU|30,RELU|10,LINEAR");
+//       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|30,SOFTSIGN|20,SOFTSIGN|10,LINEAR");
+//       TString layoutString ("Layout=TANH|50,TANH|30,TANH|20,TANH|10,LINEAR");
+//       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|20,LINEAR");
+//       TString layoutString ("Layout=TANH|100,TANH|30,LINEAR");
+       TString layoutString ("Layout=TANH|20,LINEAR");
+
+       TString training0 ("LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=50,TestRepetitions=7,WeightDecay=0.01,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=2");
+       TString training1 ("LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=500,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,DropConfig=0.1+0.1+0.1,DropRepetitions=1");
+       TString training2 ("LearningRate=1e-5,Momentum=0.3,Repetitions=1,ConvergenceSteps=10,BatchSize=40,TestRepetitions=7,WeightDecay=0.1,Regularization=L2");
+//       TString training3 ("LearningRate=1e-5,Momentum=0.1,Repetitions=1,ConvergenceSteps=20,BatchSize=10,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE");
+
+       TString trainingStrategyString ("TrainingStrategy=");
+       trainingStrategyString += training0 + "|" + training1 + "|" + training2 ; //+ "|" + training3;
+
+       
+//       TString trainingStrategyString ("TrainingStrategy=LearningRate=1e-1,Momentum=0.3,Repetitions=3,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.0,DropRepetitions=5");
+
+       TString nnOptions ("!H:V:ErrorStrategy=SUMOFSQUARES:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
+//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
+       nnOptions.Append (":"); nnOptions.Append (layoutString);
+       nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
+
+       factory->BookMethod( TMVA::Types::kNN, "NN", nnOptions ); // NN
+   }
+
+
+   
+   // --------------------------------------------------------------------------------------------------
+   factory->TrainAllMethods();
+   factory->TestAllMethods();
+   factory->EvaluateAllMethods();
+
+   outputFile->Close();
+
+   TMVA::TMVARegGui (outfileName);
+   
+   delete factory;
+}
+
+
+
+
 
 /* void createCDF (TTree* input) */
 /* { */
