@@ -20,9 +20,10 @@
 #include "TMVA/Tools.h"
 //#endif
 
+#include "tmvagui/inc/TMVA/tmvagui.h"
 
-//TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
-TString pathToData ("/home/peter/code/kaggle/flavor/");
+TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+//TString pathToData ("/home/peter/code/kaggle/flavor/");
 
 
 
@@ -100,7 +101,7 @@ std::string now ()
 
 
 
-void autoencoder ( TString myMethodList = "" ) 
+TString autoencoder ( TString myMethodList = "" ) 
 {
 
    std::string tmstr (now ());
@@ -166,8 +167,8 @@ void autoencoder ( TString myMethodList = "" )
 
        TString training0 ("LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=50,TestRepetitions=7,WeightDecay=0.01,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=2");
        TString training1 ("LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=500,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,DropConfig=0.1+0.1+0.1,DropRepetitions=1");
-       TString training2 ("LearningRate=1e-5,Momentum=0.3,Repetitions=1,ConvergenceSteps=10,BatchSize=40,TestRepetitions=7,WeightDecay=0.1,Regularization=L2");
-//       TString training3 ("LearningRate=1e-5,Momentum=0.1,Repetitions=1,ConvergenceSteps=20,BatchSize=10,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE");
+       TString training2 ("LearningRate=1e-4,Momentum=0.3,Repetitions=1,ConvergenceSteps=10,BatchSize=40,TestRepetitions=7,WeightDecay=0.1,Regularization=L2");
+       TString training3 ("LearningRate=1e-5,Momentum=0.1,Repetitions=1,ConvergenceSteps=10,BatchSize=10,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE");
 
        TString trainingStrategyString ("TrainingStrategy=");
        trainingStrategyString += training0 + "|" + training1 + "|" + training2 ; //+ "|" + training3;
@@ -180,7 +181,7 @@ void autoencoder ( TString myMethodList = "" )
        nnOptions.Append (":"); nnOptions.Append (layoutString);
        nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-       factory->BookMethod( TMVA::Types::kNN, "NN", nnOptions ); // NN
+       factory->BookMethod( TMVA::Types::kNN, TString("NN_")+tmstmp, nnOptions ); // NN
    }
 
 
@@ -195,7 +196,140 @@ void autoencoder ( TString myMethodList = "" )
    TMVA::TMVARegGui (outfileName);
    
    delete factory;
+   return TString("NN_")+tmstmp;
 }
+
+
+
+/* void useAutoencoder (TString method_name) */
+/* { */
+/*   TMVA::Tools::Instance(); */
+
+/*   std::cout << "==> Start useAutoencoder" << std::endl; */
+/*   TMVA::Reader *reader = new TMVA::Reader( "!Color:!Silent" );   */
+
+/*   Float_t signal = 0.0; */
+/*   Float_t outSignal = 0.0; */
+
+/*   std::vector<Float_t> variables (variableNames.size ()); */
+/*   auto itVar = begin (variables); */
+/*   for (auto varName : variableNames) */
+/*   { */
+/*       Float_t* pVar = &(*itVar); */
+/*       reader->AddVariable(varName.c_str(), pVar); */
+/*       (*itVar) = 0.0; */
+/*       ++itVar; */
+/*   } */
+/*   reader->AddVariable("signal", &signal); */
+
+/*   TString dir    = "weights/"; */
+/*   TString prefix = "TMVAAutoencoder"; */
+/*   TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml"); */
+/*   TString outPrefix = "transformed"; */
+/*   TString outfilename = outPrefix + TString("_") + method_name + TString(".root"); */
+/*   reader->BookMVA( method_name, weightfile );  */
+
+  
+/*   TFile* outFile = new TFile (outPrefix, "RECREATE"); */
+/*   TTree* outTree = new TTree ("transformed","transformed"); */
+/*   std::vector<Float_t> outVariables (variableNames.size ()); */
+/*   itVar = begin (outVariables); */
+/*   for (auto varName : variableNames) */
+/*   { */
+/*       Float_t* pVar = &(*itVar); */
+/*       outTree->Branch (varName.Data (), pVar, "F"); */
+/*       (*itVar) = 0.0; */
+/*       ++itVar; */
+/*   } */
+/*   outTree->Branch ("signal", &outSignal, "F"); */
+/*   outTree->Branch ("forcedSignal", &signal, "F"); */
+
+  
+  
+/*   std::vector<std::string> inputNames = {"training"}; */
+/*   std::map<std::string,std::vector<std::string>> varsForInput; */
+/*   varsForInput["training"].emplace_back ("id"); */
+/*   varsForInput["training"].emplace_back ("signal"); */
+
+  
+/*   for (auto inputName : inputNames) */
+/*   { */
+/*       std::stringstream outfilename; */
+/*       outfilename << inputName << "_transformed__" << method_name.Data () << ".root"; */
+/*       std::cout << outfilename.str () << std::endl;  */
+/*       /\* return; *\/ */
+      
+/*       std::stringstream infilename; */
+/*       infilename << pathToData.Data () << inputName << ".root"; */
+
+/*       TTree* outTree = new TTree("transformed","transformed"); */
+      
+
+/*       TFile *input(0); */
+/*       std::cout << "infilename = " << infilename.str ().c_str () << std::endl; */
+/*       input = TFile::Open (infilename.str ().c_str ()); */
+/*       TTree* tree = (TTree*)input->Get("data"); */
+  
+/*       Int_t ids; */
+/*       Float_t prediction; */
+/*       Float_t weight; */
+/*       Float_t mass; */
+/*       Float_t signal; */
+
+/*       // id field if needed */
+/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ()) */
+/*           tree->SetBranchAddress("id", &ids); */
+
+/*       // signal field if needed */
+/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ()) */
+/*           tree->SetBranchAddress("signal", &signal); */
+
+/*       // mass field if needed */
+/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ()) */
+/*           tree->SetBranchAddress("mass", &mass); */
+
+/*       // weight field if needed */
+/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ()) */
+/*           tree->SetBranchAddress("weight", &weight); */
+
+      
+/*       // variables for prediction */
+/*       itVar = begin (variables); */
+/*       for (auto inputName : variableNames) */
+/*       { */
+/*           Float_t* pVar = &(*itVar); */
+/*           tree->SetBranchAddress(inputName.c_str(), pVar); */
+/*           ++itVar; */
+/*       }   */
+ 
+/*       for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++) */
+/*       { */
+/*           tree->GetEntry(ievt); */
+/*           // predict */
+
+/*           for (int forcedSignal = 0; forcedSignal <= 1; ++forcedSignal) */
+/*           { */
+/*               outSignal = signal; */
+/*               signal = forcedSignal; */
+/*               prediction = reader->EvaluateMVA (method_name); */
+/*               const std::vector< Float_t > regressionValues = EvaluateRegression (method_name); */
+/*               size_t idx = 0; */
+/*               for (auto it = std::begin (regressionValues), itEnd = std::end (regressionValues); it != itEnd; ++it) */
+/*               { */
+/*                   outVariables.at (idx) = *it; */
+/*                   ++idx; */
+/*               } */
+/*               outTree->Fill (); */
+/*           }           */
+          
+/*       } */
+
+/*       outfile.close(); */
+/*       input->Close(); */
+/*       outFile->Write (); */
+/*   } */
+/*   delete reader; */
+/* } */
 
 
 
@@ -214,7 +348,7 @@ void createCDF (TTree* input)
   for (auto inputName : inputNames)
   {
       std::stringstream outfilename;
-      outfilename << inputName << "_cdf__" << method_name.Data () << ".csv";
+      outfilename << inputName << "_cdf__" << inputName << ".csv";
       std::cout << outfilename.str () << std::endl;
       /* return; */
       
@@ -244,7 +378,7 @@ void createCDF (TTree* input)
       {
           tree->GetEntry (ievt);
           // predict
-          std::vector<Float_t> currVariables (variableNames);
+          std::vector<Float_t> currVariables (variables);
 
           for (Long64_t ievtCurr=0; ievtCurr < ievt; ievtCurr++)
           {
@@ -280,77 +414,6 @@ void createCDF (TTree* input)
 
 
 
-void createCDF (TTree* input)
-{
-  std::cout << "==> create CDF" << std::endl;
-
-  std::vector<Float_t> variables (variableNames.size ());
-  auto itVar = begin (variables);
-  
-  std::vector<std::string> inputNames = {"training"};
-
-  
-  for (auto inputName : inputNames)
-  {
-      std::stringstream outfilename;
-      outfilename << inputName << "_cdf__" << method_name.Data () << ".csv";
-      std::cout << outfilename.str () << std::endl;
-      /* return; */
-      
-      std::stringstream infilename;
-      infilename << pathToData.Data () << inputName << ".root";
-          
-
-      TFile *input(0);
-      std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
-      input = TFile::Open (infilename.str ().c_str ());
-      TTree* tree  = (TTree*)input->Get("data");
-  
-      
-      // variables for prediction
-      itVar = begin (variables);
-      for (auto inputName : variableNames)
-      {
-          Float_t* pVar = &(*itVar);
-          tree->SetBranchAddress(inputName.c_str(), pVar);
-          ++itVar;
-      }
-
-      Long64_t ievtEnd = tree->GetEntries ();
-      std::vector<double> sumSmaller (0,ievtEnd);
-      double sum;
-      for (Long64_t ievt=0; ievt < ievtEnd; ievt++)
-      {
-          tree->GetEntry (ievt);
-          // predict
-          std::vector<Float_t> currVariables (variableNames);
-
-          for (Long64_t ievtCurr=0; ievtCurr < ievt; ievtCurr++)
-          {
-              tree->GetEntry (ievtCurr);
-              for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables); itCurr < itCurrEnd; ++itCurr, ++itEvt)
-              {
-                  sum += 1.0;
-                  if (*itEvt < *itCurr)
-                  {
-                      sumSmaller.at (ievtCurr) += 1.0;
-                  }
-                  else
-                      break;
-                      
-              }
-          }
-      }
-
-      for_each (begin (sumSmaller), end (sumSmaller), [sum](double& v) {
-	  v /= sum;
-	});
-
-      
-      input->Close();
-  }
-    
-}
 
 
 
