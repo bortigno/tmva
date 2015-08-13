@@ -20,7 +20,7 @@
 #include "TMVA/Tools.h"
 //#endif
 
-#include "tmvagui/inc/TMVA/tmvagui.h"
+//#include "tmvagui/inc/TMVA/tmvagui.h"
 
 TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
 //TString pathToData ("/home/peter/code/kaggle/flavor/");
@@ -201,135 +201,135 @@ TString autoencoder ( TString myMethodList = "" )
 
 
 
-/* void useAutoencoder (TString method_name) */
-/* { */
-/*   TMVA::Tools::Instance(); */
+void useAutoencoder (TString method_name)
+{
+  TMVA::Tools::Instance();
 
-/*   std::cout << "==> Start useAutoencoder" << std::endl; */
-/*   TMVA::Reader *reader = new TMVA::Reader( "!Color:!Silent" );   */
+  std::cout << "==> Start useAutoencoder" << std::endl;
+  TMVA::Reader *reader = new TMVA::Reader( "!Color:!Silent" );
 
-/*   Float_t signal = 0.0; */
-/*   Float_t outSignal = 0.0; */
+  Float_t signal = 0.0;
+  Float_t outSignal = 0.0;
+  Float_t inSignal = 0.0;
 
-/*   std::vector<Float_t> variables (variableNames.size ()); */
-/*   auto itVar = begin (variables); */
-/*   for (auto varName : variableNames) */
-/*   { */
-/*       Float_t* pVar = &(*itVar); */
-/*       reader->AddVariable(varName.c_str(), pVar); */
-/*       (*itVar) = 0.0; */
-/*       ++itVar; */
-/*   } */
-/*   reader->AddVariable("signal", &signal); */
+  std::vector<Float_t> variables (variableNames.size ());
+  auto itVar = begin (variables);
+  for (auto varName : variableNames)
+  {
+      Float_t* pVar = &(*itVar);
+      reader->AddVariable(varName.c_str(), pVar);
+      (*itVar) = 0.0;
+      ++itVar;
+  }
+  reader->AddVariable("signal", &signal);
 
-/*   TString dir    = "weights/"; */
-/*   TString prefix = "TMVAAutoencoder"; */
-/*   TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml"); */
-/*   TString outPrefix = "transformed"; */
-/*   TString outfilename = outPrefix + TString("_") + method_name + TString(".root"); */
-/*   reader->BookMVA( method_name, weightfile );  */
+  TString dir    = "weights/";
+  TString prefix = "TMVAAutoencoder";
+  TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml");
+  TString outPrefix = "transformed";
+  TString outfilename = outPrefix + TString("_") + method_name + TString(".root");
+  reader->BookMVA( method_name, weightfile );
 
   
-/*   TFile* outFile = new TFile (outPrefix, "RECREATE"); */
-/*   TTree* outTree = new TTree ("transformed","transformed"); */
-/*   std::vector<Float_t> outVariables (variableNames.size ()); */
-/*   itVar = begin (outVariables); */
-/*   for (auto varName : variableNames) */
-/*   { */
-/*       Float_t* pVar = &(*itVar); */
-/*       outTree->Branch (varName.Data (), pVar, "F"); */
-/*       (*itVar) = 0.0; */
-/*       ++itVar; */
-/*   } */
-/*   outTree->Branch ("signal", &outSignal, "F"); */
-/*   outTree->Branch ("forcedSignal", &signal, "F"); */
+  TFile* outFile = new TFile (outfilename.Data (), "RECREATE");
 
   
   
-/*   std::vector<std::string> inputNames = {"training"}; */
-/*   std::map<std::string,std::vector<std::string>> varsForInput; */
-/*   varsForInput["training"].emplace_back ("id"); */
-/*   varsForInput["training"].emplace_back ("signal"); */
+  std::vector<std::string> inputNames = {"training"};
+  std::map<std::string,std::vector<std::string>> varsForInput;
+  varsForInput["training"].emplace_back ("id");
+  varsForInput["training"].emplace_back ("signal");
 
   
-/*   for (auto inputName : inputNames) */
-/*   { */
-/*       std::stringstream outfilename; */
-/*       outfilename << inputName << "_transformed__" << method_name.Data () << ".root"; */
-/*       std::cout << outfilename.str () << std::endl;  */
-/*       /\* return; *\/ */
+  for (auto inputName : inputNames)
+  {
+      std::stringstream outfilename;
+      outfilename << inputName << "_transformed__" << method_name.Data () << ".root";
+      std::cout << outfilename.str () << std::endl;
+      /* return; */
       
-/*       std::stringstream infilename; */
-/*       infilename << pathToData.Data () << inputName << ".root"; */
+      std::stringstream infilename;
+      infilename << pathToData.Data () << inputName << ".root";
 
-/*       TTree* outTree = new TTree("transformed","transformed"); */
+      TTree* outTree = new TTree("transformed","transformed");
       
+      std::vector<Float_t> outVariables (variableNames.size ());
+      itVar = begin (outVariables);
+      for (auto varName : variableNames)
+      {
+          Float_t* pVar = &(*itVar);
+          outTree->Branch (varName.c_str (), pVar, "F");
+          (*itVar) = 0.0;
+          ++itVar;
+      }
+      outTree->Branch ("inSignal", &inSignal, "F");
+      outTree->Branch ("signal", &outSignal, "F");
+      outTree->Branch ("forcedSignal", &signal, "F");
 
-/*       TFile *input(0); */
-/*       std::cout << "infilename = " << infilename.str ().c_str () << std::endl; */
-/*       input = TFile::Open (infilename.str ().c_str ()); */
-/*       TTree* tree = (TTree*)input->Get("data"); */
+      TFile *input(0);
+      std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
+      input = TFile::Open (infilename.str ().c_str ());
+      TTree* tree = (TTree*)input->Get("data");
   
-/*       Int_t ids; */
-/*       Float_t prediction; */
-/*       Float_t weight; */
-/*       Float_t mass; */
-/*       Float_t signal; */
+      Int_t ids;
+      Float_t prediction;
+      Float_t weight;
+      Float_t mass;
+      Float_t signal;
 
-/*       // id field if needed */
-/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ()) */
-/*           tree->SetBranchAddress("id", &ids); */
+      // id field if needed
+      if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
+          tree->SetBranchAddress("id", &ids);
 
-/*       // signal field if needed */
-/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ()) */
-/*           tree->SetBranchAddress("signal", &signal); */
+      // signal field if needed
+      if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
+          tree->SetBranchAddress("signal", &signal);
 
-/*       // mass field if needed */
-/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ()) */
-/*           tree->SetBranchAddress("mass", &mass); */
+      // mass field if needed
+      if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
+          tree->SetBranchAddress("mass", &mass);
 
-/*       // weight field if needed */
-/*       if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ()) */
-/*           tree->SetBranchAddress("weight", &weight); */
+      // weight field if needed
+      if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
+          tree->SetBranchAddress("weight", &weight);
 
       
-/*       // variables for prediction */
-/*       itVar = begin (variables); */
-/*       for (auto inputName : variableNames) */
-/*       { */
-/*           Float_t* pVar = &(*itVar); */
-/*           tree->SetBranchAddress(inputName.c_str(), pVar); */
-/*           ++itVar; */
-/*       }   */
+      // variables for prediction
+      itVar = begin (variables);
+      for (auto inputName : variableNames)
+      {
+          Float_t* pVar = &(*itVar);
+          tree->SetBranchAddress(inputName.c_str(), pVar);
+          ++itVar;
+      }
  
-/*       for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++) */
-/*       { */
-/*           tree->GetEntry(ievt); */
-/*           // predict */
+      for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
+      {
+          tree->GetEntry(ievt);
+          // predict
 
-/*           for (int forcedSignal = 0; forcedSignal <= 1; ++forcedSignal) */
-/*           { */
-/*               outSignal = signal; */
-/*               signal = forcedSignal; */
-/*               prediction = reader->EvaluateMVA (method_name); */
-/*               const std::vector< Float_t > regressionValues = EvaluateRegression (method_name); */
-/*               size_t idx = 0; */
-/*               for (auto it = std::begin (regressionValues), itEnd = std::end (regressionValues); it != itEnd; ++it) */
-/*               { */
-/*                   outVariables.at (idx) = *it; */
-/*                   ++idx; */
-/*               } */
-/*               outTree->Fill (); */
-/*           }           */
+          for (int forcedSignal = 0; forcedSignal <= 1; ++forcedSignal)
+          {
+              outSignal = signal;
+              signal = forcedSignal;
+//              prediction = reader->EvaluateMVA (method_name);
+              const std::vector< Float_t > regressionValues = reader->EvaluateRegression (method_name);
+              size_t idx = 0;
+              for (auto it = std::begin (regressionValues), itEnd = std::end (regressionValues); it != itEnd; ++it)
+              {
+                  outVariables.at (idx) = *it;
+                  ++idx;
+              }
+              outTree->Fill ();
+          }
           
-/*       } */
+      }
 
-/*       outfile.close(); */
-/*       input->Close(); */
-/*       outFile->Write (); */
-/*   } */
-/*   delete reader; */
-/* } */
+      outFile->Write ();
+      input->Close();
+  }
+  delete reader;
+}
 
 
 
