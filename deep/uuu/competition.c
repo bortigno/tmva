@@ -23,8 +23,8 @@
 
 //#include "tmvagui/inc/TMVA/tmvagui.h"
 
-TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
-//TString pathToData ("/home/peter/code/kaggle/flavor/");
+//TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+TString pathToData ("/home/peter/code/kaggle/flavor/");
 
 
 
@@ -138,14 +138,14 @@ TString autoencoder (std::string inputFileName)
 
     std::cout << "-------------------- prepare factory ---------------- " << std::endl;
     TMVA::Factory *factory = new TMVA::Factory( "TMVAAutoencoder", outputFile,
-                                                "AnalysisType=Regression:Color:DrawProgressBar" );
+						"AnalysisType=Regression:Color:DrawProgressBar" );
     std::cout << "-------------------- add variables ---------------- " << std::endl;
 
 
     for (auto varname : variableNames+additionalVariableNames)
     {
-        factory->AddVariable (varname.c_str (), 'F');
-        factory->AddTarget   (varname.c_str (), 'F');
+	factory->AddVariable (varname.c_str (), 'F');
+	factory->AddTarget   (varname.c_str (), 'F');
     }
 
 
@@ -159,7 +159,7 @@ TString autoencoder (std::string inputFileName)
     std::cout << "-------------------- prepare ---------------- " << std::endl;
     TCut mycut = ""; // for example: TCut mycut = "abs(var1)<0.5 && abs(var2-0.5)<1";
     factory->PrepareTrainingAndTestTree( mycut, 
-                                         "nTrain_Regression=0:nTest_Regression=0:SplitMode=Random:NormMode=NumEvents:!V" );
+					 "nTrain_Regression=0:nTest_Regression=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
 
     /* // This would set individual event weights (the variables defined in the  */
@@ -169,25 +169,25 @@ TString autoencoder (std::string inputFileName)
 
     if (true)
     {
-        TString layoutString ("Layout=TANH|20,LINEAR");
+	TString layoutString ("Layout=TANH|20,LINEAR");
 
-        TString training0 ("LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=50,TestRepetitions=7,WeightDecay=0.01,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=2");
-        TString training1 ("LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=500,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,DropConfig=0.1+0.1+0.1,DropRepetitions=1");
-        TString training2 ("LearningRate=1e-4,Momentum=0.3,Repetitions=1,ConvergenceSteps=10,BatchSize=40,TestRepetitions=7,WeightDecay=0.1,Regularization=L2");
-        TString training3 ("LearningRate=1e-5,Momentum=0.1,Repetitions=1,ConvergenceSteps=10,BatchSize=10,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE");
+	TString training0 ("LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=50,TestRepetitions=7,WeightDecay=0.01,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=2");
+	TString training1 ("LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=500,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,DropConfig=0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-4,Momentum=0.3,Repetitions=1,ConvergenceSteps=10,BatchSize=40,TestRepetitions=7,WeightDecay=0.1,Regularization=L2");
+	TString training3 ("LearningRate=1e-5,Momentum=0.1,Repetitions=1,ConvergenceSteps=10,BatchSize=10,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE");
 
-        TString trainingStrategyString ("TrainingStrategy=");
-        trainingStrategyString += training0 + "|" + training1 + "|" + training2 ; //+ "|" + training3;
+	TString trainingStrategyString ("TrainingStrategy=");
+	trainingStrategyString += training0 + "|" + training1 + "|" + training2 ; //+ "|" + training3;
 
        
-//       TString trainingStrategyString ("TrainingStrategy=LearningRate=1e-1,Momentum=0.3,Repetitions=3,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.0,DropRepetitions=5");
+	//       TString trainingStrategyString ("TrainingStrategy=LearningRate=1e-1,Momentum=0.3,Repetitions=3,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.0,L1=false,DropFraction=0.0,DropRepetitions=5");
 
-        TString nnOptions ("!H:V:ErrorStrategy=SUMOFSQUARES:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
-//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
-        nnOptions.Append (":"); nnOptions.Append (layoutString);
-        nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
+	TString nnOptions ("!H:V:ErrorStrategy=SUMOFSQUARES:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
+	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
+	nnOptions.Append (":"); nnOptions.Append (layoutString);
+	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        factory->BookMethod( TMVA::Types::kNN, TString("NN_")+tmstmp, nnOptions ); // NN
+	factory->BookMethod( TMVA::Types::kNN, TString("NN_")+tmstmp, nnOptions ); // NN
     }
 
 
@@ -224,13 +224,13 @@ void useAutoencoder (TString method_name)
     auto itVar = begin (variables);
     for (auto varName : localVariableNames)
     {
-        Float_t* pVar = &(*itVar);
-        reader->AddVariable(varName.c_str(), pVar);
-        (*itVar) = 0.0;
-        ++itVar;
+	Float_t* pVar = &(*itVar);
+	reader->AddVariable(varName.c_str(), pVar);
+	(*itVar) = 0.0;
+	++itVar;
     }
     int idxSignal = std::distance (localVariableNames.begin (),
-                                   std::find (localVariableNames.begin (), localVariableNames.end (),std::string ("signal")));
+				   std::find (localVariableNames.begin (), localVariableNames.end (),std::string ("signal")));
 
   
     TString dir    = "weights/";
@@ -253,80 +253,80 @@ void useAutoencoder (TString method_name)
   
     for (auto inputName : inputNames)
     {
-        std::stringstream outfilename;
-        outfilename << inputName << "_transformed__" << method_name.Data () << ".root";
-        std::cout << outfilename.str () << std::endl;
-        /* return; */
+	std::stringstream outfilename;
+	outfilename << inputName << "_transformed__" << method_name.Data () << ".root";
+	std::cout << outfilename.str () << std::endl;
+	/* return; */
       
-        std::stringstream infilename;
-        infilename << pathToData.Data () << inputName << ".root";
+	std::stringstream infilename;
+	infilename << pathToData.Data () << inputName << ".root";
 
-        TTree* outTree = new TTree("transformed","transformed");
+	TTree* outTree = new TTree("transformed","transformed");
       
-        std::vector<Float_t> outVariables (localVariableNames.size ());
-        itVar = begin (variables);
-        auto itOutVar = begin (outVariables);
-        for (auto varName : localVariableNames)
+	std::vector<Float_t> outVariables (localVariableNames.size ());
+	itVar = begin (variables);
+	auto itOutVar = begin (outVariables);
+	for (auto varName : localVariableNames)
         {
-            Float_t* pOutVar = &(*itOutVar);
-            outTree->Branch (varName.c_str (), pOutVar, "F");
-            (*itOutVar) = 0.0;
-            ++itOutVar;
+	    Float_t* pOutVar = &(*itOutVar);
+	    outTree->Branch (varName.c_str (), pOutVar, "F");
+	    (*itOutVar) = 0.0;
+	    ++itOutVar;
 
-            Float_t* pVar = &(*itVar);
-            std::stringstream svar;
-            svar << varName << "_in";
-            outTree->Branch (svar.str ().c_str (), pVar, "F");
-            (*itVar) = 0.0;
-            ++itVar;
+	    Float_t* pVar = &(*itVar);
+	    std::stringstream svar;
+	    svar << varName << "_in";
+	    outTree->Branch (svar.str ().c_str (), pVar, "F");
+	    (*itVar) = 0.0;
+	    ++itVar;
         }
-        Float_t signal_original = 0.0;
-        outTree->Branch ("signal_original", &signal_original, "F");
+	Float_t signal_original = 0.0;
+	outTree->Branch ("signal_original", &signal_original, "F");
 
-        TFile *input(0);
-        std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
-        input = TFile::Open (infilename.str ().c_str ());
-        TTree* tree = (TTree*)input->Get("data");
+	TFile *input(0);
+	std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
+	input = TFile::Open (infilename.str ().c_str ());
+	TTree* tree = (TTree*)input->Get("data");
   
-        Int_t ids;
+	Int_t ids;
 
-        // id field if needed
-        if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
-            tree->SetBranchAddress("id", &ids);
+	// id field if needed
+	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
+	    tree->SetBranchAddress("id", &ids);
 
       
-        // variables for prediction
-        itVar = begin (variables);
-        for (auto inputName : localVariableNames)
+	// variables for prediction
+	itVar = begin (variables);
+	for (auto inputName : localVariableNames)
         {
-            Float_t* pVar = &(*itVar);
-            tree->SetBranchAddress (inputName.c_str(), pVar);
-            ++itVar;
+	    Float_t* pVar = &(*itVar);
+	    tree->SetBranchAddress (inputName.c_str(), pVar);
+	    ++itVar;
         }
  
-        for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
+	for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
         {
-            tree->GetEntry(ievt);
-            // predict
+	    tree->GetEntry(ievt);
+	    // predict
 
-            signal_original = variables.at (idxSignal);
-            for (int forcedSignal = 0; forcedSignal <= 1; ++forcedSignal)
+	    signal_original = variables.at (idxSignal);
+	    for (int forcedSignal = 0; forcedSignal <= 1; ++forcedSignal)
             {
-                variables.at (idxSignal) = forcedSignal;
-                std::vector<Float_t> regressionValues = reader->EvaluateRegression (method_name);
-                size_t idx = 0;
-                for (auto it = std::begin (regressionValues), itEnd = std::end (regressionValues); it != itEnd; ++it)
+		variables.at (idxSignal) = forcedSignal;
+		std::vector<Float_t> regressionValues = reader->EvaluateRegression (method_name);
+		size_t idx = 0;
+		for (auto it = std::begin (regressionValues), itEnd = std::end (regressionValues); it != itEnd; ++it)
                 {
-                    outVariables.at (idx) = *it;
-                    ++idx;
+		    outVariables.at (idx) = *it;
+		    ++idx;
                 }
-                outTree->Fill ();
+		outTree->Fill ();
             }
           
         }
 
-       outFile->Write ();
-       input->Close();
+	outFile->Write ();
+	input->Close();
     }
     delete reader;
 }
@@ -335,74 +335,79 @@ void useAutoencoder (TString method_name)
 
 
 
-void createCDF (TTree* input)
+void createCDF ()
 {
     std::cout << "==> create CDF" << std::endl;
 
-    std::vector<Float_t> variables (variableNames.size ());
-    auto itVar = begin (variables);
-  
     std::vector<std::string> inputNames = {"training"};
 
   
     for (auto inputName : inputNames)
     {
-        std::stringstream outfilename;
-        outfilename << inputName << "_cdf__" << inputName << ".csv";
-        std::cout << outfilename.str () << std::endl;
-        /* return; */
+	std::stringstream outfilename;
+	outfilename << inputName << "_cdf__" << inputName << ".root";
+	std::cout << outfilename.str () << std::endl;
+	/* return; */
       
-        std::stringstream infilename;
-        infilename << pathToData.Data () << inputName << ".root";
+	std::stringstream infilename;
+	infilename << pathToData.Data () << inputName << ".root";
           
 
-        TFile *input(0);
-        std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
-        input = TFile::Open (infilename.str ().c_str ());
-        TTree* tree  = (TTree*)input->Get("data");
+	TFile *input(0);
+	std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
+	input = TFile::Open (infilename.str ().c_str ());
+	TTree* tree  = (TTree*)input->Get("data");
   
       
-        // variables for prediction
-        itVar = begin (variables);
-        for (auto inputName : variableNames)
+	// variables for prediction
+	std::cout << "prepare variables" << std::endl;
+	auto localVariableNames = variableNames+additionalVariableNames;
+	std::vector<Float_t> variables (localVariableNames.size ());
+	auto itVar = begin (variables);
+	for (auto inputName : localVariableNames)
         {
-            Float_t* pVar = &(*itVar);
-            tree->SetBranchAddress(inputName.c_str(), pVar);
-            ++itVar;
+	    Float_t* pVar = &(*itVar);
+	    tree->SetBranchAddress(inputName.c_str(), pVar);
+	    ++itVar;
         }
 
-        Long64_t ievtEnd = tree->GetEntries ();
-        std::vector<double> sumSmaller (0,ievtEnd);
-        double sum;
-        for (Long64_t ievt=0; ievt < ievtEnd; ievt++)
+	Long64_t ievtEnd = tree->GetEntries ();
+	std::cout << "process entries #" << ievtEnd << std::endl;
+	std::vector<double> sumSmaller (ievtEnd, 0.0);
+      
+	double sum;
+	for (Long64_t ievt=0; ievt < ievtEnd; ievt++)
         {
-            tree->GetEntry (ievt);
-            // predict
-            std::vector<Float_t> currVariables (variables);
+	    tree->GetEntry (ievt);
+	    std::cout << "." << std::flush;
+	    std::vector<Float_t> currVariables (begin (variables), end (variables));
 
-            for (Long64_t ievtCurr=0; ievtCurr < ievt; ievtCurr++)
+	    for (Long64_t ievtCurr=0; ievtCurr <= ievt; ++ievtCurr)
             {
-                tree->GetEntry (ievtCurr);
-                for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables); itCurr < itCurrEnd; ++itCurr, ++itEvt)
+		tree->GetEntry (ievtCurr);
+		for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables);
+		     itCurr != itCurrEnd; ++itCurr, ++itEvt)
                 {
-                    sum += 1.0;
-                    if (*itEvt < *itCurr)
+		    sum += 1.0;
+		    if (*itEvt <= *itCurr)
                     {
-                        sumSmaller.at (ievtCurr) += 1.0;
+			sumSmaller.at (ievtCurr) += 1.0;
                     }
-                    else
-                        break;
+		    else
+			break;
                       
                 }
             }
         }
 
-        for_each (begin (sumSmaller), end (sumSmaller), [sum](double& v) {
-                v /= sum;
-            });
+	std::cout << "normalize" << std::endl;
+	
+	for_each (begin (sumSmaller), end (sumSmaller), [sum](double& v) {
+		v /= sum;
+	    });
 
       
-        input->Close();
+	input->Close();
     }
     
 }
@@ -446,13 +451,13 @@ void TMVAClassification()
 
     std::cout << "-------------------- prepare factory ---------------- " << std::endl;
     TMVA::Factory *factory = new TMVA::Factory( "TMVAClassification", outputFile,
-                                                "AnalysisType=Classification" );
+						"AnalysisType=Classification" );
     std::cout << "-------------------- add variables ---------------- " << std::endl;
 
 
     for (auto varname : variableNames)
     {
-        factory->AddVariable (varname.c_str (), 'F');
+	factory->AddVariable (varname.c_str (), 'F');
     }
    
    
@@ -470,79 +475,79 @@ void TMVAClassification()
    
     std::cout << "-------------------- prepare ---------------- " << std::endl;
     factory->PrepareTrainingAndTestTree( mycuts, mycutb,
-                                         "nTrain_Signal=0:nTrain_Background=0:nTest_Signal=0:nTest_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
+					 "nTrain_Signal=0:nTrain_Background=0:nTest_Signal=0:nTest_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
 
     // gradient boosting training
     factory->BookMethod(TMVA::Types::kBDT, TString ("GBDT_")+tmstmp,
-                        "NTrees=40:BoostType=Grad:Shrinkage=0.01:MaxDepth=7:UseNvars=6:nCuts=20:MinNodeSize=10");
+			"NTrees=40:BoostType=Grad:Shrinkage=0.01:MaxDepth=7:UseNvars=6:nCuts=20:MinNodeSize=10");
 
     factory->BookMethod( TMVA::Types::kLikelihood, TString ("Likelihood_")+tmstmp,
-                         "H:!V:TransformOutput:PDFInterpol=Spline2:NSmoothSig[0]=20:NSmoothBkg[0]=20:NSmoothBkg[1]=10:NSmooth=1:NAvEvtPerBin=50" );
+			 "H:!V:TransformOutput:PDFInterpol=Spline2:NSmoothSig[0]=20:NSmoothBkg[0]=20:NSmoothBkg[1]=10:NSmooth=1:NAvEvtPerBin=50" );
 
 
     if (false)
     {
-        TString layoutString ("Layout=TANH|100,LINEAR");
+	TString layoutString ("Layout=TANH|100,LINEAR");
 
-        TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-        TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-        TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-        TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+	TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
+	TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
+	TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
 
-        TString trainingStrategyString ("TrainingStrategy=");
-        trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
+	TString trainingStrategyString ("TrainingStrategy=");
+	trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
       
-        TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=G:WeightInitialization=XAVIERUNIFORM");
-        nnOptions.Append (":"); nnOptions.Append (layoutString);
-        nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
+	TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=G:WeightInitialization=XAVIERUNIFORM");
+	nnOptions.Append (":"); nnOptions.Append (layoutString);
+	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        factory->BookMethod( TMVA::Types::kNN, TString("NNgauss_")+tmstmp, nnOptions ); // NN
+	factory->BookMethod( TMVA::Types::kNN, TString("NNgauss_")+tmstmp, nnOptions ); // NN
     }
 
     if (true)
     {
-        TString layoutString ("Layout=TANH|100,LINEAR");
+	TString layoutString ("Layout=TANH|100,LINEAR");
 
-        TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-        TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-        TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-        TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+	TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
+	TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
+	TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
 
-        TString trainingStrategyString ("TrainingStrategy=");
-        trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
+	TString trainingStrategyString ("TrainingStrategy=");
+	trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
 
       
-//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
-        TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
-//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
-        nnOptions.Append (":"); nnOptions.Append (layoutString);
-        nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
+	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
+	TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
+	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
+	nnOptions.Append (":"); nnOptions.Append (layoutString);
+	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        factory->BookMethod( TMVA::Types::kNN, TString ("NNnormalized_")+tmstmp, nnOptions ); // NN
+	factory->BookMethod( TMVA::Types::kNN, TString ("NNnormalized_")+tmstmp, nnOptions ); // NN
     }
 
 
     if (false)
     {
-        TString layoutString ("Layout=TANH|100,TANH|50,LINEAR");
+	TString layoutString ("Layout=TANH|100,TANH|50,LINEAR");
 
-        TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-        TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-        TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-        TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+	TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
+	TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
+	TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
 
-        TString trainingStrategyString ("TrainingStrategy=");
-        trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
+	TString trainingStrategyString ("TrainingStrategy=");
+	trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
 
       
-//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
-        TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
-//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
-        nnOptions.Append (":"); nnOptions.Append (layoutString);
-        nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
+	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
+	TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=N:WeightInitialization=XAVIERUNIFORM");
+	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
+	nnOptions.Append (":"); nnOptions.Append (layoutString);
+	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        factory->BookMethod( TMVA::Types::kNN, "NN_normalized_2", nnOptions ); // NN
+	factory->BookMethod( TMVA::Types::kNN, "NN_normalized_2", nnOptions ); // NN
     }
    
    
@@ -572,10 +577,10 @@ void TMVAPredict(TString method_name)
     auto itVar = begin (variables);
     for (auto varName : variableNames)
     {
-        Float_t* pVar = &(*itVar);
-        reader->AddVariable(varName.c_str(), pVar);
-        (*itVar) = 0.0;
-        ++itVar;
+	Float_t* pVar = &(*itVar);
+	reader->AddVariable(varName.c_str(), pVar);
+	(*itVar) = 0.0;
+	++itVar;
     }
 
     TString dir    = "weights/";
@@ -602,94 +607,94 @@ void TMVAPredict(TString method_name)
   
     for (auto inputName : inputNames)
     {
-        std::stringstream outfilename;
-        outfilename << inputName << "_prediction__" << method_name.Data () << ".csv";
-        std::cout << outfilename.str () << std::endl; 
-        /* return; */
+	std::stringstream outfilename;
+	outfilename << inputName << "_prediction__" << method_name.Data () << ".csv";
+	std::cout << outfilename.str () << std::endl; 
+	/* return; */
       
-        std::stringstream infilename;
-        infilename << pathToData.Data () << inputName << ".root";
+	std::stringstream infilename;
+	infilename << pathToData.Data () << inputName << ".root";
           
-        std::ofstream outfile (outfilename.str ());
-        bool isFirst = true;
-        for (auto inputName : varsForInput[inputName])
+	std::ofstream outfile (outfilename.str ());
+	bool isFirst = true;
+	for (auto inputName : varsForInput[inputName])
         {
-            if (!isFirst)
+	    if (!isFirst)
             {
-                outfile << ",";
+		outfile << ",";
             }
-            else
-                isFirst = false;
-            outfile << inputName;
+	    else
+		isFirst = false;
+	    outfile << inputName;
         }
-        outfile << "\n";
+	outfile << "\n";
 
 
-        TFile *input(0);
-        std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
-        input = TFile::Open (infilename.str ().c_str ());
-        TTree* tree = (TTree*)input->Get("data");
+	TFile *input(0);
+	std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
+	input = TFile::Open (infilename.str ().c_str ());
+	TTree* tree = (TTree*)input->Get("data");
   
-        Int_t ids;
-        Float_t prediction;
-        Float_t weight;
-        Float_t mass;
-        Float_t signal;
+	Int_t ids;
+	Float_t prediction;
+	Float_t weight;
+	Float_t mass;
+	Float_t signal;
 
-        // id field if needed
-        if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
-            tree->SetBranchAddress("id", &ids);
+	// id field if needed
+	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
+	    tree->SetBranchAddress("id", &ids);
 
-        // signal field if needed
-        if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
-            tree->SetBranchAddress("signal", &signal);
+	// signal field if needed
+	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
+	    tree->SetBranchAddress("signal", &signal);
 
-        // mass field if needed
-        if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
-            tree->SetBranchAddress("mass", &mass);
+	// mass field if needed
+	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
+	    tree->SetBranchAddress("mass", &mass);
 
-        // weight field if needed
-        if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
-            tree->SetBranchAddress("weight", &weight);
+	// weight field if needed
+	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
+	    tree->SetBranchAddress("weight", &weight);
 
       
-        // variables for prediction
-        itVar = begin (variables);
-        for (auto inputName : variableNames)
+	// variables for prediction
+	itVar = begin (variables);
+	for (auto inputName : variableNames)
         {
-            Float_t* pVar = &(*itVar);
-            tree->SetBranchAddress(inputName.c_str(), pVar);
-            ++itVar;
+	    Float_t* pVar = &(*itVar);
+	    tree->SetBranchAddress(inputName.c_str(), pVar);
+	    ++itVar;
         }  
  
-        for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
+	for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
         {
-            tree->GetEntry(ievt);
-            // predict
-            prediction = reader->EvaluateMVA (method_name);
+	    tree->GetEntry(ievt);
+	    // predict
+	    prediction = reader->EvaluateMVA (method_name);
 
-            if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
-                outfile << ids << ",";
+	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
+		outfile << ids << ",";
 
-            if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
-                outfile << signal << ",";
+	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
+		outfile << signal << ",";
 
-            if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
-                outfile << mass << ",";
+	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
+		outfile << mass << ",";
 
-            if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
-                outfile << weight << ",";
+	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
+		outfile << weight << ",";
 
-            if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "prediction") != varsForInput[inputName].end ())
-                outfile << (prediction + 1.) / 2.;
+	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "prediction") != varsForInput[inputName].end ())
+		outfile << (prediction + 1.) / 2.;
 
           
           
-            outfile << "\n";
+	    outfile << "\n";
         }
 
-        outfile.close();
-        input->Close();
+	outfile.close();
+	input->Close();
     }
     delete reader;
 
@@ -703,7 +708,7 @@ int competition()
 {
     TMVAClassification();
     cout << "Classifier have been trained\n";
-//  TMVAPredict();
-//  cout << "Submission is ready: baseline_c.csv; send it\n";
+    //  TMVAPredict();
+    //  cout << "Submission is ready: baseline_c.csv; send it\n";
     return 0;
 }
