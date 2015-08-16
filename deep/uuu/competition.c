@@ -371,43 +371,113 @@ void createCDF ()
 	    ++itVar;
         }
 
+	Int_t id;
+	// id field 
+	tree->SetBranchAddress("id", &id);
+
+	
 	Long64_t ievtEnd = tree->GetEntries ();
+	ievtEnd = 100;
 	std::cout << "process entries #" << ievtEnd << std::endl;
 	std::vector<double> sumSmaller (ievtEnd, 0.0);
-      
-	double sum;
+
+	struct Vars
+	{
+	    typedef std::vector<Float_t>::const_iterator iterator;
+	    Vars (iterator itBegin, iterator itEnd, Float_t _weight, Int_t _id, Long64_t _order)
+	    : variables (itBegin, itEnd)
+	    , weight (_weight)
+	    , id (_id)
+	    , order (_order)
+	    {
+	    }
+	    
+	    std::vector<Float_t> variables;
+	    Int_t id;
+	    Float_t weight;
+	    Float_t cdf;
+	    Long64_t order;
+
+	    bool operator< (const Vars& other) const
+	    {
+		for (auto itOther = begin (other.variables), it = begin (variables),
+			 itOtherEnd = end (other.variables), itEnd = end (variables);
+		     it != itEnd && itOther != itOtherEnd; ++itOther, ++it)
+                {
+		    //std::cout << "(" << *it << "," << *itOther << ")" << std::flush;
+		    if (*it >= *itOther)
+		    {
+//			std::cout << "X" << std::flush;
+			return false;
+		    }
+		    else
+			std::cout << "D" << std::flush;
+                }
+		std::cout << "U" << std::flush;
+		return true;
+	    }
+	};
+	
+	Float_t weightSum (0.0);
+	std::vector<Vars> vars;
 	for (Long64_t ievt=0; ievt < ievtEnd; ievt++)
         {
 	    tree->GetEntry (ievt);
 	    std::cout << "." << std::flush;
-	    std::vector<Float_t> currVariables (begin (variables), end (variables));
-
-	    for (Long64_t ievtCurr=0; ievtCurr <= ievt; ++ievtCurr)
-            {
-		tree->GetEntry (ievtCurr);
-		for (auto itCurr = begin (currVariables), itEvt = begin (variables), itCurrEnd = end (currVariables);
-		     itCurr != itCurrEnd; ++itCurr, ++itEvt)
-                {
-		    sum += 1.0;
-		    if (*itEvt <= *itCurr)
-                    {
-			sumSmaller.at (ievtCurr) += 1.0;
-                    }
-		    else
-			break;
-                      
-                }
-            }
+	    Float_t weight = 1.0;
+	    vars.emplace_back (begin (variables), end (variables), weight, id, ievt);
+	    weightSum += weight;
         }
 
-	std::cout << "normalize" << std::endl;
 	
-	for_each (begin (sumSmaller), end (sumSmaller), [sum](double& v) {
-		v /= sum;
+	std::cout << "provide values" << std::endl;
+	for (auto it = begin (vars), itEnd = end (vars); it != itEnd; ++it)
+	{
+	    std::cout << "-" << std::flush;
+	    for (auto itCmp = begin (vars), itCmpEnd = end (vars); itCmp != itCmpEnd; ++itCmp)
+	    {
+		if (*it < *itCmp)
+		{
+		    std::cout << "!" << std::flush;
+		    break;
+		}
+		else
+		{
+		    std::cout << "+" << std::flush;
+		    (*it).cdf += (*itCmp).weight;
+		}
+	    }
+	}
+	
+	
+	std::cout << "normalize" << std::endl;
+	for_each (begin (vars), end (vars), [weightSum](Vars& v) {
+		v.cdf /= weightSum;
 	    });
 
-      
+	// sort by order
+	std::sort (begin (vars), end (vars), [](const Vars& lhs, const Vars& rhs){
+		return lhs.order < rhs.order;
+	    });
+	
+
+	
 	input->Close();
+	std::cout << "store data" << std::endl;
+
+	TFile* outFile = new TFile (outfilename.str ().c_str (), "RECREATE");
+	TTree* outTree = new TTree("cdf_raw","cdf_raw");
+	Float_t cdf (0.0);
+	outTree->Branch ("id", &id, "F");
+	outTree->Branch ("cdf", &cdf, "F");
+	for (auto v : vars)
+	{
+	    id = v.id;
+	    cdf = v.cdf;
+	    outTree->Fill ();
+	}
+	outFile->Write ();
+	outFile->Close ();
     }
     
 }
