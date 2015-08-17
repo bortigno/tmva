@@ -23,8 +23,8 @@
 
 //#include "tmvagui/inc/TMVA/tmvagui.h"
 
-//TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
-TString pathToData ("/home/peter/code/kaggle/flavor/");
+TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+//TString pathToData ("/home/peter/code/kaggle/flavor/");
 
 
 
@@ -89,7 +89,7 @@ std::vector<std::string> variableNames = {
     ,"p2_IsoBDT"
     ,"p0_track_Chi2Dof"
     ,"p1_track_Chi2Dof" 
-    ,"p2_track_Chi2Dof" // spoils agreement test
+//    ,"p2_track_Chi2Dof" // spoils agreement test
     ,"p0_pt"
     ,"p0_p"
     ,"p0_eta"
@@ -105,7 +105,7 @@ std::vector<std::string> variableNames = {
     ,"p2_eta"
     ,"p2_IP"
     ,"p2_IPSig"
-    ,"SPDhits" // spoils agreement test
+//    ,"SPDhits" // spoils agreement test
 };
 
 
@@ -169,7 +169,7 @@ TString autoencoder (std::string inputFileName)
 
     if (true)
     {
-	TString layoutString ("Layout=TANH|20,LINEAR");
+	TString layoutString ("Layout=TANH|100,TANH|20,TANH|40,LINEAR");
 
 	TString training0 ("LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=50,TestRepetitions=7,WeightDecay=0.01,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=2");
 	TString training1 ("LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=500,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,DropConfig=0.1+0.1+0.1,DropRepetitions=1");
@@ -199,7 +199,7 @@ TString autoencoder (std::string inputFileName)
 
     outputFile->Close();
 
-    TMVA::TMVARegGui (outfileName);
+//    TMVA::TMVARegGui (outfileName);
    
     delete factory;
     return TString("NN_")+tmstmp;
@@ -207,7 +207,7 @@ TString autoencoder (std::string inputFileName)
 
 
 
-void useAutoencoder (TString method_name)
+TString useAutoencoder (TString method_name)
 {
     TMVA::Tools::Instance();
 
@@ -237,7 +237,7 @@ void useAutoencoder (TString method_name)
     TString prefix = "TMVAAutoencoder";
     TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml");
     TString outPrefix = "transformed";
-    TString outfilename = outPrefix + TString("_") + method_name + TString(".root");
+    TString outfilename = pathToData + outPrefix + TString("_") + method_name + TString(".root");
     reader->BookMVA( method_name, weightfile );
 
   
@@ -329,6 +329,7 @@ void useAutoencoder (TString method_name)
 	input->Close();
     }
     delete reader;
+    return outfilename;
 }
 
 
@@ -497,7 +498,7 @@ void createCDF ()
 
 
 
-void TMVAClassification()
+TString TMVAClassification(TString infilename, bool useTransformed = false)
 {
     TMVA::Tools::Instance();
 
@@ -507,11 +508,14 @@ void TMVAClassification()
   
     std::cout << "==> Start TMVAClassification" << std::endl;
     std::cout << "-------------------- open input file ---------------- " << std::endl;
-    TString fname = pathToData + TString ("training.root");
+    TString fname = infilename; //pathToData + infilename + TString (".root");
     TFile *input = TFile::Open( fname );
 
     std::cout << "-------------------- get tree ---------------- " << std::endl;
-    TTree *tree     = (TTree*)input->Get("data");
+    TString treeName = "data";
+    if (useTransformed)
+        treeName = "transformed";
+    TTree *tree     = (TTree*)input->Get(treeName);
    
     TString outfileName( "TMVA__" );
     outfileName += tmstmp + TString (".root");
@@ -532,9 +536,18 @@ void TMVAClassification()
    
    
     std::cout << "-------------------- add trees ---------------- " << std::endl;
-    factory->AddTree(tree, "Signal", 1.0, TCut("signal==1"), "TrainingTesting");
-    factory->AddTree(tree, "Background", 1.0, TCut("signal==0"), "TrainingTesting");
+    TCut signalCut ("signal==1");
+    TCut backgroundCut ("signal==0");
+    if (useTransformed)
+    {
+        signalCut = "signal_original==1 && signal_in==0";
+        backgroundCut = "signal_original==0 && signal_in==0";
+    }
+    factory->AddTree(tree, "Signal", 1.0, signalCut, "TrainingTesting");
+    factory->AddTree(tree, "Background", 1.0, backgroundCut, "TrainingTesting");
 
+
+    
     TCut mycuts = ""; // for example: TCut mycuts = "abs(var1)<0.5 && abs(var2-0.5)<1";
     TCut mycutb = ""; // for example: TCut mycutb = "abs(var1)<0.5";
 
@@ -555,7 +568,10 @@ void TMVAClassification()
     factory->BookMethod( TMVA::Types::kLikelihood, TString ("Likelihood_")+tmstmp,
 			 "H:!V:TransformOutput:PDFInterpol=Spline2:NSmoothSig[0]=20:NSmoothBkg[0]=20:NSmoothBkg[1]=10:NSmooth=1:NAvEvtPerBin=50" );
 
+    
+    TString methodName ("");
 
+    
     if (false)
     {
 	TString layoutString ("Layout=TANH|100,LINEAR");
@@ -572,7 +588,8 @@ void TMVAClassification()
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-	factory->BookMethod( TMVA::Types::kNN, TString("NNgauss_")+tmstmp, nnOptions ); // NN
+        methodName = TString("NNgauss_")+tmstmp;
+	factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
 
     if (true)
@@ -594,7 +611,8 @@ void TMVAClassification()
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-	factory->BookMethod( TMVA::Types::kNN, TString ("NNnormalized_")+tmstmp, nnOptions ); // NN
+        methodName = TString("NNnormalized_")+tmstmp;
+        factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
 
 
@@ -617,7 +635,8 @@ void TMVAClassification()
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-	factory->BookMethod( TMVA::Types::kNN, "NN_normalized_2", nnOptions ); // NN
+        methodName = TString("NN_normalized_2")+tmstmp;
+	factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
    
    
@@ -629,9 +648,10 @@ void TMVAClassification()
     //input->Close();
     outputFile->Close();
 
-    TMVA::TMVAGui (outfileName);
+//    TMVA::TMVAGui (outfileName);
    
     delete factory;
+    return methodName;
 }
 
 
@@ -774,10 +794,16 @@ void TMVAPredict(TString method_name)
 }
 
 
-int competition()
+int competitionAutoEnc ()
 {
-    TMVAClassification();
-    cout << "Classifier have been trained\n";
+    TString methodNameAutoEncoder = autoencoder ("training");
+    TString trainingFileName = useAutoencoder (methodNameAutoEncoder);
+    TString methodNameClassification = TMVAClassification (trainingFileName, true);
+    TMVAPredict (methodNameClassification);
+
+    
+//    TMVAClassification();
+//    cout << "Classifier have been trained\n";
     //  TMVAPredict();
     //  cout << "Submission is ready: baseline_c.csv; send it\n";
     return 0;
