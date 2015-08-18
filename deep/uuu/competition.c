@@ -23,8 +23,8 @@
 
 //#include "tmvagui/inc/TMVA/tmvagui.h"
 
-TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
-//TString pathToData ("/home/peter/code/kaggle/flavor/");
+//TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+TString pathToData ("/home/peter/code/kaggle/flavor/");
 
 
 
@@ -89,7 +89,7 @@ std::vector<std::string> variableNames = {
     ,"p2_IsoBDT"
     ,"p0_track_Chi2Dof"
     ,"p1_track_Chi2Dof" 
-//    ,"p2_track_Chi2Dof" // spoils agreement test
+    ,"p2_track_Chi2Dof" // spoils agreement test
     ,"p0_pt"
     ,"p0_p"
     ,"p0_eta"
@@ -105,7 +105,13 @@ std::vector<std::string> variableNames = {
     ,"p2_eta"
     ,"p2_IP"
     ,"p2_IPSig"
-//    ,"SPDhits" // spoils agreement test
+    ,"SPDhits" // spoils agreement test
+};
+
+
+std::vector<std::string> spectatorNames = {
+    "mass",
+    "min_ANNmuon"
 };
 
 
@@ -493,11 +499,6 @@ void createCDF ()
 
 
 
-
-
-
-
-
 TString TMVAClassification(TString infilename, bool useTransformed = false)
 {
     TMVA::Tools::Instance();
@@ -509,6 +510,8 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     std::cout << "==> Start TMVAClassification" << std::endl;
     std::cout << "-------------------- open input file ---------------- " << std::endl;
     TString fname = infilename; //pathToData + infilename + TString (".root");
+    if (!useTransformed)
+	fname = pathToData + infilename + TString (".root");
     TFile *input = TFile::Open( fname );
 
     std::cout << "-------------------- get tree ---------------- " << std::endl;
@@ -532,6 +535,11 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     for (auto varname : variableNames)
     {
 	factory->AddVariable (varname.c_str (), 'F');
+    }
+   
+    for (auto varname : spectatorNames)
+    {
+	factory->AddSpectator (varname.c_str (), 'F');
     }
    
    
@@ -561,15 +569,22 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
 					 "nTrain_Signal=0:nTrain_Background=0:nTest_Signal=0:nTest_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
 
-    // gradient boosting training
-    factory->BookMethod(TMVA::Types::kBDT, TString ("GBDT_")+tmstmp,
-			"NTrees=40:BoostType=Grad:Shrinkage=0.01:MaxDepth=7:UseNvars=6:nCuts=20:MinNodeSize=10");
-
-    factory->BookMethod( TMVA::Types::kLikelihood, TString ("Likelihood_")+tmstmp,
-			 "H:!V:TransformOutput:PDFInterpol=Spline2:NSmoothSig[0]=20:NSmoothBkg[0]=20:NSmoothBkg[1]=10:NSmooth=1:NAvEvtPerBin=50" );
-
-    
     TString methodName ("");
+
+    if (false)
+    {
+	// gradient boosting training
+        methodName = TString("GBDT__")+tmstmp;
+	factory->BookMethod(TMVA::Types::kBDT, methodName,
+			    "NTrees=40:BoostType=Grad:Shrinkage=0.01:MaxDepth=7:UseNvars=6:nCuts=20:MinNodeSize=10");
+    }
+    if (false)
+    {
+        methodName = TString("Likelihood__")+tmstmp;
+	factory->BookMethod( TMVA::Types::kLikelihood, methodName,
+			     "H:!V:TransformOutput:PDFInterpol=Spline2:NSmoothSig[0]=20:NSmoothBkg[0]=20:NSmoothBkg[1]=10:NSmooth=1:NAvEvtPerBin=50" );
+    }
+    
 
     
     if (false)
@@ -673,6 +688,13 @@ void TMVAPredict(TString method_name)
 	++itVar;
     }
 
+    for (auto varName : spectatorNames)
+    {
+	Float_t var;
+	reader->AddSpectator (varName.c_str(), &var);
+	++itVar;
+    }
+
     TString dir    = "weights/";
     TString prefix = "TMVAClassification";
     TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml");
@@ -681,8 +703,14 @@ void TMVAPredict(TString method_name)
   
 
   
-    std::vector<std::string> inputNames = {"test","check_correlation","check_agreement"};
+    std::vector<std::string> inputNames = {"training","test","check_correlation","check_agreement"};
     std::map<std::string,std::vector<std::string>> varsForInput;
+    varsForInput["training"].emplace_back ("id");
+    varsForInput["training"].emplace_back ("signal");
+    varsForInput["training"].emplace_back ("mass");
+    varsForInput["training"].emplace_back ("min_ANNmuon");
+    varsForInput["training"].emplace_back ("prediction");
+
     varsForInput["test"].emplace_back ("id");
     varsForInput["test"].emplace_back ("prediction");
 
@@ -728,6 +756,7 @@ void TMVAPredict(TString method_name)
 	Int_t ids;
 	Float_t prediction;
 	Float_t weight;
+	Float_t min_ANNmuon;
 	Float_t mass;
 	Float_t signal;
 
@@ -738,6 +767,10 @@ void TMVAPredict(TString method_name)
 	// signal field if needed
 	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
 	    tree->SetBranchAddress("signal", &signal);
+
+	// min_ANNmuon field if needed
+	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "min_ANNmuon") != varsForInput[inputName].end ())
+	    tree->SetBranchAddress("min_ANNmuon", &min_ANNmuon);
 
 	// mass field if needed
 	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
@@ -755,7 +788,8 @@ void TMVAPredict(TString method_name)
 	    Float_t* pVar = &(*itVar);
 	    tree->SetBranchAddress(inputName.c_str(), pVar);
 	    ++itVar;
-        }  
+        }
+	
  
 	for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
         {
@@ -769,6 +803,9 @@ void TMVAPredict(TString method_name)
 	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
 		outfile << signal << ",";
 
+	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "min_ANNmuon") != varsForInput[inputName].end ())
+		outfile << min_ANNmuon << ",";
+
 	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
 		outfile << mass << ",";
 
@@ -778,7 +815,6 @@ void TMVAPredict(TString method_name)
 	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "prediction") != varsForInput[inputName].end ())
 		outfile << (prediction + 1.) / 2.;
 
-          
           
 	    outfile << "\n";
         }
@@ -801,10 +837,16 @@ int competitionAutoEnc ()
     TString methodNameClassification = TMVAClassification (trainingFileName, true);
     TMVAPredict (methodNameClassification);
 
-    
-//    TMVAClassification();
-//    cout << "Classifier have been trained\n";
-    //  TMVAPredict();
-    //  cout << "Submission is ready: baseline_c.csv; send it\n";
     return 0;
 }
+
+
+int competitionDirect ()
+{
+    TString trainingFileName ("training");
+    TString methodNameClassification = TMVAClassification (trainingFileName, false);
+    TMVAPredict (methodNameClassification);
+
+    return 0;
+}
+
