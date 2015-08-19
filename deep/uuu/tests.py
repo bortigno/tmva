@@ -11,8 +11,8 @@ exec(open("evaluation.py").read())
 ks_cutoff  = 0.09
 cvm_cutoff = 0.002
 
-#data_path = "/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/"
-data_path = "/home/peter/code/kaggle/flavor/"
+data_path = "/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/"
+#data_path = "/home/peter/code/kaggle/flavor/"
 methodname = sys.argv[1];
 print ("arguments: "+str (sys.argv));
 

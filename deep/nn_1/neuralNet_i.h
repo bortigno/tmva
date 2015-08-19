@@ -920,9 +920,9 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	size_t numBatches = numPattern/settings.batchSize ();
 	size_t numBatches_stored = numBatches;
 
+	std::random_shuffle (itPatternBegin, itPatternEnd);
 	Iterator itPatternBatchBegin = itPatternBegin;
 	Iterator itPatternBatchEnd = itPatternBatchBegin;
-	std::random_shuffle (itPatternBegin, itPatternEnd);
 
         // create batches
         std::vector<Batch> batches;

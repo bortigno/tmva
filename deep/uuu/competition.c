@@ -23,8 +23,8 @@
 
 //#include "tmvagui/inc/TMVA/tmvagui.h"
 
-//TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
-TString pathToData ("/home/peter/code/kaggle/flavor/");
+TString pathToData ("/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/");
+//TString pathToData ("/home/peter/code/kaggle/flavor/");
 
 
 
@@ -108,8 +108,8 @@ std::vector<std::string> variableNames = {
     ,"SPDhits" // spoils agreement test
 };
 
-
-std::vector<std::string> spectatorNames = {
+std::vector<std::string> spectatorNames =
+{
     "mass",
     "min_ANNmuon"
 };
@@ -511,7 +511,7 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     std::cout << "-------------------- open input file ---------------- " << std::endl;
     TString fname = infilename; //pathToData + infilename + TString (".root");
     if (!useTransformed)
-	fname = pathToData + infilename + TString (".root");
+        fname = pathToData + infilename + TString (".root");
     TFile *input = TFile::Open( fname );
 
     std::cout << "-------------------- get tree ---------------- " << std::endl;
@@ -536,12 +536,12 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     {
 	factory->AddVariable (varname.c_str (), 'F');
     }
-   
+
     for (auto varname : spectatorNames)
     {
 	factory->AddSpectator (varname.c_str (), 'F');
     }
-   
+    
    
     std::cout << "-------------------- add trees ---------------- " << std::endl;
     TCut signalCut ("signal==1");
@@ -609,15 +609,17 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
 
     if (true)
     {
-	TString layoutString ("Layout=TANH|100,LINEAR");
+	TString layoutString ("Layout=TANH|200,TANH|70,LINEAR");
 
-	TString training0 ("LearningRate=1e-1,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-	TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-	TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-	TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+	TString training0 ("LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
+	TString training1 ("LearningRate=1e-3,Momentum=0.5,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-4,Momentum=0.3,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
+	TString training3 ("LearningRate=1e-5,Momentum=0.1,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
 
 	TString trainingStrategyString ("TrainingStrategy=");
 	trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
+//	trainingStrategyString += training0 + "|" + training2 + "|" + training3;
+//	trainingStrategyString += training0 + "|" + training2;
 
       
 	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
@@ -688,16 +690,19 @@ void TMVAPredict(TString method_name)
 	++itVar;
     }
 
+    // spectators not known for the reader (in test.csv)
     for (auto varName : spectatorNames)
     {
-	Float_t var;
-	reader->AddSpectator (varName.c_str(), &var);
+	Float_t spectator (0.0);
+	reader->AddSpectator (varName.c_str(), &spectator);
 	++itVar;
     }
+
 
     TString dir    = "weights/";
     TString prefix = "TMVAClassification";
     TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml");
+    std::cout << "weightfile name : " << weightfile.Data () << std::endl;
     reader->BookMVA( method_name, weightfile ); 
 
   
