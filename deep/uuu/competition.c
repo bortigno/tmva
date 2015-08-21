@@ -105,14 +105,14 @@ std::vector<std::string> variableNames = {
     ,"p2_eta"
     ,"p2_IP"
     ,"p2_IPSig"
-    ,"SPDhits:=SPDhits-rndm*5" // spoils agreement test
+    ,"SPDhits" // spoils agreement test
 };
 
 std::vector<std::string> spectatorNames =
 {
-    "mass",
-    "min_ANNmuon",
-    "SPDhits_spec:=SPDhits"
+    "mass"
+    ,"min_ANNmuon"
+//    ,"SPDhits_spec:=SPDhits"
 };
 
 
@@ -638,22 +638,20 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     {
 	TString layoutString ("Layout=TANH|100,TANH|50,LINEAR");
 
-	TString training0 ("LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=20,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-	TString training1 ("LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-	TString training2 ("LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=300,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-	TString training3 ("LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=200,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+	TString training0 ("LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
+	TString training1 ("LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
+	TString training3 ("LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
 
 	TString trainingStrategyString ("TrainingStrategy=");
 	trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
 
       
-	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
-	TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=G:WeightInitialization=XAVIERUNIFORM");
-	//       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CHECKGRADIENTS");
+	TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=P+G:WeightInitialization=XAVIERUNIFORM");
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        methodName = TString("NNG")+tmstmp;
+        methodName = TString("NNPG")+tmstmp;
 	factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
    
