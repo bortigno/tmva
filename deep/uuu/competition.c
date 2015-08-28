@@ -496,11 +496,17 @@ void createCDF ()
 
 
 
+enum class AnalysisType
+{
+    DIRECT, TRANSFORMED, BACKGROUND
+};
 
 
 
-
-TString TMVAClassification(TString infilename, bool useTransformed = false)
+std::pair<TString,TString> TMVAClassification (
+    TString infilename,
+    AnalysisType analysisType = AnalysisType::DIRECT,
+    TString additionalRootFileName = "")
 {
     TMVA::Tools::Instance();
 
@@ -511,25 +517,47 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     std::cout << "==> Start TMVAClassification" << std::endl;
     std::cout << "-------------------- open input file ---------------- " << std::endl;
     TString fname = infilename; //pathToData + infilename + TString (".root");
-    if (!useTransformed)
+    if (analysisType != AnalysisType::TRANSFORMED)
         fname = pathToData + infilename + TString (".root");
-    TFile *input = TFile::Open( fname );
+    std::cout << "open file " << std::endl << fname.Data () << std::endl;
+
 
     std::cout << "-------------------- get tree ---------------- " << std::endl;
     TString treeName = "data";
-    if (useTransformed)
+    if (analysisType == AnalysisType::TRANSFORMED)
         treeName = "transformed";
-    TTree *tree     = (TTree*)input->Get(treeName);
-   
-    TString outfileName( "TMVA__" );
-    outfileName += tmstmp + TString (".root");
+
+    std::cout << "-------------------- create tchain with treeName ---------------- " << std::endl;
+    std::cout << treeName << std::endl;
+    TChain* tree = new TChain (treeName);
+    std::cout << "add file" << std::endl;
+    std::cout << fname << std::endl;
+    tree->Add (fname);
+    TChain* treeFriend (NULL);
+    if (additionalRootFileName.Length () > 0)
+    {
+        std::cout << "-------------------- add additional input file ---------------- " << std::endl;
+        std::cout << additionalRootFileName << std::endl;
+        treeFriend = new TChain (treeName);
+        treeFriend->Add (additionalRootFileName);
+        tree->AddFriend (treeFriend,"p");
+    }
+//    tree->Draw ("mass:prediction");
+//    return std::make_pair(TString("hallo"),TString ("nix"));
+    TString outfileName;
+    if (analysisType == AnalysisType::BACKGROUND)
+    {
+        outfileName = TString ("BACK_" + infilename) + tmstmp + TString (".root");
+    }
+    else
+        outfileName += TString ( "TMVA__" ) + tmstmp + TString (".root");
 
     std::cout << "-------------------- open output file ---------------- " << std::endl;
     TFile* outputFile = TFile::Open( outfileName, "RECREATE" );
 
     std::cout << "-------------------- prepare factory ---------------- " << std::endl;
     TMVA::Factory *factory = new TMVA::Factory( "TMVAClassification", outputFile,
-						"AnalysisType=Classification" );
+						"AnalysisType=Classification:Transformations=I:!V" );
     std::cout << "-------------------- add variables ---------------- " << std::endl;
 
 
@@ -547,11 +575,18 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     std::cout << "-------------------- add trees ---------------- " << std::endl;
     TCut signalCut ("signal==1");
     TCut backgroundCut ("signal==0");
-    if (useTransformed)
+    if (analysisType == AnalysisType::TRANSFORMED)
     {
         signalCut = "signal_original==1 && signal_in==0";
         backgroundCut = "signal_original==0 && signal_in==0";
     }
+    if (analysisType == AnalysisType::BACKGROUND)
+    {
+        signalCut     = TString("(signal==0) * (prediction > 0.7)");
+        backgroundCut = TString("(signal==0) * (prediction < 0.4)");
+    }
+    //tree->Draw ("prediction",signalCut);
+    //return std::make_pair(TString("hallo"),TString ("nix"));
     factory->AddTree(tree, "Signal", 1.0, signalCut, "TrainingTesting");
     factory->AddTree(tree, "Background", 1.0, backgroundCut, "TrainingTesting");
 
@@ -561,8 +596,11 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     TCut mycutb = ""; // for example: TCut mycutb = "abs(var1)<0.5";
 
     /* // Set individual event weights (the variables must exist in the original TTree) */
-    /* factory->SetSignalWeightExpression( "weight" ); */
-    /* factory->SetBackgroundWeightExpression( "weight" ); */
+    if (analysisType == AnalysisType::BACKGROUND)
+    {
+        factory->SetSignalWeightExpression ("prediction");
+        factory->SetBackgroundWeightExpression ("1");
+    }
 
    
     std::cout << "-------------------- prepare ---------------- " << std::endl;
@@ -571,17 +609,19 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
 
 
     TString methodName ("");
+    if (analysisType == AnalysisType::BACKGROUND)
+        methodName = TString ("TONBKG_") + tmstmp;
 
     if (false)
     {
 	// gradient boosting training
-        methodName = TString("GBDT__")+tmstmp;
+        methodName += TString("GBDT");
 	factory->BookMethod(TMVA::Types::kBDT, methodName,
 			    "NTrees=40:BoostType=Grad:Shrinkage=0.01:MaxDepth=7:UseNvars=6:nCuts=20:MinNodeSize=10");
     }
     if (false)
     {
-        methodName = TString("Likelihood__")+tmstmp;
+        methodName += TString("Likelihood");
 	factory->BookMethod( TMVA::Types::kLikelihood, methodName,
 			     "H:!V:TransformOutput:PDFInterpol=Spline2:NSmoothSig[0]=20:NSmoothBkg[0]=20:NSmoothBkg[1]=10:NSmooth=1:NAvEvtPerBin=50" );
     }
@@ -604,7 +644,7 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        methodName = TString("NNgauss_")+tmstmp;
+        methodName += TString("NNgauss");
 	factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
 
@@ -629,7 +669,7 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        methodName = TString("NNnormalized_")+tmstmp;
+        methodName = TString("NNnormalized");
         factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
 
@@ -638,26 +678,27 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
     {
 	TString layoutString ("Layout=TANH|100,TANH|50,LINEAR");
 
-	TString training0 ("LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-	TString training1 ("LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-	TString training2 ("LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-	TString training3 ("LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+	TString training0 ("LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=100,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
+	TString training1 ("LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
+	TString training2 ("LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
+	TString training3 ("LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
 
 	TString trainingStrategyString ("TrainingStrategy=");
 	trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
 
       
-	TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=P+G:WeightInitialization=XAVIERUNIFORM");
+	TString nnOptions ("!H:!V:ErrorStrategy=CROSSENTROPY:VarTransform=P+G:WeightInitialization=XAVIERUNIFORM");
 	nnOptions.Append (":"); nnOptions.Append (layoutString);
 	nnOptions.Append (":"); nnOptions.Append (trainingStrategyString);
 
-        methodName = TString("NNPG")+tmstmp;
+        methodName += TString("NNPG");
 	factory->BookMethod( TMVA::Types::kNN, methodName, nnOptions ); // NN
     }
    
    
    
     factory->TrainAllMethods();
+//    return std::make_pair(TString("hallo"),TString ("nix"));
     factory->TestAllMethods();
     factory->EvaluateAllMethods();
 
@@ -667,12 +708,86 @@ TString TMVAClassification(TString infilename, bool useTransformed = false)
 //    TMVA::TMVAGui (outfileName);
    
     delete factory;
-    return methodName;
+    delete tree;
+    switch (analysisType)
+    {
+    case AnalysisType::BACKGROUND:
+        std::cout << "DONE BACKGROUND" << std::endl;
+        break;
+    case AnalysisType::DIRECT:
+        std::cout << "DONE DIRECT" << std::endl;
+        break;
+    case AnalysisType::TRANSFORMED:
+        std::cout << "DONE TRANSFORMED" << std::endl;
+        break;
+        
+    };
+    std::cout << "classification, return : " << outfileName << "  ,  " << methodName << std::endl;
+    return std::make_pair (outfileName, methodName);
 }
 
 
-void TMVAPredict(TString method_name)
+template <typename CONTAINER>
+bool contains (const CONTAINER& cont, std::string which, std::string what)
 {
+    auto it = cont.find (which);
+    if (it == cont.end ())
+        return false;
+    auto vec = it->second;
+    if (std::find (begin (vec), end (vec), what) != end (vec))
+        return true;
+    return false;
+}
+
+
+
+enum class EnumPredictMode
+{
+    FINAL, INTERMEDIATE
+};
+
+
+TString TMVAPredict(TString method_name, EnumPredictMode predictMode = EnumPredictMode::FINAL)
+{
+    std::cout << "------------ predict with : " << method_name << " ------ " << std::endl;
+    std::vector<std::string> inputNames = {"training","test","check_correlation","check_agreement"};
+    std::map<std::string,std::vector<std::string>> varsForInput;
+
+    std::vector<std::string> variableOrder = {"id", "signal", "mass", "min_ANNmuon", "prediction"};
+    
+    varsForInput["training"].emplace_back ("prediction");
+    if (predictMode != EnumPredictMode::INTERMEDIATE)
+    {
+        varsForInput["training"].emplace_back ("id");
+        varsForInput["training"].emplace_back ("signal");
+        varsForInput["training"].emplace_back ("mass");
+        varsForInput["training"].emplace_back ("min_ANNmuon");
+
+        varsForInput["test"].emplace_back ("prediction");
+        varsForInput["test"].emplace_back ("id");
+
+        varsForInput["check_agreement"].emplace_back ("signal");
+        varsForInput["check_agreement"].emplace_back ("weight");
+        varsForInput["check_agreement"].emplace_back ("prediction");
+
+        varsForInput["check_correlation"].emplace_back ("mass");
+        varsForInput["check_correlation"].emplace_back ("prediction");
+    }
+
+    
+    std::map<std::string,std::vector<std::string>> createForInput;
+    createForInput["training"].emplace_back ("root");
+
+    if (predictMode != EnumPredictMode::INTERMEDIATE)
+    {
+        createForInput["training"].emplace_back ("csv");
+        createForInput["test"].emplace_back ("csv");
+        createForInput["check_agreement"].emplace_back ("csv");
+        createForInput["check_correlation"].emplace_back ("csv");
+    }
+
+
+    // -------- prepare the Reader ------
     TMVA::Tools::Instance();
 
     std::cout << "==> Start TMVAPredict" << std::endl;
@@ -705,85 +820,49 @@ void TMVAPredict(TString method_name)
     TString weightfile = dir + prefix + TString("_") + method_name + TString(".weights.xml");
     std::cout << "weightfile name : " << weightfile.Data () << std::endl;
     reader->BookMVA( method_name, weightfile ); 
-
   
 
-  
-    std::vector<std::string> inputNames = {"training","test","check_correlation","check_agreement"};
-    std::map<std::string,std::vector<std::string>> varsForInput;
-    varsForInput["training"].emplace_back ("id");
-    varsForInput["training"].emplace_back ("signal");
-    varsForInput["training"].emplace_back ("mass");
-    varsForInput["training"].emplace_back ("min_ANNmuon");
-    varsForInput["training"].emplace_back ("prediction");
 
-    varsForInput["test"].emplace_back ("id");
-    varsForInput["test"].emplace_back ("prediction");
-
-    varsForInput["check_agreement"].emplace_back ("signal");
-    varsForInput["check_agreement"].emplace_back ("weight");
-    varsForInput["check_agreement"].emplace_back ("prediction");
-
-    varsForInput["check_correlation"].emplace_back ("mass");
-    varsForInput["check_correlation"].emplace_back ("prediction");
-
-
-  
+    // --------- for each of the input files
     for (auto inputName : inputNames)
     {
-	std::stringstream outfilename;
-	outfilename << inputName << "_prediction__" << method_name.Data () << ".csv";
-	std::cout << outfilename.str () << std::endl; 
-	/* return; */
-      
-	std::stringstream infilename;
-	infilename << pathToData.Data () << inputName << ".root";
-          
-	std::ofstream outfile (outfilename.str ());
-	bool isFirst = true;
-	for (auto inputName : varsForInput[inputName])
-        {
-	    if (!isFirst)
-            {
-		outfile << ",";
-            }
-	    else
-		isFirst = false;
-	    outfile << inputName;
-        }
-	outfile << "\n";
-
-
-	TFile *input(0);
-	std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
-	input = TFile::Open (infilename.str ().c_str ());
-	TTree* tree = (TTree*)input->Get("data");
-  
-	Int_t ids;
+        // --- define variables
+	Int_t id;
 	Float_t prediction;
 	Float_t weight;
 	Float_t min_ANNmuon;
 	Float_t mass;
 	Float_t signal;
 
+       
+        // --- open input file
+	TFile *input(0);
+        std::stringstream infilename;
+        infilename << pathToData.Data () << inputName << ".root";
+	std::cout << "infilename = " << infilename.str ().c_str () << std::endl;
+	input = TFile::Open (infilename.str ().c_str ());
+	TTree* tree = (TTree*)input->Get("data");
+
+
+        // --- prepare branches on input file
 	// id field if needed
-	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
-	    tree->SetBranchAddress("id", &ids);
+	if (contains (varsForInput, inputName, "id"))
+	    tree->SetBranchAddress("id", &id);
 
 	// signal field if needed
-	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
+	if (contains (varsForInput, inputName, "signal"))
 	    tree->SetBranchAddress("signal", &signal);
 
 	// min_ANNmuon field if needed
-	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "min_ANNmuon") != varsForInput[inputName].end ())
+	if (contains (varsForInput, inputName, "min_ANNmuon"))
 	    tree->SetBranchAddress("min_ANNmuon", &min_ANNmuon);
 
 	// mass field if needed
-	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
+	if (contains (varsForInput, inputName, "mass"))
 	    tree->SetBranchAddress("mass", &mass);
 
 	// weight field if needed
-	if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
+	if (contains (varsForInput, inputName, "weight"))
 	    tree->SetBranchAddress("weight", &weight);
 
       
@@ -796,43 +875,122 @@ void TMVAPredict(TString method_name)
 	    ++itVar;
         }
 	
- 
+
+        // ---- make ROOT file
+        TString rootFileName;
+        TFile* outRootFile (NULL);
+	TTree* outTree (NULL);
+        if (contains (createForInput, inputName, "root"))
+        {
+            rootFileName = TString (inputName.c_str ()) + TString ("_prediction__") + method_name + TString (".root");
+            outRootFile = new TFile (rootFileName.Data (), "RECREATE");
+            outTree = new TTree("data","data");
+
+            if (contains (varsForInput, inputName, "id"))
+                outTree->Branch ("id", &id, "F");
+            if (contains (varsForInput, inputName, "signal"))
+                outTree->Branch ("signal", &signal, "F");
+            if (contains (varsForInput, inputName, "min_ANNmuon"))
+                outTree->Branch ("min_ANNmuon", &min_ANNmuon, "F");
+            if (contains (varsForInput, inputName, "mass"))
+                outTree->Branch ("mass", &mass, "F");
+            if (contains (varsForInput, inputName, "weight"))
+                outTree->Branch ("weight", &weight, "F");
+            if (contains (varsForInput, inputName, "prediction"))
+                outTree->Branch ("prediction", &prediction, "F");
+        }
+
+        // ---- prepare csv file
+       std::ofstream outfile;
+        if (contains (createForInput, inputName, "csv"))
+        {
+            std::stringstream outfilename;
+            outfilename << inputName << "_prediction__" << method_name.Data () << ".csv";
+            std::cout << outfilename.str () << std::endl; 
+            /* return; */
+      
+            outfile.open (outfilename.str ());
+            bool isFirst = true;
+            for (auto varName : variableOrder)
+            {
+                if (contains (varsForInput, inputName, varName))
+                {
+                    if (!isFirst)
+                        outfile << ",";
+                    isFirst = false;
+                    outfile << varName;
+                }
+            }
+            outfile << "\n";
+        }
+
+
+        
+        bool doCSV = contains (createForInput, inputName, "csv");            
+        bool doROOT = contains (createForInput, inputName, "root");            
 	for (Long64_t ievt=0; ievt < tree->GetEntries(); ievt++)
         {
 	    tree->GetEntry(ievt);
 	    // predict
 	    prediction = reader->EvaluateMVA (method_name);
+            prediction = std::max<double> (0.0, std::min<double> (1.0, prediction));
+            //prediction = (prediction + 1.0)/2.0;
+            if (doCSV)
+            {
+                for (auto varName : variableOrder)
+                {
+                    if (varName == "id" && contains (varsForInput, inputName, "id"))
+                        outfile << id << ",";
 
-	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "id") != varsForInput[inputName].end ())
-		outfile << ids << ",";
+                    if (varName == "signal" && contains (varsForInput, inputName, "signal"))
+                        outfile << signal << ",";
 
-	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "signal") != varsForInput[inputName].end ())
-		outfile << signal << ",";
+                    if (varName == "min_ANNmuon" && contains (varsForInput, inputName, "min_ANNmuon"))
+                        outfile << min_ANNmuon << ",";
 
-	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "min_ANNmuon") != varsForInput[inputName].end ())
-		outfile << min_ANNmuon << ",";
+                    if (varName == "mass" && contains (varsForInput, inputName, "mass"))
+                        outfile << mass << ",";
 
-	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "mass") != varsForInput[inputName].end ())
-		outfile << mass << ",";
+                    if (varName == "weight" && contains (varsForInput, inputName, "weight"))
+                        outfile << weight << ",";
 
-	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "weight") != varsForInput[inputName].end ())
-		outfile << weight << ",";
+                    if (varName == "prediction" && contains (varsForInput, inputName, "prediction"))
+                        outfile << prediction;
 
-	    if (std::find (varsForInput[inputName].begin (), varsForInput[inputName].end (), "prediction") != varsForInput[inputName].end ())
-		outfile << (prediction + 1.) / 2.;
-
-          
-	    outfile << "\n";
+                }
+                outfile << "\n";
+            }
+            if (doROOT)
+            {
+                outTree->Fill ();
+            }
         }
 
 	outfile.close();
 	input->Close();
+
+        if (doROOT)
+        {
+            outRootFile->Write ();
+        }
+        if (predictMode == EnumPredictMode::INTERMEDIATE)
+        {
+            delete reader;
+            std::cout << "DONE predict INTERMEDIATE" << std::endl;
+            return rootFileName;
+        }
     }
     delete reader;
 
-    TString cmd (".! python tests.py ");
-    cmd += method_name;
-    gROOT->ProcessLine (cmd);
+    if (predictMode == EnumPredictMode::FINAL)
+    {
+        std::cout << "DONE predict FINAL" << std::endl;
+        TString cmd (".! python tests.py ");
+        cmd += method_name;
+        gROOT->ProcessLine (cmd);
+    }
+
+    return method_name;
 }
 
 
@@ -840,8 +998,8 @@ int competitionAutoEnc ()
 {
     TString methodNameAutoEncoder = autoencoder ("training");
     TString trainingFileName = useAutoencoder (methodNameAutoEncoder);
-    TString methodNameClassification = TMVAClassification (trainingFileName, true);
-    TMVAPredict (methodNameClassification);
+    auto resultNames = TMVAClassification (trainingFileName, AnalysisType::TRANSFORMED);
+    TMVAPredict (resultNames.second);
 
     return 0;
 }
@@ -850,9 +1008,59 @@ int competitionAutoEnc ()
 int competitionDirect ()
 {
     TString trainingFileName ("training");
-    TString methodNameClassification = TMVAClassification (trainingFileName, false);
-    TMVAPredict (methodNameClassification);
+    auto resultNames = TMVAClassification (trainingFileName, AnalysisType::DIRECT);
+    TMVAPredict (resultNames.second);
 
     return 0;
+}
+
+int competition2Stage ()
+{
+    TString trainingFileName ("training");
+    auto resultPre = TMVAClassification (trainingFileName, AnalysisType::DIRECT);
+    std::string fileName (resultPre.first);
+    std::string methodName (resultPre.second);
+    std::cout << "filename = " << fileName << std::endl;
+    std::cout << "methodName = " << methodName << std::endl;
+//    return 0;
+    auto interRootFileName = TMVAPredict (methodName, EnumPredictMode::INTERMEDIATE);
+    std::cout << "inter file name = " << interRootFileName << std::endl;
+//    return 0;
+    auto tonbkgResult = TMVAClassification (trainingFileName, AnalysisType::BACKGROUND, interRootFileName);
+    std::string backFileName (tonbkgResult.first);
+    std::string backMethodName (tonbkgResult.second);
+    std::cout << "BACK filename = " << backFileName << std::endl;
+    std::cout << "BACK methodName = " << backMethodName << std::endl;
+    TMVAPredict (backMethodName, EnumPredictMode::FINAL);
+
+    return 0;
+}
+
+int testCompetition2Stage ()
+{
+    TString trainingFileName ("training");
+    //auto resultPre = TMVAClassification (trainingFileName, AnalysisType::DIRECT);
+    std::string fileName ("NNPG20150826_0714");
+    std::string methodName ("NNPG20150826_0714");
+    auto interRootFileName = TMVAPredict (fileName, EnumPredictMode::INTERMEDIATE);
+    auto tonbkgResult = TMVAClassification (trainingFileName, AnalysisType::BACKGROUND, interRootFileName);
+    TMVAPredict (tonbkgResult.second, EnumPredictMode::FINAL);
+
+    return 0;
+}
+
+
+TChain* load (std::string methodName)
+{
+    TString trainingFileName ("training");
+    TString fname0 = pathToData + trainingFileName + TString (".root");
+    TString fname1 = trainingFileName + TString ("_prediction__") + methodName + TString (".root");
+    TChain* ch = new TChain ("data");
+    ch->Add (fname0);
+    TChain* fr = new TChain ("data");
+    fr->Add (fname1);
+    ch->AddFriend (fr,"s");
+    ch->Print ("");
+    return ch;
 }
 
