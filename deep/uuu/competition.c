@@ -56,7 +56,7 @@ std::string now ()
 
 
 
-
+TCut baseCut ("(LifeTime >= 0 && FlightDistance >= 0");
 
 
 
@@ -577,8 +577,8 @@ std::pair<TString,TString> TMVAClassification (
     TCut backgroundCut ("signal==0");
     if (analysisType == AnalysisType::TRANSFORMED)
     {
-        signalCut = "signal_original==1 && signal_in==0";
-        backgroundCut = "signal_original==0 && signal_in==0";
+        signalCut = "(signal_original==1 && signal_in==0)";
+        backgroundCut = "(signal_original==0 && signal_in==0)";
     }
     if (analysisType == AnalysisType::BACKGROUND)
     {
@@ -587,8 +587,8 @@ std::pair<TString,TString> TMVAClassification (
     }
     //tree->Draw ("prediction",signalCut);
     //return std::make_pair(TString("hallo"),TString ("nix"));
-    factory->AddTree(tree, "Signal", 1.0, signalCut, "TrainingTesting");
-    factory->AddTree(tree, "Background", 1.0, backgroundCut, "TrainingTesting");
+    factory->AddTree(tree, "Signal", 1.0, baseCut + signalCut, "TrainingTesting");
+    factory->AddTree(tree, "Background", 1.0, baseCut + backgroundCut, "TrainingTesting");
 
 
     
@@ -901,7 +901,7 @@ TString TMVAPredict(TString method_name, EnumPredictMode predictMode = EnumPredi
         }
 
         // ---- prepare csv file
-       std::ofstream outfile;
+        std::ofstream outfile;
         if (contains (createForInput, inputName, "csv"))
         {
             std::stringstream outfilename;
