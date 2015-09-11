@@ -3,52 +3,106 @@ import array
 import csv
 
 
-variableNames = [
+import warnings
+warnings.filterwarnings( action='ignore', category=RuntimeWarning, message='creating converter.*' )
+
+base_variables = [
     "LifeTime"
     ,"FlightDistance"
-    ,"FlightDistanceError"
-    ,"pt"
-    ,"IP"
-    ,"dira"
-    ,"DOCAone"
-    ,"DOCAtwo"
-    ,"DOCAthree"
-    ,"IP_p0p2"
-    ,"IP_p1p2"
-    ,"isolationa"
-    ,"isolationb"
-    ,"isolationc"
-    ,"isolationd"
-    ,"isolatione"
-    ,"isolationf"
-    ,"iso"
-    ,"CDF1"
-    ,"CDF2"
+    # ,"FlightDistanceError"
+    # ,"pt"
+    # ,"IP"
+    # ,"dira"
+    # ,"DOCAone"
+    # ,"DOCAtwo"
+    # ,"DOCAthree"
+    # ,"IP_p0p2"
+    # ,"IP_p1p2"
+    # ,"isolationa"
+    # ,"isolationb"
+    # ,"isolationc"
+    # ,"isolationd"
+    # ,"isolatione"
+    # ,"isolationf"
+    # ,"iso"
+    # ,"CDF1"
+    # ,"CDF2"
     ,"CDF3"
-    ,"ISO_SumBDT"
-    ,"p0_IsoBDT"
-    ,"p1_IsoBDT"
-    ,"p2_IsoBDT"
-    ,"p0_track_Chi2Dof"
-    ,"p1_track_Chi2Dof" 
-    ,"p2_track_Chi2Dof" 
-    ,"p0_pt"
-    ,"p0_p"
-    ,"p0_eta"
-    ,"p0_IP"
-    ,"p0_IPSig"
-    ,"p1_pt"
-    ,"p1_p"
-    ,"p1_eta"
-    ,"p1_IP"
-    ,"p1_IPSig"
-    ,"p2_pt"
-    ,"p2_p"
-    ,"p2_eta"
-    ,"p2_IP"
-    ,"p2_IPSig"
-    ,"SPDhits" 
+    # ,"ISO_SumBDT"
+    # ,"p0_IsoBDT"
+    # ,"p1_IsoBDT"
+    # ,"p2_IsoBDT"
+    # ,"p0_track_Chi2Dof"
+    # ,"p1_track_Chi2Dof" 
+    # ,"p2_track_Chi2Dof" 
+    # ,"p0_pt"
+    # ,"p0_p"
+    # ,"p0_eta"
+    # ,"p0_IP"
+    # ,"p0_IPSig"
+    # ,"p1_pt"
+    # ,"p1_p"
+    # ,"p1_eta"
+    # ,"p1_IP"
+    # ,"p1_IPSig"
+    # ,"p2_pt"
+    # ,"p2_p"
+    # ,"p2_eta"
+    # ,"p2_IP"
+    # ,"p2_IPSig"
+    ,"SPDhits"
 ]
+
+
+
+usedVariables = [
+    "LifeTime"
+    ,"FlightDistance"
+    # ,"FlightDistanceError"
+    # ,"pt"
+    # ,"IP"
+    # ,"dira"
+    # ,"DOCAone"
+    # ,"DOCAtwo"
+    # ,"DOCAthree"
+    # ,"IP_p0p2"
+    # ,"IP_p1p2"
+    # ,"isolationa"
+    # ,"isolationb"
+    # ,"isolationc"
+    # ,"isolationd"
+    # ,"isolatione"
+    # ,"isolationf"
+    # ,"iso"
+    # ,"CDF1"
+    # ,"CDF2"
+#    ,"CDF3"
+    # ,"ISO_SumBDT"
+    # ,"p0_IsoBDT"
+    # ,"p1_IsoBDT"
+    # ,"p2_IsoBDT"
+    # ,"p0_track_Chi2Dof"
+    # ,"p1_track_Chi2Dof" 
+    # ,"p2_track_Chi2Dof" 
+    # ,"p0_pt"
+    # ,"p0_p"
+    # ,"p0_eta"
+    # ,"p0_IP"
+    # ,"p0_IPSig"
+    # ,"p1_pt"
+    # ,"p1_p"
+    # ,"p1_eta"
+    # ,"p1_IP"
+    # ,"p1_IPSig"
+    # ,"p2_pt"
+    # ,"p2_p"
+    # ,"p2_eta"
+    # ,"p2_IP"
+    # ,"p2_IPSig"
+    ,("frac","SPDhits/(CDF3+1)")
+]
+
+
 
 spectatorNames = [
     "mass"
@@ -110,10 +164,18 @@ def classify (**kwargs):
     jobName = "Flavor"
     factory = TMVA.Factory( jobName, outputFile, "AnalysisType=Classification:Transformations=I:!V" )
     for var in input_variables:
-        factory.AddVariable (var, 'F')
+        if type(var) == str:
+            factory.AddVariable (var, 'F')
+        else:
+            varcomposed = var[0] + ":=" + var[1]
+            factory.AddVariable (varcomposed, 'F')
         
     for spec in input_spectators:
-        factory.AddSpectator (spec, 'F')
+        if type(spec) == str:
+            factory.AddSpectator (spec, 'F')
+        else:
+            speccomposed = spec[0] + ":=" + spec[1]
+            factory.AddVariable (speccomposed, 'F')
 
     factory.AddTree (input_tree, "Signal", 1.0, base_cut + signal_cut, "TrainingTesting");
     factory.AddTree (input_tree, "Background", 1.0, base_cut + background_cut, "TrainingTesting");
@@ -126,10 +188,10 @@ def classify (**kwargs):
     layoutString = "Layout=TANH|100,TANH|50,LINEAR"
 
     trainingConfig = [
-        "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=10,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True",
-        "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1",
-        "LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True",
-        "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=3,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"
+        "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=10,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
+#        , "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1",
+#        "LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
+#        , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=3,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"
     ]
 
     trainingStrategy = "TrainingStrategy="
@@ -160,7 +222,7 @@ def setbranch (varname):
     vtype = 'f'
     if varname == "id":
         vtype = 'i'
-        vname = varname.toupper ()
+        vname = varname.upper ()
     cmd = "%s = array.array ('%s',[0])\n"%(varname,vtype)
     cmd = cmd + 'if "%s" in variablesForFiles[currentFileName]:\n'%(varname)
     cmd = cmd + '    tree.SetBranchAddress ("%1s",%2s)\n'%(varname,vname)
@@ -171,7 +233,7 @@ def branch (varname):
     vtype = 'f'
     if varname == "id":
         vtype = 'i'
-        vname = varname.toupper ()
+        vname = varname.upper ()
     cmd = 'outTree.Branch ("%1s",%2s,"F")\n'%(varname,vname)
     return cmd
 
@@ -214,20 +276,40 @@ def predict (**kwargs):
 
     reader = TMVA.Reader( "!Color:!Silent" )
 
-    variables = [array.array('f',[0])]*len (input_variables)
+    variables = []
     for idx, var_name in enumerate (input_variables):
-        variables
-        reader.AddVariable (var_name, variables[idx])
+        tmp = array.array('f',[0])
+        variables.append (tmp)
+        if type(var_name) == str:
+            reader.AddVariable (var_name, tmp)
+        else:
+            varcomposed = var_name[0] + ":=" + var_name[1]
+            reader.AddVariable (varcomposed, tmp)
 
-    spectators = [array.array('f',[0])]*len (input_spectators)
+
+        
+    spectators = []
     for idx, spec_name in enumerate (input_spectators):
-        reader.AddVariable (spec_name, spectators[idx])
+        tmp = array.array('f',[0])
+        spectators.append (tmp)
+        if type(spec_name) == str:
+            reader.AddVariable (spec_name, tmp)
+        else:
+            speccomposed = spec_name[0] + ":=" + spec_name[1]
+            reader.AddVariable (speccomposed, tmp)
 
 
     reader.BookMVA (method_name, weightfile_name)
 
     returnValues = {}
     for currentFileName in filenames:
+        print "predict for  file : ",currentFileName
+        doCSV = "csv" in createForFiles[currentFileName]
+        doROOT = ("root" in createForFiles[currentFileName]) or doCSV
+
+        if not doCSV and not doROOT:
+            continue
+        
         fileName = default_path + currentFileName + ".root"
         
         # define variables
@@ -253,15 +335,22 @@ def predict (**kwargs):
 
       
 	# variables for prediction
-        variables = [array.array ('f',[0])]*len (input_variables)
-	for idx, currentVariableName in enumerate (input_variables):
-	    tree.SetBranchAddress (currentVariableName, variables[idx]);
-        
-        doCSV = "csv" in createForFiles[currentFileName]
-        doROOT = "root" in createForFiles[currentFileName]
+        #baseVariables = [array.array ('f',[0]) for i in xrange (len (base_variables))]
+	# for idx, currentVariableName in enumerate (base_variables):
+	#     tree.SetBranchAddress (currentVariableName, baseVariables[idx]);
+
+
+        # create tree formulas
+        formulas = []
+        for idx,var in enumerate (input_variables):
+            if type(var) == str:
+                fml = TTreeFormula (var, var, tree)
+            else:
+                fml = TTreeFormula (var[0], var[1], tree)
+            formulas.append (fml)
+
             
         # ---- make ROOT file if requested
-        doROOT = False
         if doROOT and "root" in createForFiles[currentFileName]:
             rootFileName = currentFileName + "_p_" + method_name + ".root"
             outRootFile = TFile (rootFileName, "RECREATE")
@@ -278,8 +367,10 @@ def predict (**kwargs):
         csvfile = None
         writer = None
         if doCSV and "csv" in createForFiles[currentFileName]:
+            print "prepare csv"
             csvFileName = currentFileName + "_p_" + method_name + ".csv"
             with open (csvFileName, 'wb') as csvfile:
+                print "create csv writer"
                 writer = csv.writer (csvfile, delimiter = ",")
                 vars = []
                 for currentVariable in variableOrder:
@@ -291,23 +382,34 @@ def predict (**kwargs):
             returnValues[curr] = csvFileName
 
         # 
-	for ievt in xrange (tree.GetEntries()):
+	for ievt in xrange(10000): #xrange (tree.GetEntries()):
+            if ievt%10000 == 0:
+                print ievt
 	    tree.GetEntry (ievt)
 	    # predict
+            for idx,fml in enumerate (formulas):
+                variables[idx][0] = fml.EvalInstance ()
+
+            # this will create a harmless warning
+            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213                
 	    prediction = reader.EvaluateMVA (method_name)
             prediction = max (0.0, min (1.0, prediction))
-            # prediction = (prediction + 1.0)/2.0;
-            if doCSV != None and csvfile != None:
+            #print prediction
+            if doCSV == True and csvfile != None:
                 row = []
                 for varName in variableOrder:
                     if varName in variablesForFiles[currentFileName]:
                         cmd = 'row.append (%s)'%varName
                         exec (cmd)
-                writer.writerow (row)
+                with open (csvFileName, 'wb') as csvfile:
+                    writer.writerow (row)
 
             if doROOT:
                 outTree.Write ()
-                
+
+
+
+            
 
         f.Close ()
 
@@ -336,12 +438,12 @@ def predict (**kwargs):
 
 def competition ():
     tree = load (filenames=[training_filename])
-    retClassify = classify (filename="step1.root", variables=variableNames, input_tree=tree)
+    retClassify = classify (filename="step1.root", variables=usedVariables, input_tree=tree)
 
     method_name = retClassify["method_name"]
     weightfile_name = retClassify["weightfile_name"]
     
-    retPredict = predict (filenames=["training","test","check_agreement","check_correlation"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=variableNames)
+    retPredict = predict (filenames=["training","test","check_agreement","check_correlation"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
 
     training_prediction = retPredict["training_prediction_root"]
 
