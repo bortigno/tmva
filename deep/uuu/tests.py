@@ -13,7 +13,9 @@ cvm_cutoff = 0.002
 
 data_path = "/home/peters/test/kaggle_flavour/flavours-of-physics-start/tau_data/"
 #data_path = "/home/peter/code/kaggle/flavor/"
-methodname = sys.argv[1];
+agreement_pred_file = sys.argv[1];
+correlation_pred_file = sys.argv[2];
+training_pred_file = sys.argv[3];
 print ("arguments: "+str (sys.argv));
 
 
@@ -23,9 +25,9 @@ print ("arguments: "+str (sys.argv));
 #test_prediction  = pd.read_csv("test_prediction.csv")
 check_agreement   = pd.read_csv(data_path+"check_agreement.csv")
 check_correlation = pd.read_csv(data_path+"check_correlation.csv")
-check_agreement_prediction   = pd.read_csv ("check_agreement_prediction__"+methodname+".csv")
-check_correlation_prediction = pd.read_csv ("check_correlation_prediction__"+methodname+".csv")
-training = pd.read_csv ("training_prediction__"+methodname+".csv")
+check_agreement_prediction   = pd.read_csv (agreement_pred_file)
+check_correlation_prediction = pd.read_csv (correlation_pred_file)
+training = pd.read_csv (training_pred_file)
 
 
 print("\nEvaluating predictions\n")
