@@ -61,8 +61,8 @@ base_variables = [
     ,"p2_pt"
     ,"p2_p"
     ,"p2_eta"
-    ,"p2_IP"
     ,"p2_IPSig"
+    ,"p2_IP"
     ,"SPDhits"
     ,"signal"
 ]
@@ -144,11 +144,11 @@ def load (**kwargs):
     index = 0
     for filename in input_filenames:
         if not tree:
-            print "not tree"
+            print "create chain for "+input_treename
             tree = ROOT.TChain (input_treename)
             tree.Add (filename)
         else:
-            print "has tree"
+            print "add friend "+input_treename
             tmp = ROOT.TChain (input_treename)
             tmp.Add (filename)
             friendname = "p"+str(index)
@@ -494,9 +494,16 @@ def competition ():
         retPredict2nd = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name2nd, weightfile_name=weightfile_name2nd, execute_tests=True, variables=usedVariables)
 
 
-    
-competition ()
-#testPrediction ()
+
+
+
+
+
+        
+if __name__ == "__main__":
+    # stuff only to run when not called via 'import' here
+    competition ()
+    #testPrediction ()
     
 
 
