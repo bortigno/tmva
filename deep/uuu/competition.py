@@ -141,7 +141,7 @@ def load (**kwargs):
     input_treename = kwargs.setdefault ("treename", "data")
 
     tree = None
-    index = 0
+    idx = 0
     for filename in input_filenames:
         if not tree:
             print "create chain for "+input_treename
@@ -151,9 +151,9 @@ def load (**kwargs):
             print "add friend "+input_treename
             tmp = ROOT.TChain (input_treename)
             tmp.Add (filename)
-            friendname = "p"+str(index)
+            friendname = "p"+str(idx)
             print friendname
-            ++index
+            idx += 1
             tree.AddFriend (tmp, friendname)
 
     return tree
@@ -207,7 +207,7 @@ def classify (**kwargs):
     trainingConfig = [
         "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
         , "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
-#        , "LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
+#        , "LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
         , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=10,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"
     ]
 
@@ -245,13 +245,15 @@ def setbranch (varname):
     cmd = cmd + '    tree.SetBranchAddress ("%s",%s)\n'%(varname,vname)
     return cmd
 
-def branch (varname):
+def branch (varname, alternativeName = ""):
     vname = varname
     vtype = 'f'
     if varname == "id":
         vtype = "i"
         vname = varname.upper ()
-    cmd = 'outTree.Branch ("%s",%s,"%s/%s")\n'%(varname,vname,varname,vtype)
+    if alternativeName == "":
+        alternativeName = varname
+    cmd = 'outTree.Branch ("%s",%s,"%s/%s")\n'%(alternativeName,vname,alternativeName,vtype)
     return cmd
 
 
@@ -261,6 +263,7 @@ def branch (varname):
 def predict (**kwargs):
     filenames = kwargs.setdefault ("filenames", ["training","test","check_correlation","check_agreement"])
     variableOrder = kwargs.setdefault ("variable_order", ["id", "signal", "mass", "min_ANNmuon", "prediction"])
+    prediction_name = kwargs.setdefault ("prediction_name", "prediction")
 
     execute_tests = kwargs.setdefault ("execute_tests",False)
 
@@ -379,12 +382,13 @@ def predict (**kwargs):
             rootFileName = currentFileName + "_p_" + method_name + ".root"
             outRootFile = rootpy.io.File (rootFileName, "RECREATE")
             outTree = Tree ("data","data")
-            # branches = {key: 'F' for key in variablesForFiles[currentFileName]}
-            # outTree.create_branches (branches)
 
             for var in variableOrder:
                 if var in variablesForFiles[currentFileName]:
-                    cmd = branch (var)
+                    altName = ""
+                    if var == "prediction":
+                        altName = prediction_name
+                    cmd = branch (var, altName)
                     exec (cmd)
             
             curr = currentFileName + "_prediction_root"
@@ -480,24 +484,34 @@ def competition ():
 #    retPredict = predict (filenames=["training","check_agreement","check_correlation"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
     retPredict = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
 
-    twostage = False
+    twostage = True
     if twostage:
         training_prediction = retPredict["training_prediction_root"]
 
         tree2nd = load (filenames=[training_filename, training_prediction])
-        retClassify2nd = classify (filename="step2.root", variables=usedVariables, input_tree=tree2nd, signal_cut="signal==0 && prediction > 0.8", background_cut="signal==0 && prediction < 0.5", method_suffix="2nd")
+        retClassify2nd = classify (filename="step2.root", variables=usedVariables, input_tree=tree2nd, signal_cut="signal==0 && prediction > 0.6", background_cut="signal==0 && prediction > 0.6", method_suffix="2nd")
 
         method_name2nd = retClassify2nd["method_name"]
         weightfile_name2nd = retClassify2nd["weightfile_name"]
     
     
-        retPredict2nd = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name2nd, weightfile_name=weightfile_name2nd, execute_tests=True, variables=usedVariables)
+        retPredict2nd = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name2nd, weightfile_name=weightfile_name2nd, execute_tests=False, variables=usedVariables, prediction_name="sim")
 
 
 
 
+def loadAgreement (method_name):        
+    return load (filenames=[default_path+"check_agreement.root", "check_agreement_p_%s.root"%method_name])
+
+def loadAgreementSim (method_name, method_name2):        
+    return load (filenames=[default_path+"check_agreement.root", "check_agreement_p_%s.root"%method_name, "check_agreement_p_%s.root"%method_name2])
 
 
+def showAgreement (method_name):
+    t = loadAgreement (method_name)
+    h = t.Draw ("prediction","weight*(signal==0)/1400","")
+    t.Draw ("prediction","weight*(signal==1)/500","same")
+    return h
 
         
 if __name__ == "__main__":
@@ -505,6 +519,5 @@ if __name__ == "__main__":
     competition ()
     #testPrediction ()
     
-
 
 
