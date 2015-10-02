@@ -6,6 +6,8 @@ from rootpy.tree import Tree, TreeChain, TreeModel, FloatCol, IntCol
 import time
 from rootpy.io import root_open
 from random import gauss
+from math import *
+import numpy
 
 import warnings
 warnings.filterwarnings( action='ignore', category=RuntimeWarning, message='creating converter.*' )
@@ -205,8 +207,8 @@ def classify (**kwargs):
     layoutString = "Layout=TANH|100,TANH|50,LINEAR"
 
     trainingConfig = [
-        "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
-        , "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
+        "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=70,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
+        , "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
 #        , "LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
         , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=10,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"
     ]
@@ -225,7 +227,7 @@ def classify (**kwargs):
 
     factory.TrainAllMethods()
     factory.TestAllMethods()
-    factory.EvaluateAllMethods()
+    #factory.EvaluateAllMethods()
 
     outputFile.Close()
 
@@ -406,7 +408,7 @@ def predict (**kwargs):
             # this will create a harmless warning
             # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213                
 	    prediction[0] = reader.EvaluateMVA (method_name)
-            prediction[0] = max (0.0, min (1.0, prediction[0]))
+            prediction[0] = 1.0/(1.0+exp (-prediction[0]))
             #print prediction
             outTree.fill ()
 
@@ -449,7 +451,235 @@ def predict (**kwargs):
     return returnValues
 
             
+
+
+
+
+
+
+def manufacturePredictor (**kwargs):
+    filenames = kwargs.setdefault ("filenames", ["training","test","check_correlation","check_agreement"])
+    variableOrder = kwargs.setdefault ("variable_order", ["id", "signal", "mass", "min_ANNmuon", "prediction"])
+    prediction_name = kwargs.setdefault ("prediction_name", "prediction")
+    prediction_formula = kwargs.setdefault ("prediction_formula", "prediction_formula")
+    prediction_formula = ROOT.TFormula ('pFml',prediction_formula)
+    #print prediction_formula
+    #return
     
+    execute_tests = kwargs.setdefault ("execute_tests",False)
+
+    
+    # default values
+    variablesForFiles = {
+        "training" : ["prediction","id","signal","mass","min_ANNmuon"],
+        "test" : ["prediction","id"],
+        "check_agreement" : ["signal","weight","prediction"],
+        "check_correlation" : ["mass","prediction"]
+        }
+    variablesForFiles = kwargs.setdefault ("variablesForFiles", variablesForFiles)
+    createForFiles = {
+        "training" : ["csv"],
+        "test" : ["csv"],
+        "check_correlation" : ["csv"],
+        "check_agreement" : ["csv"]
+        }
+    input_variables = kwargs.setdefault ("variables", None)
+    input_spectators = kwargs.setdefault ("spectators", [])
+    
+    method_names = kwargs.setdefault ("method_names", None)
+    weightfile_names = kwargs.setdefault ("weightfile_names", None)
+    
+    
+    print "------------ prediction ---------------"
+    for key,value in kwargs.iteritems ():
+        print key," = ",value
+
+
+    ROOT.TMVA.Tools.Instance ()
+
+    readers = []
+    for weightfile in weightfile_names:
+        readers.append (ROOT.TMVA.Reader( "!Color:!Silent" ))
+
+    variables = []
+    varIndex = {}
+    spectators = []
+    specIndex = {}
+    for idxReader, reader in enumerate (readers):
+        for idx, var_name in enumerate (input_variables):
+            tmpVarName = ""
+            if type(var_name) == str:
+                tmpVarName = var_name
+            else:
+                varcomposed = var_name[0] + ":=" + var_name[1]
+                tmpVarName = varcomposed
+
+            tmp = None
+            if tmpVarName in varIndex:
+                tmp = variables[varIndex[tmpVarName]]
+            else:
+                tmp = array.array('f',[0])
+                variables.append (tmp)
+                varIndex[tmpVarName] = len(variables)-1
+            reader.AddVariable (tmpVarName, tmp)
+
+        
+        for idx, var_name in enumerate (input_spectators):
+            tmpVarName = ""
+            if type(var_name) == str:
+                tmpVarName = var_name
+            else:
+                varcomposed = var_name[0] + ":=" + var_name[1]
+                tmpVarName = varcomposed
+
+            tmp = None
+            if tmpVarName in varIndex:
+                tmp = variables[varIndex[tmpVarName]]
+            else:
+                tmp = array.array('f',[0])
+                variables.append (tmp)
+                varIndex[tmpVarName] = len(variables)-1
+            reader.AddSpectator (tmpVarName, tmp)
+
+            
+        print "reader: book mva: ",method_names[idxReader],"  from weightfile ",weightfile_names[idxReader]
+        reader.BookMVA (method_names[idxReader], weightfile_names[idxReader])
+
+        
+    returnValues = {}
+    for currentFileName in filenames:
+        print "predict for  file : ",currentFileName
+        doCSV = "csv" in createForFiles[currentFileName]
+        doROOT = ("root" in createForFiles[currentFileName]) or doCSV
+
+        if not doCSV and not doROOT:
+            continue
+        
+        fileName = default_path + currentFileName + ".root"
+        
+        # define variables
+        ID = array.array ('i',[0])
+        outputVariables = variablesForFiles[currentFileName]
+
+        prediction = array.array ('f',[0])
+        weight = array.array ('f',[0])
+        min_ANNmuon = array.array ('f',[0])
+        mass = array.array ('f',[0])
+        signal = array.array ('f',[0])
+       
+        # --- open input file
+        f = rootpy.io.File.Open (fileName)
+	tree = f.Get("data");
+
+
+        for v in outputVariables:
+            if v != "prediction":
+                cmd = setbranch (v)
+                #print cmd
+                exec (cmd)
+
+      
+        # create tree formulas
+        formulas = []
+        for idx,var in enumerate (input_variables):
+            if type(var) == str:
+                fml = None
+                tree.SetBranchAddress (var, variables[varIndex[var]])
+            else:
+                fml = ROOT.TTreeFormula (var[0], var[1], tree)
+            formulas.append (fml)
+
+            
+        # ---- make ROOT file if requested
+        outTree = None
+        manu_name = ""
+        for m in method_names:
+            manu_name += m
+        if doROOT:
+            rootFileName = currentFileName + "_p_" + manu_name + ".root"
+            print "prepare root file : ",rootFileName
+            outRootFile = rootpy.io.File (rootFileName, "RECREATE")
+            outTree = Tree ("data","data")
+
+            for var in variableOrder:
+                if var in variablesForFiles[currentFileName]:
+                    altName = ""
+                    if var == "prediction":
+                        altName = prediction_name
+                    cmd = branch (var, altName)
+                    exec (cmd)
+            
+            curr = currentFileName + "_prediction_root"
+            returnValues[curr] = rootFileName
+
+        #
+        tmstmp = time.time ()
+	for ievt in xrange (tree.GetEntries()):
+	    tree.GetEntry (ievt)
+	    # predict
+            for idx,fml in enumerate (formulas):
+                if fml != None:
+                    variables[idx][0] = fml.EvalInstance ()
+
+            # this will create a harmless warning
+            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213
+
+            prediction_bases = [] #array.array ('f',[0])
+            for idx, meth in enumerate (method_names):
+                p = readers[idx].EvaluateMVA (meth)
+                prediction_bases.append (p)
+                #print "idx ",idx," meth ",meth,"  p ",p,"   pred_bases ",prediction_bases
+            #for idxP, p in enumerate (prediction_bases):
+            #    prediction_formula.SetParameter (idxP, p)
+            prediction[0] = prediction_formula.EvalPar (numpy.array(prediction_bases))
+            prediction[0] = 1.0/(1.0+exp (-prediction[0]))
+            #print prediction_bases,"  ",prediction
+            
+                
+            #print prediction
+            outTree.fill ()
+
+            if ievt%10000 == 0:
+                tmp = tmstmp
+                tmstmp = time.time ()
+                print ievt,"   t = %f"%(tmstmp-tmp)
+
+        if doROOT:
+            outRootFile.Write ()
+        
+        # ---- prepare csv file
+        #csvfile = None
+        writer = None
+        if doCSV:
+            csvFileName = currentFileName + "_p_" + manu_name + ".csv"
+            print "prepare csv : ",csvFileName
+
+            csvFile = open (csvFileName, 'w')
+            outTree.csv (",", stream=csvFile);
+            csvFile.close ()
+
+            curr = currentFileName + "_prediction_csv"
+            returnValues[curr] = csvFileName
+
+
+            
+
+        f.Close ()
+
+        #if doCSV:
+        #    csvfile.close ()
+            
+        if doROOT:
+            outRootFile.Close ()
+    if execute_tests:
+        cmd = "os.system ('python tests.py %s %s %s')"%(returnValues["check_agreement_prediction_csv"],returnValues["check_correlation_prediction_csv"],returnValues["training_prediction_csv"])
+        print cmd
+        exec (cmd)
+        
+    return returnValues
+
+
+
 
 
     
@@ -489,7 +719,7 @@ def competition ():
         training_prediction = retPredict["training_prediction_root"]
 
         tree2nd = load (filenames=[training_filename, training_prediction])
-        retClassify2nd = classify (filename="step2.root", variables=usedVariables, input_tree=tree2nd, signal_cut="signal==0 && prediction > 0.6", background_cut="signal==0 && prediction > 0.6", method_suffix="2nd")
+        retClassify2nd = classify (filename="step2.root", variables=usedVariables, input_tree=tree2nd, signal_cut="signal==1 && prediction > 0.8", background_cut="signal==0 && prediction > 0.8", method_suffix="2nd")
 
         method_name2nd = retClassify2nd["method_name"]
         weightfile_name2nd = retClassify2nd["weightfile_name"]
@@ -499,12 +729,22 @@ def competition ():
 
 
 
+def manuPred (fml = "x[1]"):
+    manufacturePredictor (prediction_formula=fml, method_names=["NNPG1st","NNPG2nd"], weightfile_names=["weights/Flavor_NNPG1st.weights.xml","weights/Flavor_NNPG2nd.weights.xml"], variables=usedVariables, execute_tests=True, filenames=["training","check_agreement","check_correlation"])
+    
 
 def loadAgreement (method_name):        
     return load (filenames=[default_path+"check_agreement.root", "check_agreement_p_%s.root"%method_name])
 
 def loadAgreementSim (method_name, method_name2):        
     return load (filenames=[default_path+"check_agreement.root", "check_agreement_p_%s.root"%method_name, "check_agreement_p_%s.root"%method_name2])
+
+def applyFormula (tree, formula, scale = 0.3):
+    tree.SetLineColor (ROOT.kBlue)
+    tree.Draw (formula, "(signal==0)*weight*%f"%scale,"")
+    tree.SetLineColor (ROOT.kRed)
+    tree.Draw (formula, "(signal==1)*weight","same")
+    tree.SetLineColor (ROOT.kBlue)
 
 
 def showAgreement (method_name):
@@ -516,8 +756,9 @@ def showAgreement (method_name):
         
 if __name__ == "__main__":
     # stuff only to run when not called via 'import' here
-    competition ()
+    #competition ()
     #testPrediction ()
+    manuPred ()
     
 
 
