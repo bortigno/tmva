@@ -487,10 +487,14 @@ def predict (**kwargs):
                     variables[idx][0] = fml.EvalInstance ()
 
             # this will create a harmless warning
-            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213                
-	    prediction[0] = reader.EvaluateMVA (method_name)
-            prediction[0] = 1.0/(1.0+exp (-prediction[0]))
-            #print prediction
+            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213
+            if regression_targets == None:
+                targets = reader.EvaluateRegression (method_name)
+                prediction[0] = targets[0]
+            else:
+                prediction[0] = reader.EvaluateMVA (method_name)
+                prediction[0] = 1.0/(1.0+exp (-prediction[0]))
+                #print prediction
             outTree.fill ()
 
             if ievt%10000 == 0:
@@ -500,19 +504,26 @@ def predict (**kwargs):
 
         if doROOT:
             outRootFile.Write ()
-        
+
+
+        regTag = "_r_"
+        denom = "_regression_"
+        if regression_targets == None:
+            regTag = "_p_"
+            denom = "_prediction_"
+            
         # ---- prepare csv file
         #csvfile = None
         writer = None
         if doCSV:
             print "prepare csv"
-            csvFileName = currentFileName + "_p_" + method_name + ".csv"
+            csvFileName = currentFileName + regTag + method_name + ".csv"
 
             csvFile = open (csvFileName, 'w')
             outTree.csv (",", stream=csvFile);
             csvFile.close ()
 
-            curr = currentFileName + "_prediction_csv"
+            curr = currentFileName + denom + "csv"
             returnValues[curr] = csvFileName
 
 
@@ -763,6 +774,9 @@ def manufacturePredictor (**kwargs):
 
 
 
+
+
+
     
 
 # tree = load (filenames=[training_filename, training_filename])
@@ -791,6 +805,8 @@ def competition ():
     if doRegression:
         tree = load (filenames=[training_filename])
         reg = regression (filename="reg.root", variables=usedVariables, input_tree=tree, method_suffix="reg", cut = "signal==0", targets = ["mass"])
+
+        regApply = predict (regression_targets=["mass"], filenames=["training","check_agreement","check_correlation","test"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=False, variables=usedVariables)
         
 
     if doClassification:
