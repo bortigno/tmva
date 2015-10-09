@@ -660,6 +660,13 @@ void forward_training (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
                       currLayerData.weightsBegin (), 
                       currLayerData.valuesBegin (), currLayerData.valuesEnd ());
     }
+
+    if (isFlagSet (ModeOutputValues::BATCHNORMALIZATION))
+    {
+        // http://docs.chainer.org/en/stable/_modules/chainer/functions/normalization/batch_normalization.html
+        
+    }
+    
     applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.activationFunction (), 
 		    currLayerData.inverseActivationFunction (), currLayerData.valueGradientsBegin ());
 }
@@ -1109,35 +1116,67 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	double sumError = 0.0;
 	double sumWeights = 0.0;	// -------------
 
-        // ----------- create layer data -----------------
+        // ----------- create layer data -------------------------------------------------------
         assert (_layers.back ().numNodes () == outputSize ());
         size_t totalNumWeights = 0;
-        std::vector<LayerData> layerData;
-        layerData.reserve (_layers.size ()+1);
+        std::vector<std::vector<LayerData>> layerPatternData;
+        layerPatternData.reserve (_layers.size ()+1);
         ItWeight itWeight = itWeightBegin;
         ItGradient itGradient = itGradientBegin;
         size_t numNodesPrev = inputSize ();
-        layerData.push_back (LayerData (numNodesPrev));
-        if (usesDropOut)
-        {
-            layerData.back ().setDropOut (itDropOut);
-            itDropOut += _layers.back ().numNodes ();
-        }
-        for (auto& layer: _layers)
-        {
-            if (itGradientBegin == itGradientEnd)
-                layerData.push_back (LayerData (layer.numNodes (), itWeight, 
-                                                layer.activationFunction (),
-                                                layer.modeOutputValues ()));
-            else
-                layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
-                                                layer.activationFunction (),
-                                                layer.inverseActivationFunction (),
-                                                layer.modeOutputValues ()));
+        typename Pattern::const_iterator itInputBegin;
+        typename Pattern::const_iterator itInputEnd;
 
+        // --------------------- prepare layer data for input layer ----------------------------
+        layerPatternData.push_back (std::vector<LayerData>());
+	for (const Pattern& _pattern : batch)
+        {
+            std::vector<LayerData>& layerData = layerPatternData.back ();
+            layerData.push_back (LayerData (numNodesPrev));
+
+            itInputBegin = _pattern.beginInput ();
+            itInputEnd = _pattern.endInput ();
+            layerData.back ().setInput (itInputBegin, itInputEnd);
+            
             if (usesDropOut)
             {
                 layerData.back ().setDropOut (itDropOut);
+            }
+        }
+        if (usesDropOut)
+        {
+            itDropOut += _layers.back ().numNodes ();
+        }
+
+        // ---------------- prepare subsequent layers ---------------------------------------------
+        // for each of the layers
+        for (auto& layer: _layers)
+        {
+            layerPatternData.push_back (std::vector<LayerData>());
+            // for each pattern, prepare a layerData
+            for (const Pattern& _pattern : batch)
+            {
+                std::vector<LayerData>& layerData = layerPatternData.back ();
+                layerData.push_back (LayerData (numNodesPrev));
+
+                if (itGradientBegin == itGradientEnd)
+                    layerData.push_back (LayerData (layer.numNodes (), itWeight, 
+                                                    layer.activationFunction (),
+                                                    layer.modeOutputValues ()));
+                else
+                    layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
+                                                    layer.activationFunction (),
+                                                    layer.inverseActivationFunction (),
+                                                    layer.modeOutputValues ()));
+
+                if (usesDropOut)
+                {
+                    layerData.back ().setDropOut (itDropOut);
+                }
+            }
+
+            if (usesDropOut)
+            {
                 itDropOut += layer.numNodes ();
             }
             size_t _numWeights = layer.numWeights (numNodesPrev);
@@ -1151,23 +1190,31 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 
 
 
-        // ---------------------------------- loop over pattern -------------------------------------------------------
-        typename Pattern::const_iterator itInputBegin;
-        typename Pattern::const_iterator itInputEnd;
-	for (const Pattern& _pattern : batch)
+        // ---------------------------------- loop over layers and pattern -------------------------------------------------------
+	/* for (const Pattern& _pattern : batch) */
+	/* { */
+        size_t idxLayer = 0;
+	for (std::vector<LayerData>& layerPattern : layerPatternData)
 	{
-            bool isFirst = true;
-            for (auto& _layerData: layerData)
+            ++idxLayer;
+	    bool doTraining = idxLayer >= trainFromLayer;
+            
+            /* bool isFirst = true; */
+            /* for (auto& _layerData: layerData) */
+            /* { */
+            /*     _layerData.clear (); */
+            /*     if (isFirst) */
+            /*     { */
+            /*         itInputBegin = _pattern.beginInput (); */
+            /*         itInputEnd = _pattern.endInput (); */
+            /*         _layerData.setInput (itInputBegin, itInputEnd); */
+            /*         isFirst = false; */
+            /*     } */
+            /* } */
+
+            // ---------------- loop over layerDatas of pattern ----------------------------
+            for (LayerData& layerData : layerPattern)
             {
-                _layerData.clear ();
-                if (isFirst)
-                {
-                    itInputBegin = _pattern.beginInput ();
-                    itInputEnd = _pattern.endInput ();
-                    _layerData.setInput (itInputBegin, itInputEnd);
-                    isFirst = false;
-                }
-            }
             
 	    // --------- forward -------------
 //            std::cout << "forward" << std::endl;
@@ -1178,7 +1225,6 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 		LayerData& prevLayerData = layerData.at (idxLayer);
 		LayerData& currLayerData = layerData.at (idxLayer+1);
 		
-		doTraining = idxLayer >= trainFromLayer;
 		if (doTraining)
 		    forward_training (prevLayerData, currLayerData);
 		else
