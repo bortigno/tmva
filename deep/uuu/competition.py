@@ -184,6 +184,8 @@ def regression (**kwargs):
     jobName = "Flavor"
     factory = ROOT.TMVA.Factory( jobName, outputFile, "AnalysisType=Regression:Transformations=I:!V" )
     for var in input_variables:
+        if var in input_targets:
+            continue
         if type(var) == str:
             factory.AddVariable (var, 'F')
         else:
@@ -191,6 +193,8 @@ def regression (**kwargs):
             factory.AddVariable (varcomposed, 'F')
         
     for spec in input_spectators:
+        if spec in input_targets:
+            continue
         if type(spec) == str:
             factory.AddSpectator (spec, 'F')
         else:
@@ -212,10 +216,10 @@ def regression (**kwargs):
     layoutString = "Layout=TANH|100,TANH|50,LINEAR"
 
     trainingConfig = [
-        "LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=10,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
-        , "LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
+        "LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
+        , "LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=150,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
 #        , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
-        , "LearningRate=1e-6,Momentum=0.1,Repetitions=1,ConvergenceSteps=10,BatchSize=70,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,Multithreading=True"
+        , "LearningRate=1e-6,Momentum=0.1,Repetitions=1,ConvergenceSteps=150,BatchSize=70,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,Multithreading=True"
     ]
 
     trainingStrategy = "TrainingStrategy="
@@ -409,15 +413,28 @@ def predict (**kwargs):
 
     reader.BookMVA (method_name, weightfile_name)
 
+    regTag = "_r_"
+    denom = "_regression_"
+    doRegression = True
+    if regression_targets == None:
+        doRegression = False
+        regTag = "_p_"
+        denom = "_prediction_"
+
+
+        
     returnValues = {}
     for currentFileName in filenames:
         print "predict for  file : ",currentFileName
         doCSV = "csv" in createForFiles[currentFileName]
         doROOT = ("root" in createForFiles[currentFileName]) or doCSV
 
+
+        
         if not doCSV and not doROOT:
             continue
         
+
         fileName = default_path + currentFileName + ".root"
         
         # define variables
@@ -442,12 +459,6 @@ def predict (**kwargs):
                 exec (cmd)
 
       
-	# variables for prediction
-        #baseVariables = [array.array ('f',[0]) for i in xrange (len (base_variables))]
-	# for idx, currentVariableName in enumerate (base_variables):
-	#     tree.SetBranchAddress (currentVariableName, baseVariables[idx]);
-
-
         # create tree formulas
         formulas = []
         for idx,var in enumerate (input_variables):
@@ -462,19 +473,23 @@ def predict (**kwargs):
         # ---- make ROOT file if requested
         outTree = None
         if doROOT:
-            rootFileName = currentFileName + "_p_" + method_name + ".root"
+            rootFileName = currentFileName + denom + method_name + ".root"
             outRootFile = rootpy.io.File (rootFileName, "RECREATE")
             outTree = Tree ("data","data")
 
             for var in variableOrder:
                 if var in variablesForFiles[currentFileName]:
                     altName = ""
+                    if var in regression_targets:
+                        altName = "t_"+var
                     if var == "prediction":
                         altName = prediction_name
+                        if doRegression:
+                            altName = regression_targets[0]
                     cmd = branch (var, altName)
                     exec (cmd)
             
-            curr = currentFileName + "_prediction_root"
+            curr = currentFileName + denom + "root"
             returnValues[curr] = rootFileName
 
         #
@@ -488,7 +503,7 @@ def predict (**kwargs):
 
             # this will create a harmless warning
             # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213
-            if regression_targets == None:
+            if doRegression:
                 targets = reader.EvaluateRegression (method_name)
                 prediction[0] = targets[0]
             else:
@@ -506,18 +521,13 @@ def predict (**kwargs):
             outRootFile.Write ()
 
 
-        regTag = "_r_"
-        denom = "_regression_"
-        if regression_targets == None:
-            regTag = "_p_"
-            denom = "_prediction_"
             
         # ---- prepare csv file
         #csvfile = None
         writer = None
         if doCSV:
             print "prepare csv"
-            csvFileName = currentFileName + regTag + method_name + ".csv"
+            csvFileName = currentFileName + denom + method_name + ".csv"
 
             csvFile = open (csvFileName, 'w')
             outTree.csv (",", stream=csvFile);
@@ -698,10 +708,12 @@ def manufacturePredictor (**kwargs):
                     altName = ""
                     if var == "prediction":
                         altName = prediction_name
+                        if doRegression:
+                            altName = regression_targets[0]
                     cmd = branch (var, altName)
                     exec (cmd)
             
-            curr = currentFileName + "_prediction_root"
+            curr = currentFileName + denom + "root"
             returnValues[curr] = rootFileName
 
         #
@@ -804,8 +816,13 @@ def competition ():
     doClassification = False
     if doRegression:
         tree = load (filenames=[training_filename])
-        reg = regression (filename="reg.root", variables=usedVariables, input_tree=tree, method_suffix="reg", cut = "signal==0", targets = ["mass"])
+        reg = regression (filename="reg.root", variables=usedVariables, input_tree=tree, method_suffix="reg", targets = ["mass"], cut = "signal==0")
 
+        method_name = reg["method_name"]
+        weightfile_name = reg["weightfile_name"]
+        #method_name = "NNPGreg"
+        #weightfile_name = "weights/Flavor_NNPGreg.weights.xml"
+        
         regApply = predict (regression_targets=["mass"], filenames=["training","check_agreement","check_correlation","test"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=False, variables=usedVariables)
         
 
