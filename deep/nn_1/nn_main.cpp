@@ -116,13 +116,13 @@ void checkGradients ()
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
     net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
-//    net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
+    net.addLayer (NN::Layer (30, NN::EnumFunction::SOFTSIGN)); 
 //    net.addLayer (Layer (outputSize, EnumFunction::LINEAR)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 //    net.setErrorFunction (ModeErrorFunction::SUMOFSQUARES);
 
-    size_t numWeights = net.numWeights (inputSize);
+    size_t numWeights = net.numWeights ();
     std::vector<double> weights (numWeights);
     //weights.at (0) = 1000213.2;
 
@@ -485,10 +485,10 @@ void Higgs ()
 
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
+    net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
+    net.addLayer (NN::Layer (20, NN::EnumFunction::TANH)); 
+    net.addLayer (NN::Layer (15, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
-    net.addLayer (NN::Layer (7, NN::EnumFunction::TANH)); 
-    net.addLayer (NN::Layer (6, NN::EnumFunction::TANH)); 
-    net.addLayer (NN::Layer (5, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
@@ -518,7 +518,7 @@ void Higgs ()
     
     typedef NN::Steepest LocalMinimizer;
     bool multithreading = true;
-    if (true)
+    if (false)
     {
         std::cout << "-------------- pretraining -------------------------" << std::endl;
         // pre-training
@@ -689,8 +689,8 @@ void Chess ()
     net.setOutputSize (outputSize);
     NN::EnumFunction myActFnc = NN::EnumFunction::TANH;
     net.addLayer (NN::Layer (5, myActFnc)); 
-    net.addLayer (NN::Layer (4, myActFnc)); 
-    net.addLayer (NN::Layer (3, myActFnc)); 
+//    net.addLayer (NN::Layer (4, myActFnc)); 
+//    net.addLayer (NN::Layer (3, myActFnc)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
 
@@ -717,7 +717,7 @@ void Chess ()
 
 
 
-    bool multithreading = true;
+    bool multithreading = false;
     typedef NN::Steepest LocalMinimizer;
 
     if (false)
@@ -736,7 +736,7 @@ void Chess ()
 
     {
         LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 500, /*_batchSize*/ 70, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*_convergenceSteps*/ 500, /*_batchSize*/ 5, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
                                              /* use multithreading */ multithreading, 
@@ -953,8 +953,8 @@ int main ()
 
 //   checkGradients ();
 //    testXOR ();
-//    Higgs ();
-    Chess ();
+    Higgs ();
+//    Chess ();
 //    mnist ();
 //    testClassification ();
 //    testWriteRead ();

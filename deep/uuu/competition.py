@@ -6,6 +6,8 @@ from rootpy.tree import Tree, TreeChain, TreeModel, FloatCol, IntCol
 import time
 from rootpy.io import root_open
 from random import gauss
+from math import *
+import numpy
 
 import warnings
 warnings.filterwarnings( action='ignore', category=RuntimeWarning, message='creating converter.*' )
@@ -75,8 +77,9 @@ usedVariables = [
     ,"FlightDistanceError"
     ,"VertexChi2"
     ,"pt"
-    ,"IP"
-    ,"IPSig"
+#    ,"IP"
+#    ,"IPSig"
+    ,("ipsig_ip","IPSig/IP")
     ,"dira"
     ,"DOCAone"
     ,"DOCAtwo"
@@ -115,8 +118,8 @@ usedVariables = [
     ,"p2_eta"
     ,"p2_IP"
     ,"p2_IPSig"
-    ,"SPDhits"
-#    ,("frac","SPDhits/(CDF3+1)")
+#    ,"SPDhits"
+    ,("spdhits_ipsig","SPDhits/(IPSig+8)")
 ]
 
 
@@ -160,6 +163,89 @@ def load (**kwargs):
 
 
 
+def regression (**kwargs):
+    print "------------ regression ---------------"
+    for key,value in kwargs.iteritems ():
+        print key," = ",value
+        
+    ROOT.TMVA.Tools.Instance ()
+
+    output_filename = kwargs.setdefault ("filename", None)
+    input_variables = kwargs.setdefault ("variables", None)
+    input_spectators = kwargs.setdefault ("spectators", [])
+    input_targets = kwargs.setdefault ("targets", ["mass"])
+    cut = ROOT.TCut (kwargs.setdefault ("cut", ""))
+    base_cut = ROOT.TCut (kwargs.setdefault ("base_cut", "(LifeTime >= 0 && FlightDistance >= 0)"))
+    input_tree = kwargs.setdefault ("input_tree", None)
+    method_suffix = kwargs.setdefault ("method_suffix", "")
+    
+    outputFile = rootpy.io.File.Open (output_filename, "RECREATE" )
+
+    jobName = "Flavor"
+    factory = ROOT.TMVA.Factory( jobName, outputFile, "AnalysisType=Regression:Transformations=I:!V" )
+    for var in input_variables:
+        if var in input_targets:
+            continue
+        if type(var) == str:
+            factory.AddVariable (var, 'F')
+        else:
+            varcomposed = var[0] + ":=" + var[1]
+            factory.AddVariable (varcomposed, 'F')
+        
+    for spec in input_spectators:
+        if spec in input_targets:
+            continue
+        if type(spec) == str:
+            factory.AddSpectator (spec, 'F')
+        else:
+            speccomposed = spec[0] + ":=" + spec[1]
+            factory.AddSpectator (speccomposed, 'F')
+
+    for tgt in input_targets:
+        if type(tgt) == str:
+            factory.AddTarget (tgt, 'F')
+        else:
+            tgtcomposed = tgt[0] + ":=" + tgt[1]
+            factory.AddTarget (tgtcomposed, 'F')
+            
+    factory.AddRegressionTree (input_tree, 1.0);
+
+    factory.PrepareTrainingAndTestTree (cut, "nTrain_Regression=0:nTest_Regression=0:SplitMode=Random:NormMode=NumEvents:!V")
+
+
+    layoutString = "Layout=TANH|100,TANH|50,LINEAR"
+
+    trainingConfig = [
+        "LearningRate=1e-5,Momentum=0.5,Repetitions=1,ConvergenceSteps=500,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
+        , "LearningRate=1e-5,Momentum=0.9,Repetitions=1,ConvergenceSteps=150,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
+#        , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
+        , "LearningRate=1e-6,Momentum=0.1,Repetitions=1,ConvergenceSteps=150,BatchSize=70,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,Multithreading=True"
+    ]
+
+    trainingStrategy = "TrainingStrategy="
+    for idx, conf in enumerate (trainingConfig):
+        if idx != 0:
+            trainingStrategy += "|"
+        trainingStrategy += conf
+            
+    nnOptions = "!H:!V:ErrorStrategy=SUMOFSQUARES:VarTransform=N:WeightInitialization=XAVIERUNIFORM"
+    nnOptions += ":"+layoutString + ":" + trainingStrategy
+        
+    methodName = "NNPG"+method_suffix
+    factory.BookMethod (ROOT.TMVA.Types.kNN, methodName, nnOptions)
+
+    factory.TrainAllMethods()
+    factory.TestAllMethods()
+    factory.EvaluateAllMethods()
+
+    outputFile.Close()
+
+    weightFile = "weights/"+jobName+"_"+methodName+".weights.xml"
+    return {"method_name" : methodName, "weightfile_name" : weightFile}
+
+
+
+
 def classify (**kwargs):
     print "------------ classification ---------------"
     for key,value in kwargs.iteritems ():
@@ -192,7 +278,7 @@ def classify (**kwargs):
             factory.AddSpectator (spec, 'F')
         else:
             speccomposed = spec[0] + ":=" + spec[1]
-            factory.AddVariable (speccomposed, 'F')
+            factory.AddSpectator (speccomposed, 'F')
 
     factory.AddTree (input_tree, "Signal", 1.0, base_cut + signal_cut, "TrainingTesting");
     factory.AddTree (input_tree, "Background", 1.0, base_cut + background_cut, "TrainingTesting");
@@ -205,10 +291,10 @@ def classify (**kwargs):
     layoutString = "Layout=TANH|100,TANH|50,LINEAR"
 
     trainingConfig = [
-        "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
-        , "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=20,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
+        "LearningRate=1e-2,Momentum=0.0,Repetitions=1,ConvergenceSteps=70,BatchSize=20,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"
+        , "LearningRate=1e-3,Momentum=0.0,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.01,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"
 #        , "LearningRate=1e-4,Momentum=0.0,Repetitions=1,ConvergenceSteps=2,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"
-        , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=10,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"
+        , "LearningRate=1e-5,Momentum=0.0,Repetitions=1,ConvergenceSteps=10,BatchSize=70,TestRepetitions=7,WeightDecay=0.1,Regularization=L2,Multithreading=True"
     ]
 
     trainingStrategy = "TrainingStrategy="
@@ -217,7 +303,7 @@ def classify (**kwargs):
             trainingStrategy += "|"
         trainingStrategy += conf
             
-    nnOptions = "!H:!V:ErrorStrategy=CROSSENTROPY:VarTransform=P+G:WeightInitialization=XAVIERUNIFORM"
+    nnOptions = "!H:!V:ErrorStrategy=CROSSENTROPY:VarTransform=G:WeightInitialization=XAVIERUNIFORM"
     nnOptions += ":"+layoutString + ":" + trainingStrategy
         
     methodName = "NNPG"+method_suffix
@@ -225,7 +311,7 @@ def classify (**kwargs):
 
     factory.TrainAllMethods()
     factory.TestAllMethods()
-    factory.EvaluateAllMethods()
+    #factory.EvaluateAllMethods()
 
     outputFile.Close()
 
@@ -264,6 +350,7 @@ def predict (**kwargs):
     filenames = kwargs.setdefault ("filenames", ["training","test","check_correlation","check_agreement"])
     variableOrder = kwargs.setdefault ("variable_order", ["id", "signal", "mass", "min_ANNmuon", "prediction"])
     prediction_name = kwargs.setdefault ("prediction_name", "prediction")
+    regression_targets = kwargs.setdefault ("regression_targets", None)
 
     execute_tests = kwargs.setdefault ("execute_tests",False)
 
@@ -326,6 +413,241 @@ def predict (**kwargs):
 
     reader.BookMVA (method_name, weightfile_name)
 
+    regTag = "_r_"
+    denom = "_regression_"
+    doRegression = True
+    if regression_targets == None:
+        doRegression = False
+        regTag = "_p_"
+        denom = "_prediction_"
+
+
+        
+    returnValues = {}
+    for currentFileName in filenames:
+        print "predict for  file : ",currentFileName
+        doCSV = "csv" in createForFiles[currentFileName]
+        doROOT = ("root" in createForFiles[currentFileName]) or doCSV
+
+
+        
+        if not doCSV and not doROOT:
+            continue
+        
+
+        fileName = default_path + currentFileName + ".root"
+        
+        # define variables
+        ID = array.array ('i',[0])
+        outputVariables = variablesForFiles[currentFileName]
+
+        prediction = array.array ('f',[0])
+        weight = array.array ('f',[0])
+        min_ANNmuon = array.array ('f',[0])
+        mass = array.array ('f',[0])
+        signal = array.array ('f',[0])
+       
+        # --- open input file
+        f = rootpy.io.File.Open (fileName)
+	tree = f.Get("data");
+
+
+        for v in outputVariables:
+            if v != "prediction":
+                cmd = setbranch (v)
+                #print cmd
+                exec (cmd)
+
+      
+        # create tree formulas
+        formulas = []
+        for idx,var in enumerate (input_variables):
+            if type(var) == str:
+                fml = None
+                tree.SetBranchAddress (var, variables[varIndex[var]])
+            else:
+                fml = ROOT.TTreeFormula (var[0], var[1], tree)
+            formulas.append (fml)
+
+            
+        # ---- make ROOT file if requested
+        outTree = None
+        if doROOT:
+            rootFileName = currentFileName + denom + method_name + ".root"
+            outRootFile = rootpy.io.File (rootFileName, "RECREATE")
+            outTree = Tree ("data","data")
+
+            for var in variableOrder:
+                if var in variablesForFiles[currentFileName]:
+                    altName = ""
+                    if var in regression_targets:
+                        altName = "t_"+var
+                    if var == "prediction":
+                        altName = prediction_name
+                        if doRegression:
+                            altName = regression_targets[0]
+                    cmd = branch (var, altName)
+                    exec (cmd)
+            
+            curr = currentFileName + denom + "root"
+            returnValues[curr] = rootFileName
+
+        #
+        tmstmp = time.time ()
+	for ievt in xrange (tree.GetEntries()):
+	    tree.GetEntry (ievt)
+	    # predict
+            for idx,fml in enumerate (formulas):
+                if fml != None:
+                    variables[idx][0] = fml.EvalInstance ()
+
+            # this will create a harmless warning
+            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213
+            if doRegression:
+                targets = reader.EvaluateRegression (method_name)
+                prediction[0] = targets[0]
+            else:
+                prediction[0] = reader.EvaluateMVA (method_name)
+                prediction[0] = 1.0/(1.0+exp (-prediction[0]))
+                #print prediction
+            outTree.fill ()
+
+            if ievt%10000 == 0:
+                tmp = tmstmp
+                tmstmp = time.time ()
+                print ievt,"   t = %f"%(tmstmp-tmp)
+
+        if doROOT:
+            outRootFile.Write ()
+
+
+            
+        # ---- prepare csv file
+        #csvfile = None
+        writer = None
+        if doCSV:
+            print "prepare csv"
+            csvFileName = currentFileName + denom + method_name + ".csv"
+
+            csvFile = open (csvFileName, 'w')
+            outTree.csv (",", stream=csvFile);
+            csvFile.close ()
+
+            curr = currentFileName + denom + "csv"
+            returnValues[curr] = csvFileName
+
+
+            
+
+        f.Close ()
+
+        #if doCSV:
+        #    csvfile.close ()
+            
+        if doROOT:
+            outRootFile.Close ()
+    if execute_tests:
+        cmd = "os.system ('python tests.py %s %s %s')"%(returnValues["check_agreement_prediction_csv"],returnValues["check_correlation_prediction_csv"],returnValues["training_prediction_csv"])
+        exec (cmd)
+        
+    return returnValues
+
+            
+
+
+
+
+
+
+def manufacturePredictor (**kwargs):
+    filenames = kwargs.setdefault ("filenames", ["training","test","check_correlation","check_agreement"])
+    variableOrder = kwargs.setdefault ("variable_order", ["id", "signal", "mass", "min_ANNmuon", "prediction"])
+    prediction_name = kwargs.setdefault ("prediction_name", "prediction")
+    prediction_formula = kwargs.setdefault ("prediction_formula", "prediction_formula")
+    prediction_formula = ROOT.TFormula ('pFml',prediction_formula)
+    #print prediction_formula
+    #return
+    
+    execute_tests = kwargs.setdefault ("execute_tests",False)
+
+    
+    # default values
+    variablesForFiles = {
+        "training" : ["prediction","id","signal","mass","min_ANNmuon"],
+        "test" : ["prediction","id"],
+        "check_agreement" : ["signal","weight","prediction"],
+        "check_correlation" : ["mass","prediction"]
+        }
+    variablesForFiles = kwargs.setdefault ("variablesForFiles", variablesForFiles)
+    createForFiles = {
+        "training" : ["csv"],
+        "test" : ["csv"],
+        "check_correlation" : ["csv"],
+        "check_agreement" : ["csv"]
+        }
+    input_variables = kwargs.setdefault ("variables", None)
+    input_spectators = kwargs.setdefault ("spectators", [])
+    
+    method_names = kwargs.setdefault ("method_names", None)
+    weightfile_names = kwargs.setdefault ("weightfile_names", None)
+    
+    
+    print "------------ prediction ---------------"
+    for key,value in kwargs.iteritems ():
+        print key," = ",value
+
+
+    ROOT.TMVA.Tools.Instance ()
+
+    readers = []
+    for weightfile in weightfile_names:
+        readers.append (ROOT.TMVA.Reader( "!Color:!Silent" ))
+
+    variables = []
+    varIndex = {}
+    spectators = []
+    specIndex = {}
+    for idxReader, reader in enumerate (readers):
+        for idx, var_name in enumerate (input_variables):
+            tmpVarName = ""
+            if type(var_name) == str:
+                tmpVarName = var_name
+            else:
+                varcomposed = var_name[0] + ":=" + var_name[1]
+                tmpVarName = varcomposed
+
+            tmp = None
+            if tmpVarName in varIndex:
+                tmp = variables[varIndex[tmpVarName]]
+            else:
+                tmp = array.array('f',[0])
+                variables.append (tmp)
+                varIndex[tmpVarName] = len(variables)-1
+            reader.AddVariable (tmpVarName, tmp)
+
+        
+        for idx, var_name in enumerate (input_spectators):
+            tmpVarName = ""
+            if type(var_name) == str:
+                tmpVarName = var_name
+            else:
+                varcomposed = var_name[0] + ":=" + var_name[1]
+                tmpVarName = varcomposed
+
+            tmp = None
+            if tmpVarName in varIndex:
+                tmp = variables[varIndex[tmpVarName]]
+            else:
+                tmp = array.array('f',[0])
+                variables.append (tmp)
+                varIndex[tmpVarName] = len(variables)-1
+            reader.AddSpectator (tmpVarName, tmp)
+
+            
+        print "reader: book mva: ",method_names[idxReader],"  from weightfile ",weightfile_names[idxReader]
+        reader.BookMVA (method_names[idxReader], weightfile_names[idxReader])
+
+        
     returnValues = {}
     for currentFileName in filenames:
         print "predict for  file : ",currentFileName
@@ -359,12 +681,6 @@ def predict (**kwargs):
                 exec (cmd)
 
       
-	# variables for prediction
-        #baseVariables = [array.array ('f',[0]) for i in xrange (len (base_variables))]
-	# for idx, currentVariableName in enumerate (base_variables):
-	#     tree.SetBranchAddress (currentVariableName, baseVariables[idx]);
-
-
         # create tree formulas
         formulas = []
         for idx,var in enumerate (input_variables):
@@ -378,8 +694,12 @@ def predict (**kwargs):
             
         # ---- make ROOT file if requested
         outTree = None
+        manu_name = ""
+        for m in method_names:
+            manu_name += m
         if doROOT:
-            rootFileName = currentFileName + "_p_" + method_name + ".root"
+            rootFileName = currentFileName + "_p_" + manu_name + ".root"
+            print "prepare root file : ",rootFileName
             outRootFile = rootpy.io.File (rootFileName, "RECREATE")
             outTree = Tree ("data","data")
 
@@ -388,10 +708,12 @@ def predict (**kwargs):
                     altName = ""
                     if var == "prediction":
                         altName = prediction_name
+                        if doRegression:
+                            altName = regression_targets[0]
                     cmd = branch (var, altName)
                     exec (cmd)
             
-            curr = currentFileName + "_prediction_root"
+            curr = currentFileName + denom + "root"
             returnValues[curr] = rootFileName
 
         #
@@ -404,9 +726,20 @@ def predict (**kwargs):
                     variables[idx][0] = fml.EvalInstance ()
 
             # this will create a harmless warning
-            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213                
-	    prediction[0] = reader.EvaluateMVA (method_name)
-            prediction[0] = max (0.0, min (1.0, prediction[0]))
+            # https://root.cern.ch/phpBB3/viewtopic.php?f=14&t=14213
+
+            prediction_bases = [] #array.array ('f',[0])
+            for idx, meth in enumerate (method_names):
+                p = readers[idx].EvaluateMVA (meth)
+                prediction_bases.append (p)
+                #print "idx ",idx," meth ",meth,"  p ",p,"   pred_bases ",prediction_bases
+            #for idxP, p in enumerate (prediction_bases):
+            #    prediction_formula.SetParameter (idxP, p)
+            prediction[0] = prediction_formula.EvalPar (numpy.array(prediction_bases))
+            prediction[0] = 1.0/(1.0+exp (-prediction[0]))
+            #print prediction_bases,"  ",prediction
+            
+                
             #print prediction
             outTree.fill ()
 
@@ -422,8 +755,8 @@ def predict (**kwargs):
         #csvfile = None
         writer = None
         if doCSV:
-            print "prepare csv"
-            csvFileName = currentFileName + "_p_" + method_name + ".csv"
+            csvFileName = currentFileName + "_p_" + manu_name + ".csv"
+            print "prepare csv : ",csvFileName
 
             csvFile = open (csvFileName, 'w')
             outTree.csv (",", stream=csvFile);
@@ -444,12 +777,16 @@ def predict (**kwargs):
             outRootFile.Close ()
     if execute_tests:
         cmd = "os.system ('python tests.py %s %s %s')"%(returnValues["check_agreement_prediction_csv"],returnValues["check_correlation_prediction_csv"],returnValues["training_prediction_csv"])
+        print cmd
         exec (cmd)
         
     return returnValues
 
-            
-    
+
+
+
+
+
 
 
     
@@ -475,36 +812,75 @@ def testPrediction ():
 
 
 def competition ():
-    tree = load (filenames=[training_filename])
-    retClassify = classify (filename="step1.root", variables=usedVariables, input_tree=tree, method_suffix="1st")
+    doRegression = True
+    doClassification = False
+    if doRegression:
+        tree = load (filenames=[training_filename])
+        reg = regression (filename="reg.root", variables=usedVariables, input_tree=tree, method_suffix="reg", targets = ["mass"], cut = "signal==0")
 
-    method_name = retClassify["method_name"]
-    weightfile_name = retClassify["weightfile_name"]
+        method_name = reg["method_name"]
+        weightfile_name = reg["weightfile_name"]
+        #method_name = "NNPGreg"
+        #weightfile_name = "weights/Flavor_NNPGreg.weights.xml"
+        
+        regApply = predict (regression_targets=["mass"], filenames=["training","check_agreement","check_correlation","test"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=False, variables=usedVariables)
+        
+
+    if doClassification:
+        tree = load (filenames=[training_filename])
+        retClassify = classify (filename="step1.root", variables=usedVariables, input_tree=tree, method_suffix="1st")
+
+        method_name = retClassify["method_name"]
+        weightfile_name = retClassify["weightfile_name"]
     
-#    retPredict = predict (filenames=["training","check_agreement","check_correlation"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
-    retPredict = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
+        #    retPredict = predict (filenames=["training","check_agreement","check_correlation"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
+        retPredict = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name, weightfile_name=weightfile_name, execute_tests=True, variables=usedVariables)
 
-    twostage = True
-    if twostage:
-        training_prediction = retPredict["training_prediction_root"]
+        twostage = False
+        if twostage:
+            training_prediction = retPredict["training_prediction_root"]
 
-        tree2nd = load (filenames=[training_filename, training_prediction])
-        retClassify2nd = classify (filename="step2.root", variables=usedVariables, input_tree=tree2nd, signal_cut="signal==0 && prediction > 0.6", background_cut="signal==0 && prediction > 0.6", method_suffix="2nd")
+            tree2nd = load (filenames=[training_filename, training_prediction])
+            retClassify2nd = classify (filename="step2.root", variables=usedVariables, input_tree=tree2nd, signal_cut="signal==0 && prediction < 0.8 && prediction > 0.4", background_cut="signal==0 && prediction < 0.4", method_suffix="2nd")
 
-        method_name2nd = retClassify2nd["method_name"]
-        weightfile_name2nd = retClassify2nd["weightfile_name"]
+            method_name2nd = retClassify2nd["method_name"]
+            weightfile_name2nd = retClassify2nd["weightfile_name"]
+        
+    
+            retPredict2nd = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name2nd, weightfile_name=weightfile_name2nd, execute_tests=False, variables=usedVariables, prediction_name="sim")
+            #        retPredict2nd = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name2nd, weightfile_name=weightfile_name2nd, execute_tests=False, variables=usedVariables)
+
+
+
+def manuPred (fml = "x[1]"):
+    manufacturePredictor (prediction_formula=fml, method_names=["NNPG1st","NNPG2nd"], weightfile_names=["weights/Flavor_NNPG1st.weights.xml","weights/Flavor_NNPG2nd.weights.xml"], variables=usedVariables, execute_tests=True, filenames=["training","check_agreement","check_correlation"])
+    
+
+
+def loadTraining (method_name):        
+    return load (filenames=[default_path+"training.root", "training_p_%s.root"%method_name])
+
+def applyFormulaTraining (tree, formula, sig_cut = "(signal==0)*(prediction>0.6)", bkg_cut = "(signal==1)*(prediction>0.6)*0.11"):
+    tree.SetLineColor (ROOT.kBlue)
+    tree.Draw (formula, bkg_cut,"")
+    tree.SetLineColor (ROOT.kRed)
+    tree.Draw (formula, sig_cut,"same")
+    tree.SetLineColor (ROOT.kBlue)
+
     
     
-        retPredict2nd = predict (filenames=["training","check_agreement","check_correlation","test"], method_name=method_name2nd, weightfile_name=weightfile_name2nd, execute_tests=False, variables=usedVariables, prediction_name="sim")
-
-
-
-
 def loadAgreement (method_name):        
     return load (filenames=[default_path+"check_agreement.root", "check_agreement_p_%s.root"%method_name])
 
 def loadAgreementSim (method_name, method_name2):        
     return load (filenames=[default_path+"check_agreement.root", "check_agreement_p_%s.root"%method_name, "check_agreement_p_%s.root"%method_name2])
+
+def applyFormula (tree, formula, scale = 0.3):
+    tree.SetLineColor (ROOT.kBlue)
+    tree.Draw (formula, "(signal==0)*weight*%f"%scale,"")
+    tree.SetLineColor (ROOT.kRed)
+    tree.Draw (formula, "(signal==1)*weight","same")
+    tree.SetLineColor (ROOT.kBlue)
 
 
 def showAgreement (method_name):
@@ -518,6 +894,7 @@ if __name__ == "__main__":
     # stuff only to run when not called via 'import' here
     competition ()
     #testPrediction ()
+    #manuPred ()
     
 
 

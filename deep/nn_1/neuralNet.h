@@ -126,11 +126,29 @@ enum class EnumRegularization
 
 enum class ModeOutputValues
 {
-    DIRECT = 'd',
-    SIGMOID = 's',
-    SOFTMAX = 'S'
+    DIRECT = 0x01,
+    SIGMOID = 0x02,
+    SOFTMAX = 0x04,
+    BATCHNORMALIZATION = 0x08
 };
 
+
+inline ModeOutputValues operator| (ModeOutputValues lhs, ModeOutputValues rhs)
+{
+    return (ModeOutputValues)(static_cast<std::underlying_type_t<ModeOutputValues>>(lhs) | static_cast<std::underlying_type_t<ModeOutputValues>>(rhs));
+}
+
+inline ModeOutputValues operator|= (ModeOutputValues& lhs, ModeOutputValues rhs)
+{
+    lhs = (ModeOutputValues)(static_cast<std::underlying_type_t<ModeOutputValues>>(lhs) | static_cast<std::underlying_type_t<ModeOutputValues>>(rhs));
+    return lhs;
+}
+
+template <typename T>
+    bool isFlagSet (T flag, T value)
+{
+    return (value & flag) != 0;
+}
 
 
 
@@ -564,6 +582,8 @@ private:
     bool m_hasWeights;
     bool m_hasGradients;
 
+    
+    
     ModeOutputValues m_eModeOutput;
 
     friend std::ostream& operator<< (std::ostream& ostr, LayerData const& data);

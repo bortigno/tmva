@@ -660,6 +660,13 @@ void forward_training (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData)
                       currLayerData.weightsBegin (), 
                       currLayerData.valuesBegin (), currLayerData.valuesEnd ());
     }
+
+//    if (isFlagSet (ModeOutputValues::BATCHNORMALIZATION))
+    {
+        // http://docs.chainer.org/en/stable/_modules/chainer/functions/normalization/batch_normalization.html
+        
+    }
+    
     applyFunctions (currLayerData.valuesBegin (), currLayerData.valuesEnd (), currLayerData.activationFunction (), 
 		    currLayerData.inverseActivationFunction (), currLayerData.valueGradientsBegin ());
 }
@@ -1053,6 +1060,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         double Net::operator() (PassThrough& settingsAndBatch, const Weights& weights) const
     {
 	std::vector<double> nothing; // empty gradients; no backpropagation is done, just forward
+        assert (numWeights () == weights.size ());
 	double error = forward_backward(m_layers, settingsAndBatch, std::begin (weights), std::begin (nothing), std::end (nothing), 100, nothing, false);
         return error;
     }
@@ -1061,6 +1069,7 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         double Net::operator() (PassThrough& settingsAndBatch, const Weights& weights, ModeOutput /*eFetch*/, OutContainer& outputContainer) const
     {
 	std::vector<double> nothing; // empty gradients; no backpropagation is done, just forward
+        assert (numWeights () == weights.size ());
 	double error = forward_backward(m_layers, settingsAndBatch, std::begin (weights), std::begin (nothing), std::end (nothing), 1000, outputContainer, true);
         return error;
     }
@@ -1070,6 +1079,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
         double Net::operator() (PassThrough& settingsAndBatch, const Weights& weights, Gradients& gradients) const
     {
         std::vector<double> nothing;
+        assert (numWeights () == weights.size ());
+        assert (weights.size () == gradients.size ());
 	double error = forward_backward(m_layers, settingsAndBatch, std::begin (weights), std::begin (gradients), std::end (gradients), 0, nothing, false);
         return error;
     }
@@ -1077,6 +1088,8 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
     template <typename Weights, typename Gradients, typename PassThrough, typename OutContainer>
         double Net::operator() (PassThrough& settingsAndBatch, const Weights& weights, Gradients& gradients, ModeOutput eFetch, OutContainer& outputContainer) const
     {
+        assert (numWeights () == weights.size ());
+        assert (weights.size () == gradients.size ());
 	double error = forward_backward(m_layers, settingsAndBatch, std::begin (weights), std::begin (gradients), std::end (gradients), 0, outputContainer, true);
         return error;
     }
@@ -1109,35 +1122,67 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
 	double sumError = 0.0;
 	double sumWeights = 0.0;	// -------------
 
-        // ----------- create layer data -----------------
+        // ----------- create layer data -------------------------------------------------------
         assert (_layers.back ().numNodes () == outputSize ());
         size_t totalNumWeights = 0;
-        std::vector<LayerData> layerData;
-        layerData.reserve (_layers.size ()+1);
+        std::vector<std::vector<LayerData>> layerPatternData;
+        layerPatternData.reserve (_layers.size ()+1);
         ItWeight itWeight = itWeightBegin;
         ItGradient itGradient = itGradientBegin;
         size_t numNodesPrev = inputSize ();
-        layerData.push_back (LayerData (numNodesPrev));
-        if (usesDropOut)
-        {
-            layerData.back ().setDropOut (itDropOut);
-            itDropOut += _layers.back ().numNodes ();
-        }
-        for (auto& layer: _layers)
-        {
-            if (itGradientBegin == itGradientEnd)
-                layerData.push_back (LayerData (layer.numNodes (), itWeight, 
-                                                layer.activationFunction (),
-                                                layer.modeOutputValues ()));
-            else
-                layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
-                                                layer.activationFunction (),
-                                                layer.inverseActivationFunction (),
-                                                layer.modeOutputValues ()));
+        typename Pattern::const_iterator itInputBegin;
+        typename Pattern::const_iterator itInputEnd;
 
+        // --------------------- prepare layer data for input layer ----------------------------
+        layerPatternData.push_back (std::vector<LayerData>());
+	for (const Pattern& _pattern : batch)
+        {
+            std::vector<LayerData>& layerData = layerPatternData.back ();
+            layerData.push_back (LayerData (numNodesPrev));
+
+            itInputBegin = _pattern.beginInput ();
+            itInputEnd = _pattern.endInput ();
+            layerData.back ().setInput (itInputBegin, itInputEnd);
+            
             if (usesDropOut)
             {
                 layerData.back ().setDropOut (itDropOut);
+            }
+        }
+        if (usesDropOut)
+        {
+            itDropOut += _layers.back ().numNodes ();
+        }
+
+        // ---------------- prepare subsequent layers ---------------------------------------------
+        // for each of the layers
+        for (auto& layer: _layers)
+        {
+            layerPatternData.push_back (std::vector<LayerData>());
+            // for each pattern, prepare a layerData
+            for (const Pattern& _pattern : batch)
+            {
+                std::vector<LayerData>& layerData = layerPatternData.back ();
+                //layerData.push_back (LayerData (numNodesPrev));
+
+                if (itGradientBegin == itGradientEnd)
+                    layerData.push_back (LayerData (layer.numNodes (), itWeight, 
+                                                    layer.activationFunction (),
+                                                    layer.modeOutputValues ()));
+                else
+                    layerData.push_back (LayerData (layer.numNodes (), itWeight, itGradient, 
+                                                    layer.activationFunction (),
+                                                    layer.inverseActivationFunction (),
+                                                    layer.modeOutputValues ()));
+
+                if (usesDropOut)
+                {
+                    layerData.back ().setDropOut (itDropOut);
+                }
+            }
+
+            if (usesDropOut)
+            {
                 itDropOut += layer.numNodes ();
             }
             size_t _numWeights = layer.numWeights (numNodesPrev);
@@ -1145,94 +1190,113 @@ void update (const LAYERDATA& prevLayerData, LAYERDATA& currLayerData, double fa
             itWeight += _numWeights;
             itGradient += _numWeights;
             numNodesPrev = layer.numNodes ();
-//                std::cout << layerData.back () << std::endl;
         }
 	assert (totalNumWeights > 0);
 
 
 
-        // ---------------------------------- loop over pattern -------------------------------------------------------
-        typename Pattern::const_iterator itInputBegin;
-        typename Pattern::const_iterator itInputEnd;
-	for (const Pattern& _pattern : batch)
+        // ---------------------------------- loop over layers and pattern -------------------------------------------------------
+	for (size_t idxLayer = 0, idxLayerEnd = layerPatternData.size (); idxLayer < idxLayerEnd-1; ++idxLayer) //std::vector<LayerData>& layerPattern : layerPatternData)
 	{
-            bool isFirst = true;
-            for (auto& _layerData: layerData)
-            {
-                _layerData.clear ();
-                if (isFirst)
-                {
-                    itInputBegin = _pattern.beginInput ();
-                    itInputEnd = _pattern.endInput ();
-                    _layerData.setInput (itInputBegin, itInputEnd);
-                    isFirst = false;
-                }
-            }
+	    bool doTraining = idxLayer >= trainFromLayer;
+
+            // get layer-pattern data for this and the corresponding one from the next layer
+            std::vector<LayerData>& prevLayerPatternData = layerPatternData.at (idxLayer);
+            std::vector<LayerData>& currLayerPatternData = layerPatternData.at (idxLayer+1);
+
+            size_t numPattern = prevLayerPatternData.size ();
             
-	    // --------- forward -------------
-//            std::cout << "forward" << std::endl;
-	    bool doTraining (true);
-	    size_t idxLayer = 0, idxLayerEnd = _layers.size ();
-	    for (; idxLayer < idxLayerEnd; ++idxLayer)
-	    {
-		LayerData& prevLayerData = layerData.at (idxLayer);
-		LayerData& currLayerData = layerData.at (idxLayer+1);
-		
-		doTraining = idxLayer >= trainFromLayer;
+            // ---------------- loop over layerDatas of pattern ----------------------------
+            for (size_t idxPattern = 0; idxPattern < numPattern; ++idxPattern)
+            {
+		const LayerData& prevLayerData = prevLayerPatternData.at (idxPattern);
+		LayerData& currLayerData = currLayerPatternData.at (idxPattern);
+                
+            
+                // --------- forward -------------
 		if (doTraining)
 		    forward_training (prevLayerData, currLayerData);
 		else
 		    forward (prevLayerData, currLayerData);
-	    }
-
-            
-            // ------------- fetch output ------------------
-            if (fetchOutput)
-            {
-		if (layerData.back ().outputMode () == ModeOutputValues::DIRECT)
-		    outputContainer.insert (outputContainer.end (), layerData.back ().valuesBegin (), layerData.back ().valuesEnd ());
-		else
-		    outputContainer = layerData.back ().probabilities ();
             }
+        }
+            
+        // ------------- fetch output ------------------
+        if (fetchOutput)
+        {
+            for (LayerData& lastLayerData : layerPatternData.back ())
+            {
+                if (lastLayerData.outputMode () == ModeOutputValues::DIRECT)
+                    outputContainer.insert (outputContainer.end (), lastLayerData.valuesBegin (), lastLayerData.valuesEnd ());
+                else
+                    outputContainer = lastLayerData.probabilities ();
+            }
+        }
 
 
-	    // ------------- error computation -------------
-	    // compute E and the deltas of the computed output and the true output 
-	    itWeight = itWeightBegin;
-	    double error = errorFunction (layerData.back (), _pattern.output (), 
-					  itWeight, itWeight + totalNumWeights, 
-					  _pattern.weight (), settings.factorWeightDecay (),
+        // ------------- error computation -------------
+        std::vector<LayerData>& lastLayerData = layerPatternData.back ();
+
+        bool doTraining = layerPatternData.size () > trainFromLayer;
+
+        typename std::vector<LayerData>::iterator itLayerData    = lastLayerData.begin ();
+        typename std::vector<LayerData>::iterator itLayerDataEnd = lastLayerData.end ();
+
+        typename std::vector<Pattern>::const_iterator itPattern = batch.begin ();
+        typename std::vector<Pattern>::const_iterator itPatternEnd = batch.end ();
+
+        size_t idxPattern = 0;
+        for ( ; itPattern != itPatternEnd; ++itPattern, ++itLayerData)
+        {
+            ++idxPattern;
+                
+            // compute E and the deltas of the computed output and the true output
+            LayerData& layerData = (*itLayerData);
+            const Pattern& _pattern = (*itPattern);
+            itWeight = itWeightBegin;
+            double error = errorFunction (layerData, _pattern.output (), 
+                                          itWeight, itWeight + totalNumWeights, 
+                                          _pattern.weight (), settings.factorWeightDecay (),
                                           settings.regularization ());
-	    sumWeights += fabs (_pattern.weight ());
-	    sumError += error;
+            sumWeights += fabs (_pattern.weight ());
+            sumError += error;
+        }
+            
+        if (doTraining) // training
+        {
+            // ------------- backpropagation -------------
+            size_t idxLayer = layerPatternData.size ();
+            for (auto itLayerPatternData = layerPatternData.rbegin (), itLayerPatternDataBegin = layerPatternData.rend ();
+                 itLayerPatternData != itLayerPatternDataBegin; ++itLayerPatternData)
+            {
+                --idxLayer;
+                if (idxLayer <= trainFromLayer) // no training
+                    break;
 
-	    if (!doTraining) // no training
-		continue;
+                std::vector<LayerData>& currLayerDataColl = *(itLayerPatternData);
+                std::vector<LayerData>& prevLayerDataColl = *(itLayerPatternData+1);
+                
+                idxPattern = 0;
+                for (typename std::vector<LayerData>::iterator itCurrLayerData = begin (currLayerDataColl), itCurrLayerDataEnd = end (currLayerDataColl),
+                     itPrevLayerData = begin (prevLayerDataColl), itPrevLayerDataEnd = end (prevLayerDataColl);
+                     itCurrLayerData != itCurrLayerDataEnd; ++itCurrLayerData, ++itPrevLayerData, ++idxPattern)
+                {
+                    LayerData& currLayerData = (*itCurrLayerData);
+                    LayerData& prevLayerData = *(itPrevLayerData);
 
-	    // ------------- backpropagation -------------
-	    idxLayer = layerData.size ();
-	    for (auto itLayer = end (_layers), itLayerBegin = begin (_layers); itLayer != itLayerBegin; --itLayer)
-	    {
-		--idxLayer;
-		doTraining = idxLayer >= trainFromLayer;
-		if (!doTraining) // no training
-		    break;
+                    backward (prevLayerData, currLayerData);
 
-		LayerData& currLayerData = layerData.at (idxLayer);
-		LayerData& prevLayerData = layerData.at (idxLayer-1);
-
-		backward (prevLayerData, currLayerData);
-
-                // the factorWeightDecay has to be scaled by 1/n where n is the number of weights (synapses)
-                // because L1 and L2 regularization
-                //
-                //  http://neuralnetworksanddeeplearning.com/chap3.html#overfitting_and_regularization
-                //
-                // L1 : -factorWeightDecay*sgn(w)/numWeights
-                // L2 : -factorWeightDecay/numWeights
-		update (prevLayerData, currLayerData, settings.factorWeightDecay ()/totalNumWeights, settings.regularization ());
-	    }
-	}
+                    // the factorWeightDecay has to be scaled by 1/n where n is the number of weights (synapses)
+                    // because L1 and L2 regularization
+                    //
+                    //  http://neuralnetworksanddeeplearning.com/chap3.html#overfitting_and_regularization
+                    //
+                    // L1 : -factorWeightDecay*sgn(w)/numWeights
+                    // L2 : -factorWeightDecay/numWeights
+                    update (prevLayerData, currLayerData, settings.factorWeightDecay ()/totalNumWeights, settings.regularization ());
+                }
+            }
+        }
         
         double batchSize = std::distance (std::begin (batch), std::end (batch));
         for (auto it = itGradientBegin; it != itGradientEnd; ++it)
