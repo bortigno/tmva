@@ -448,11 +448,11 @@ int TMVAKaggleHiggs ( TString myMethodList = "" )
 //       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|30,SOFTSIGN|20,SOFTSIGN|10,LINEAR");
 //       TString layoutString ("Layout=TANH|50,TANH|30,TANH|20,TANH|10,LINEAR");
 //       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|20,LINEAR");
-       TString layoutString ("Layout=TANH|100,TANH|50,TANH|20,LINEAR");
+       TString layoutString ("Layout=TANH|150,TANH|30,LINEAR");
 
        std::vector<TString> strategy;
-       strategy.push_back (TString ("LearningRate=1e-3,Momentum=0.9,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"));
-       strategy.push_back (TString ("LearningRate=1e-4,Momentum=0.5,Repetitions=1,ConvergenceSteps=50,BatchSize=40,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"));
+       strategy.push_back (TString ("LearningRate=1e-3,Momentum=0.9,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"));
+       strategy.push_back (TString ("LearningRate=1e-4,Momentum=0.5,Repetitions=1,ConvergenceSteps=50,BatchSize=40,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.1+0.1+0.1+0.1,DropRepetitions=1"));
        strategy.push_back (TString ("LearningRate=1e-5,Momentum=0.3,Repetitions=1,ConvergenceSteps=50,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"));
        strategy.push_back (TString  ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
 //       strategy.push_back (TString ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=30,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
