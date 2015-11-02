@@ -209,14 +209,15 @@ int TMVAKaggleHiggs ( TString myMethodList = "" )
    // factory->AddVariable( "var3",                "Variable 3", "units", 'F' );
    // factory->AddVariable( "var4",                "Variable 4", "units", 'F' );
 
-   TString limit ("-900");
+   TString limit ("-900.0");
+   TString replacementValue ("0.0");
    std::vector<std::string> vars = {"DER_mass_MMC","DER_mass_transverse_met_lep","DER_mass_vis","DER_pt_h","DER_deltaeta_jet_jet","DER_mass_jet_jet","DER_prodeta_jet_jet","DER_deltar_tau_lep","DER_pt_tot","DER_sum_pt","DER_pt_ratio_lep_tau","DER_met_phi_centrality","DER_lep_eta_centrality","PRI_tau_pt","PRI_tau_eta","PRI_tau_phi","PRI_lep_pt","PRI_lep_eta","PRI_lep_phi","PRI_met","PRI_met_phi","PRI_met_sumet","PRI_jet_num","PRI_jet_leading_pt","PRI_jet_leading_eta","PRI_jet_leading_phi","PRI_jet_subleading_pt","PRI_jet_subleading_eta","PRI_jet_subleading_phi","PRI_jet_all_pt"};
    
    for (std::vector<std::string>::iterator it = vars.begin (), itEnd = vars.end (); it != itEnd; ++it)
    {
        std::string s = *it;
        TString current;
-       current.Form ("%s:=(%s<%s?0.0:%s)",s.c_str (), s.c_str (), limit.Data (), s.c_str ());
+       current.Form ("%s:=(%s<%s?%s:%s)",s.c_str (), s.c_str (), limit.Data (), replacementValue.Data (), s.c_str ());
        factory->AddVariable (current, 'F');
    }
 
@@ -447,16 +448,22 @@ int TMVAKaggleHiggs ( TString myMethodList = "" )
 //       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|30,SOFTSIGN|20,SOFTSIGN|10,LINEAR");
 //       TString layoutString ("Layout=TANH|50,TANH|30,TANH|20,TANH|10,LINEAR");
 //       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|20,LINEAR");
-       TString layoutString ("Layout=SOFTSIGN|100,SOFTSIGN|50,SOFTSIGN|10,LINEAR");
+       TString layoutString ("Layout=TANH|100,TANH|50,TANH|20,LINEAR");
 
-       TString training0 ("LearningRate=1e-1,Momentum=0.9,Repetitions=1,ConvergenceSteps=70,BatchSize=30,TestRepetitions=15,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True");
-       TString training1 ("LearningRate=1e-2,Momentum=0.5,Repetitions=1,ConvergenceSteps=50,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1");
-       TString training2 ("LearningRate=1e-2,Momentum=0.3,Repetitions=1,ConvergenceSteps=50,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True");
-       TString training3 ("LearningRate=1e-3,Momentum=0.1,Repetitions=1,ConvergenceSteps=50,BatchSize=70,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True");
+       std::vector<TString> strategy;
+       strategy.push_back (TString ("LearningRate=1e-3,Momentum=0.9,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.0+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"));
+       strategy.push_back (TString ("LearningRate=1e-4,Momentum=0.5,Repetitions=1,ConvergenceSteps=50,BatchSize=40,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.0+0.1+0.1+0.1,DropRepetitions=1"));
+       strategy.push_back (TString ("LearningRate=1e-5,Momentum=0.3,Repetitions=1,ConvergenceSteps=50,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"));
+       strategy.push_back (TString  ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
+//       strategy.push_back (TString ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=30,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
 
        TString trainingStrategyString ("TrainingStrategy=");
-       trainingStrategyString += training0 + "|" + training1 + "|" + training2 + "|" + training3;
-
+       for (std::vector<TString>::const_iterator it = strategy.begin (), itEnd = strategy.end (); it != itEnd; ++it)
+       {
+           if (it != strategy.begin ())
+               trainingStrategyString += "|";
+           trainingStrategyString += *it;
+       }
       
 //       TString nnOptions ("!H:V:VarTransform=Normalize:ErrorStrategy=CROSSENTROPY");
        TString nnOptions ("!H:V:ErrorStrategy=CROSSENTROPY:VarTransform=G:WeightInitialization=XAVIERUNIFORM");
