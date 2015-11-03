@@ -194,7 +194,7 @@ int TMVAKaggleHiggs ( TString myMethodList = "" )
    // All TMVA output can be suppressed by removing the "!" (not) in
    // front of the "Silent" argument in the option string
    TMVA::Factory *factory = new TMVA::Factory( "TMVAClassification", outputFile,
-                                               "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" );
+                                               "!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification" );
 
    // If you wish to modify default settings
    // (please check "src/Config.h" to see all available global options)
@@ -297,7 +297,9 @@ int TMVAKaggleHiggs ( TString myMethodList = "" )
    //    factory->PrepareTrainingAndTestTree( mycut,
    //                                         "NSigTrain=3000:NBkgTrain=3000:NSigTest=3000:NBkgTest=3000:SplitMode=Random:!V" );
    factory->PrepareTrainingAndTestTree( mycuts, mycutb,
-                                        "nTrain_Signal=10000:nTrain_Background=10000:nTest_Signal=10000:nTest_Background=10000:SplitMode=Random:NormMode=NumEvents:!V" );
+                                        "nTrain_Signal=0:nTrain_Background=0:nTest_Signal=0:nTest_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
+//   factory->PrepareTrainingAndTestTree( mycuts, mycutb,
+//                                        "nTrain_Signal=5000:nTrain_Background=5000:nTest_Signal=5000:nTest_Background=5000:SplitMode=Random:NormMode=NumEvents:!V" );
 
    // ---- Book MVA methods
    //
@@ -448,13 +450,13 @@ int TMVAKaggleHiggs ( TString myMethodList = "" )
 //       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|30,SOFTSIGN|20,SOFTSIGN|10,LINEAR");
 //       TString layoutString ("Layout=TANH|50,TANH|30,TANH|20,TANH|10,LINEAR");
 //       TString layoutString ("Layout=SOFTSIGN|50,SOFTSIGN|20,LINEAR");
-       TString layoutString ("Layout=TANH|150,TANH|30,LINEAR");
+       TString layoutString ("Layout=SOFTSIGN|70,SOFTSIGN|30,LINEAR");
 
        std::vector<TString> strategy;
-       strategy.push_back (TString ("LearningRate=1e-3,Momentum=0.9,Repetitions=1,ConvergenceSteps=30,BatchSize=30,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"));
-       strategy.push_back (TString ("LearningRate=1e-4,Momentum=0.5,Repetitions=1,ConvergenceSteps=50,BatchSize=40,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.1+0.1+0.1+0.1,DropRepetitions=1"));
-       strategy.push_back (TString ("LearningRate=1e-5,Momentum=0.3,Repetitions=1,ConvergenceSteps=50,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"));
-       strategy.push_back (TString  ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
+       strategy.push_back (TString ("LearningRate=1e-2,Momentum=0.9,Repetitions=1,ConvergenceSteps=70,BatchSize=120,TestRepetitions=7,WeightDecay=0.001,Regularization=NONE,DropConfig=0.5+0.5+0.5+0.5,DropRepetitions=1,Multithreading=True"));
+       strategy.push_back (TString ("LearningRate=1e-4,Momentum=0.5,Repetitions=1,ConvergenceSteps=70,BatchSize=80,TestRepetitions=7,WeightDecay=0.001,Regularization=L2,Multithreading=True,DropConfig=0.1+0.1+0.1+0.1,DropRepetitions=1"));
+       strategy.push_back (TString ("LearningRate=1e-5,Momentum=0.3,Repetitions=1,ConvergenceSteps=70,BatchSize=60,TestRepetitions=7,WeightDecay=0.0001,Regularization=L2,Multithreading=True"));
+       strategy.push_back (TString  ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=70,BatchSize=40,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
 //       strategy.push_back (TString ("LearningRate=1e-6,Momentum=0.0,Repetitions=1,ConvergenceSteps=50,BatchSize=30,TestRepetitions=7,WeightDecay=0.0001,Regularization=NONE,Multithreading=True"));
 
        TString trainingStrategyString ("TrainingStrategy=");

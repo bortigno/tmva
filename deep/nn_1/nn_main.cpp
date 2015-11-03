@@ -36,10 +36,10 @@ void writeKaggleHiggs (std::string fileName, const NN::Net& net, const std::vect
 class KaggleClassificationSettings : public NN::ClassificationSettings
 {
 public:
-    KaggleClassificationSettings (size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
+    KaggleClassificationSettings (std::string name, size_t _convergenceSteps = 15, size_t _batchSize = 10, size_t _testRepetitions = 7, 
                                   double _factorWeightDecay = 1e-5, NN::EnumRegularization eRegularization = NN::EnumRegularization::NONE, 
-                                  size_t _scaleToNumEvents = 0, bool _multithreading = true, NN::Monitoring* pMonitoring = NULL)
-        : NN::ClassificationSettings (_convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, eRegularization, _scaleToNumEvents, _multithreading, pMonitoring)
+                                  size_t _scaleToNumEvents = 0, bool _multithreading = true, bool _batchNormalization = true, NN::Monitoring* pMonitoring = NULL)
+        : NN::ClassificationSettings (name, _convergenceSteps, _batchSize, _testRepetitions, _factorWeightDecay, eRegularization, _scaleToNumEvents, _multithreading, _batchNormalization, pMonitoring)
     {
     }
 
@@ -170,8 +170,15 @@ void checkGradients ()
     }
 
 
-    NN::Settings settings (/*_convergenceSteps*/ 15, /*_batchSize*/ 1, /*_testRepetitions*/ 7, /*_factorWeightDecay*/ 0,
-                           /*regularization*/ NN::EnumRegularization::NONE, /* use multithreading */ true);
+    NN::Settings settings (/*name*/std::string("test"),
+                           /*_convergenceSteps*/ 15,
+                           /*_batchSize*/ 1,
+                           /*_testRepetitions*/ 7,
+                           /*_factorWeightDecay*/ 0,
+                           /*regularization*/ NN::EnumRegularization::NONE,
+                           /* use multithreading */ true,
+                           /*use batchNormalization*/ true,
+                           /*monitoring*/ NULL);
 
     size_t improvements = 0;
     size_t worsenings = 0;
@@ -282,7 +289,7 @@ void testXOR ()
     
 //    StochasticCG minimizer;
     NN::Steepest minimizer (/*learningRate*/ 1e-5);
-    NN::Settings settings (/*_convergenceSteps*/ 50, /*_batchSize*/ 4, /*_testRepetitions*/ 7);
+    NN::Settings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 50, /*_batchSize*/ 4, /*_testRepetitions*/ 7);
     /*double E = */net.train (weights, patterns, patterns, minimizer, settings);
 
 }
@@ -339,7 +346,7 @@ void testClassification ()
     
     NN::Steepest minimizer (1e-6, 0.0, 3);
 //    MaxGradWeight minimizer;
-    NN::ClassificationSettings settings (/*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
+    NN::ClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 150, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
                                          /*factorWeightDecay*/ 1.0e-5, /*regularization*/ NN::EnumRegularization::NONE, 
 				     /*scaleToNumEvents*/0);
     /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
@@ -391,7 +398,7 @@ void testWriteRead ()
     NN::uniform (weights, 0.2);
     
     NN::Steepest minimizer;
-    NN::ClassificationSettings settings (/*_convergenceSteps*/ 2, /*_batchSize*/ 30, /*_testRepetitions*/ 7, /*factorWeightDecay*/ 1.0e-5);
+    NN::ClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 2, /*_batchSize*/ 30, /*_testRepetitions*/ 7, /*factorWeightDecay*/ 1.0e-5);
     //double E = net.train (weights, trainPattern, testPattern, minimizer, settings);
 
 
@@ -483,11 +490,13 @@ void Higgs ()
     size_t inputSize = trainPattern.front ().input ().size ();
     size_t outputSize = trainPattern.front ().output ().size ();
 
+    NN::EnumFunction eActivationFunction = NN::EnumFunction::SOFTSIGN;
+    
     net.setInputSize (inputSize);
     net.setOutputSize (outputSize);
-    net.addLayer (NN::Layer (50, NN::EnumFunction::TANH)); 
-    net.addLayer (NN::Layer (20, NN::EnumFunction::TANH)); 
-    net.addLayer (NN::Layer (15, NN::EnumFunction::TANH)); 
+    net.addLayer (NN::Layer (100, eActivationFunction)); 
+    net.addLayer (NN::Layer (50, eActivationFunction)); 
+    net.addLayer (NN::Layer (20, eActivationFunction)); 
     net.addLayer (NN::Layer (10, NN::EnumFunction::TANH)); 
     net.addLayer (NN::Layer (outputSize, NN::EnumFunction::LINEAR, NN::ModeOutputValues::SIGMOID)); 
     net.setErrorFunction (NN::ModeErrorFunction::CROSSENTROPY);
@@ -518,14 +527,15 @@ void Higgs ()
     
     typedef NN::Steepest LocalMinimizer;
     bool multithreading = true;
+    bool batchNormalization = true;
     if (false)
     {
         std::cout << "-------------- pretraining -------------------------" << std::endl;
         // pre-training
         LocalMinimizer minimizer (1e-4, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	NN::Settings settings (/*_convergenceSteps*/ 10, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+	NN::Settings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 10, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                /*factorWeightDecay*/ 1e-4, /*regularization*/NN::EnumRegularization::L2,
-                               /* use multithreading */ multithreading, 
+                               /* use multithreading */ multithreading, /*batch normalization*/ batchNormalization, 
                                &monitoring);
 
         double d = 0.3;
@@ -535,10 +545,10 @@ void Higgs ()
     }
     std::cout << "-------------- training -------------------------" << std::endl;
     {
-        LocalMinimizer minimizer (1e-1, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	KaggleClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 10, /*_testRepetitions*/ 7, 
+        LocalMinimizer minimizer (1e-2, 0.9, 1, &monitoring, layerSizesForMonitoring);
+	KaggleClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 50, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
                                                    /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
-                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, &monitoring);
+                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, batchNormalization, &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
         settings.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
 
@@ -547,10 +557,10 @@ void Higgs ()
         /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
     }
     {
-        LocalMinimizer minimizer (1e-2, 0.5, 1, &monitoring, layerSizesForMonitoring);
-        KaggleClassificationSettings settings (/*_convergenceSteps*/ 100, /*_batchSize*/ 20, /*_testRepetitions*/ 7, 
-                                              /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::NONE,
-                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, &monitoring);
+        LocalMinimizer minimizer (1e-3, 0.5, 1, &monitoring, layerSizesForMonitoring);
+        KaggleClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 50, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+                                              /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L1,
+                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, batchNormalization, &monitoring);
         settings.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
@@ -558,9 +568,9 @@ void Higgs ()
     }
     {
         LocalMinimizer minimizer (1e-2, 0.3, 1, &monitoring, layerSizesForMonitoring);
-        KaggleClassificationSettings settings (/*_convergenceSteps*/ 50, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
+        KaggleClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 50, /*_batchSize*/ 30, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
-                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, &monitoring);
+                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, batchNormalization, &monitoring);
 //        settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
@@ -568,9 +578,9 @@ void Higgs ()
     }
     {
         LocalMinimizer minimizer (1e-3, 0.1, 1, &monitoring, layerSizesForMonitoring);
-        KaggleClassificationSettings settings (/*_convergenceSteps*/ 50, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
-                                              /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::L1,
-                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, &monitoring);
+        KaggleClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 50, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+                                              /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::NONE,
+                                               /*scaleToNumEvents*/ scaleToNumEvents, multithreading, batchNormalization, &monitoring);
         settings.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
         /*double E = */net.train (weights, trainPattern, testPattern, minimizer, settings);
@@ -718,15 +728,16 @@ void Chess ()
 
 
     bool multithreading = false;
+    bool batchNormalization = true;
     typedef NN::Steepest LocalMinimizer;
 
     if (false)
     {
         // pre-training
         LocalMinimizer minimizer (1e-4, 0.2, 1, &monitoring, layerSizesForMonitoring);
-	NN::Settings settings (/*_convergenceSteps*/ 20, /*_batchSize*/ 150, /*_testRepetitions*/ 7, 
+	NN::Settings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 20, /*_batchSize*/ 150, /*_testRepetitions*/ 7, 
                                /*factorWeightDecay*/ 1e-2, /*regularization*/NN::EnumRegularization::L2,
-                               /* use multithreading */ multithreading, 
+                               /* use multithreading */ multithreading, /*use batch normalization*/ batchNormalization,
                                &monitoring);
 
         std::vector<double> dropConfigPre = {0.7,0.7,0.7,0.7};
@@ -736,10 +747,11 @@ void Chess ()
 
     {
         LocalMinimizer minimizer (1e-1, 0.2, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 500, /*_batchSize*/ 5, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 500, /*_batchSize*/ 5, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ multithreading, 
+                                             /* use multithreading */ multithreading,
+                                             /* use batchNormalization */ batchNormalization, 
                                              &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
 
@@ -749,10 +761,11 @@ void Chess ()
     }
     {
         LocalMinimizer minimizer2 (1e-2, 0.5, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*name*/std::string("test"), /*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ multithreading, 
+                                             /* use multithreading */ multithreading,
+                                              /* use batch normalization */ batchNormalization, 
                                               &monitoring);
         settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -761,10 +774,11 @@ void Chess ()
     }
     {
         LocalMinimizer minimizer2 (1e-2, 0.3, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 150, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*name*/std::string("test"), /*_convergenceSteps*/ 150, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
-                                              /* use multithreading */ multithreading, 
+                                              /* use multithreading */ multithreading,
+                                              /* use batchNormalization */ batchNormalization, 
                                               &monitoring);
 //        settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -773,10 +787,11 @@ void Chess ()
     }
     {
         LocalMinimizer minimizer2 (1e-3, 0.1, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 200, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*name*/std::string("test"), /*_convergenceSteps*/ 200, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::L1,
                                               /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ multithreading, 
+                                             /* use multithreading */ multithreading,
+                                              /* use batch normalization */ batchNormalization,
                                               &monitoring);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);
@@ -886,13 +901,15 @@ void mnist ()
     std::cout << "number of weights : " << net.numWeights () << std::endl;
 
     bool multithreading = true;
+    bool batchNormalization = true;
     typedef NN::Steepest LocalMinimizer;
     {
         LocalMinimizer minimizer (1e-1, 0.0, 1, &monitoring, layerSizesForMonitoring);
-	NN::ClassificationSettings settings (/*_convergenceSteps*/ 200, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
+	NN::ClassificationSettings settings (/*name*/std::string("test"), /*_convergenceSteps*/ 200, /*_batchSize*/ 50, /*_testRepetitions*/ 7, 
                                              /*factorWeightDecay*/ 1e-3, /*regularization*/NN::EnumRegularization::NONE,
                                              /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ multithreading, 
+                                             /* use multithreading */ multithreading,
+                                             /* use batch normalization */ batchNormalization, 
                                              &monitoring);
         settings.setDropOut (std::begin (dropConfig), std::end (dropConfig), dropRepetitions);
 
@@ -902,10 +919,11 @@ void mnist ()
     }
     {
         LocalMinimizer minimizer2 (1e-2, 0.3, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*name*/std::string("test"), /*_convergenceSteps*/ 300, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ multithreading, 
+                                             /* use multithreading */ multithreading,
+                                              /* use batchNormalization */ batchNormalization, 
                                               &monitoring);
         settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -914,10 +932,11 @@ void mnist ()
     }
     {
         LocalMinimizer minimizer2 (1e-2, 0.3, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 70, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*name*/std::string("test"), /*_convergenceSteps*/ 70, /*_batchSize*/ 40, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.001, /*regularization*/NN::EnumRegularization::L2,
                                               /*scaleToNumEvents*/ 10000,
-                                              /* use multithreading */ multithreading, 
+                                              /* use multithreading */ multithreading,
+                                              /* use batchNormalization */ batchNormalization, 
                                               &monitoring);
 //        settings2.setDropOut (std::begin (dropConfig2), std::end (dropConfig2), dropRepetitions);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
@@ -926,10 +945,11 @@ void mnist ()
     }
     {
         LocalMinimizer minimizer2 (1e-3, 0.1, 1, &monitoring, layerSizesForMonitoring);
-        NN::ClassificationSettings settings2 (/*_convergenceSteps*/ 200, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
+        NN::ClassificationSettings settings2 (/*name*/std::string("test"), /*_convergenceSteps*/ 200, /*_batchSize*/ 100, /*_testRepetitions*/ 7, 
                                               /*factorWeightDecay*/ 0.0001, /*regularization*/NN::EnumRegularization::L1,
                                               /*scaleToNumEvents*/ 10000,
-                                             /* use multithreading */ multithreading, 
+                                             /* use multithreading */ multithreading,
+                                              /* use batchNormalization */ batchNormalization, 
                                               &monitoring);
         settings2.setWeightSums (sumOfSigWeights_test, sumOfBkgWeights_test);
 //    settings2.setResultComputation ("higgs.net", "submission.csv", &submissionPattern);

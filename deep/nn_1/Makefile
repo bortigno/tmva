@@ -25,5 +25,5 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
 clean:
-	rm nn_1 nn_mainExe *.o clangtest *~ $(EXECUTABLE) threadtest
+	rm nn_1 nn_mainExe *.o clangtest *~ $(EXECUTABLE) threadtest ../mnist/*.o
 

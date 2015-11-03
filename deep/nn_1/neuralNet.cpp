@@ -9,68 +9,37 @@ namespace NN
 
 
 
-    double gaussDouble (double mean, double sigma)
-    {
-        static std::default_random_engine generator;
-        std::normal_distribution<double> distribution (mean, sigma);
-        return distribution (generator);
-    }
+double gaussDouble (double mean, double sigma)
+{
+    static std::default_random_engine generator;
+    std::normal_distribution<double> distribution (mean, sigma);
+    return distribution (generator);
+}
 
 
-    double uniformDouble (double minValue, double maxValue)
-    {
-        static std::default_random_engine generator;
-        std::uniform_real_distribution<double> distribution(minValue, maxValue);
-        return distribution(generator);
-    }
-
-
-    
-    int randomInt (int maxValue)
-    {
-        static std::default_random_engine generator;
-        std::uniform_int_distribution<int> distribution(0,maxValue-1);
-        return distribution(generator);
-    }
-
-
-    double studenttDouble (double distributionParameter)
-    {
-        static std::default_random_engine generator;
-        std::student_t_distribution<double> distribution (distributionParameter);
-        return distribution (generator);
-    }
-
-
-
-    Steepest::Steepest (double learningRate, 
-                        double momentum, 
-                        size_t repetitions, 
-                        Monitoring* pMonitoring, 
-                        std::vector<size_t> layerSizes) 
-        : MinimizerMonitoring (pMonitoring, layerSizes)
-        , m_repetitions (repetitions)
-        , m_alpha (learningRate)
-        , m_beta (momentum)
-    {
-    }
-
-
-
-
+double uniformDouble (double minValue, double maxValue)
+{
+    static std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution(minValue, maxValue);
+    return distribution(generator);
+}
 
 
     
+int randomInt (int maxValue)
+{
+    static std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(0,maxValue-1);
+    return distribution(generator);
+}
 
-    typename Batch::const_iterator begin (const Batch& batch)
-    {
-        return batch.begin ();
-    }
 
-    typename Batch::const_iterator end (const Batch& batch)
-    {
-        return batch.end ();
-    }
+double studenttDouble (double distributionParameter)
+{
+    static std::default_random_engine generator;
+    std::student_t_distribution<double> distribution (distributionParameter);
+    return distribution (generator);
+}
 
 
     LayerData::LayerData (size_t inputSize)
@@ -222,10 +191,6 @@ namespace NN
 		actFnc = GaussComplement;
 		invActFnc = InvGaussComplement;
 		break;
-	    case EnumFunction::DOUBLEINVERTEDGAUSS:
-		actFnc = DoubleInvertedGauss;
-		invActFnc = InvDoubleInvertedGauss;
-		break;
 	    }
 	    m_activationFunction = actFnc;
 	    m_inverseActivationFunction = invActFnc;
@@ -299,9 +264,12 @@ namespace NN
 
 
     
-    Settings::Settings (size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
+    Settings::Settings (std::string name,
+                        size_t _convergenceSteps, size_t _batchSize, size_t _testRepetitions, 
                         double _factorWeightDecay, EnumRegularization eRegularization,
-                        bool _useMultithreading, Monitoring* pMonitoring)
+                        bool _useMultithreading, 
+                        bool _doBatchNormalization,
+                        Monitoring* pMonitoring)
         : m_convergenceSteps (_convergenceSteps)
         , m_batchSize (_batchSize)
         , m_testRepetitions (_testRepetitions)
@@ -315,10 +283,16 @@ namespace NN
         , m_maxConvergenceCount (0)
         , m_minError (1e10)
         , m_useMultithreading (_useMultithreading)
+        , m_doBatchNormalization (_doBatchNormalization)
         , m_pMonitoring (pMonitoring)
     {
     }
     
+    Settings::~Settings () 
+    {
+    }
+
+
     Monitoring::~Monitoring () 
     {
     }
@@ -335,12 +309,12 @@ namespace NN
     }
 
 
-    void Settings::clearData (std::string dataName)
-    {
-        if (!m_pMonitoring)
-            return;
-        m_pMonitoring->clearData (dataName);
-    }
+    // void Settings::clearData (std::string dataName)
+    // {
+    //     if (!m_pMonitoring)
+    //         return;
+    //     m_pMonitoring->clearData (dataName);
+    // }
 
 
     void Monitoring::addPoint (std::string dataName, double x, double y)
@@ -361,6 +335,8 @@ namespace NN
         data.y.push_back (y);
         data.err.push_back (err);
     }
+
+
 
 
     void Settings::addPoint (std::string dataName, double x, double y)
@@ -479,14 +455,14 @@ namespace NN
         m_output.clear ();
         m_targets.clear ();
         m_weights.clear ();
-        clearData ("datRoc");
-        clearData ("datOutputSig");
-        clearData ("datOutputBkg");
-        clearData ("datAms");
-        clearData ("datSignificance");
-        resetPlot ("roc");
-        resetPlot ("output");
-        resetPlot ("amsSig");
+//        clearData ("datRoc");
+        // clearData ("datOutputSig");
+        // clearData ("datOutputBkg");
+        // clearData ("datAms");
+        // clearData ("datSignificance");
+        // resetPlot ("roc");
+        // resetPlot ("output");
+        // resetPlot ("amsSig");
     }
 
     void ClassificationSettings::endTestCycle () 
@@ -666,7 +642,7 @@ namespace NN
     {
         std::cout << "check convergence; minError " << m_minError << "  current " << testError
                   << "  current convergence count " << m_convergenceCount << std::endl;
-        if (testError < m_minError)
+        if (testError < m_minError*0.999)
         {
             m_convergenceCount = 0;
             m_minError = testError;
@@ -685,7 +661,6 @@ namespace NN
     }
 
 
-    
 
     void ClassificationSettings::setWeightSums (double sumOfSigWeights, double sumOfBkgWeights)
     {
